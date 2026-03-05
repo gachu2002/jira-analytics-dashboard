@@ -28,22 +28,22 @@ export const Sidebar = ({ compact = false }: SidebarProps) => {
   return (
     <aside
       className={cn(
-        'sticky top-0 flex h-screen flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar)] px-2 py-3',
+        'border-sidebar-border bg-sidebar sticky top-0 flex h-screen flex-col border-r px-2 py-3',
         compact ? 'w-12' : 'w-[220px] px-3',
       )}
     >
       <div
         className={cn(
-          'mb-3 flex items-center gap-2 border-b border-[var(--sidebar-border)] pb-3',
+          'border-sidebar-border mb-3 flex items-center gap-2 border-b pb-3',
           compact ? 'px-0.5' : 'px-1',
         )}
       >
-        <div className="flex h-6 w-6 items-center justify-center rounded-[4px] bg-[var(--accent-blue)] text-[11px] font-semibold text-white">
+        <div className="bg-accent-blue flex h-6 w-6 items-center justify-center rounded-[4px] text-[11px] font-semibold text-white">
           SL
         </div>
         {compact ? null : (
-          <p className="metric-value text-[13px] tracking-[0.02em] text-[var(--text-primary)]">
-            Sprint<span className="text-[var(--accent-blue)]">Lens</span>
+          <p className="metric-value text-text-primary text-[13px] tracking-[0.02em]">
+            Sprint<span className="text-accent-blue">Lens</span>
           </p>
         )}
       </div>
@@ -56,10 +56,9 @@ export const Sidebar = ({ compact = false }: SidebarProps) => {
             <NavLink
               className={({ isActive }) =>
                 cn(
-                  'relative flex items-center gap-2 rounded-[4px] px-2 py-2 text-sm text-[var(--text-secondary)] transition-colors',
-                  'hover:bg-[var(--surface-elevated)] hover:text-[var(--text-primary)]',
-                  isActive &&
-                    'bg-[var(--surface-elevated)] text-[var(--text-primary)]',
+                  'text-text-secondary relative flex items-center gap-2 rounded-[4px] px-2 py-2 text-sm transition-colors',
+                  'hover:bg-surface-elevated hover:text-text-primary',
+                  isActive && 'bg-surface-elevated text-text-primary',
                 )
               }
               key={item.label}
@@ -68,7 +67,7 @@ export const Sidebar = ({ compact = false }: SidebarProps) => {
               {({ isActive }) => (
                 <>
                   {isActive ? (
-                    <span className="absolute top-0 bottom-0 left-0 w-[2px] bg-[var(--accent-blue)]" />
+                    <span className="bg-accent-blue absolute top-0 bottom-0 left-0 w-[2px]" />
                   ) : null}
                   <Icon size={16} strokeWidth={1.5} />
                   {compact ? null : <span>{item.label}</span>}
@@ -79,7 +78,7 @@ export const Sidebar = ({ compact = false }: SidebarProps) => {
         })}
       </nav>
 
-      <div className="mt-auto border-t border-[var(--sidebar-border)] pt-3 text-[10px] text-[var(--text-muted)]">
+      <div className="text-text-muted border-sidebar-border mt-auto border-t pt-3 text-[10px]">
         {compact ? 'v1' : 'Sprint Lens v1.0'}
       </div>
     </aside>

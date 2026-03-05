@@ -8,14 +8,11 @@ type MetricDeltaChipProps = {
 }
 
 const toneClasses: Record<DeltaTone, string> = {
-  green:
-    'bg-[color:color-mix(in_oklab,var(--accent-green)_15%,transparent)] text-[var(--accent-green)]',
-  red: 'bg-[color:color-mix(in_oklab,var(--accent-red)_15%,transparent)] text-[var(--accent-red)]',
-  amber:
-    'bg-[color:color-mix(in_oklab,var(--accent-amber)_15%,transparent)] text-[var(--accent-amber)]',
-  blue: 'bg-[color:color-mix(in_oklab,var(--accent-blue)_15%,transparent)] text-[var(--accent-blue)]',
-  purple:
-    'bg-[color:color-mix(in_oklab,var(--accent-purple)_15%,transparent)] text-[var(--accent-purple)]',
+  green: 'bg-[#3dd68c26] text-accent-green',
+  red: 'bg-[#f75c5c26] text-accent-red',
+  amber: 'bg-[#f5a62326] text-accent-amber',
+  blue: 'bg-[#4f7ef726] text-accent-blue',
+  purple: 'bg-[#9b7ef726] text-accent-purple',
 }
 
 export const MetricDeltaChip = ({ label, tone }: MetricDeltaChipProps) => {

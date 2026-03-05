@@ -9,7 +9,7 @@ export const DashboardPage = () => {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
           <div
-            className="dashboard-card h-36 animate-pulse bg-[var(--surface-elevated)]"
+            className="dashboard-card bg-surface-elevated h-36 animate-pulse"
             key={`kpi-skeleton-${index}`}
           />
         ))}

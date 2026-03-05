@@ -9,12 +9,12 @@ export const DataTable = ({ children }: PropsWithChildren) => {
 }
 
 export const DataTableHeader = ({ children }: PropsWithChildren) => {
-  return <thead className="bg-[var(--surface-elevated)]">{children}</thead>
+  return <thead className="bg-surface-elevated">{children}</thead>
 }
 
 export const DataTableHeaderCell = ({ children }: PropsWithChildren) => {
   return (
-    <th className="border-b border-[var(--border)] px-2 py-1 text-left text-[10px] font-normal tracking-[0.08em] text-[var(--text-muted)] uppercase">
+    <th className="border-border text-text-muted border-b px-2 py-1 text-left text-[10px] font-normal tracking-[0.08em] uppercase">
       {children}
     </th>
   )
@@ -34,10 +34,10 @@ export const DataTableRow = ({
 }: DataTableRowProps) => {
   return (
     <tr
-      className={`data-row h-9 border-b border-[var(--border)] text-xs transition-colors duration-150 ${
+      className={`data-row border-border h-9 border-b text-xs transition-colors duration-150 ${
         active
-          ? 'bg-[var(--row-active-bg)] font-medium text-[var(--text-primary)] [&>td:first-child]:border-l-[2px] [&>td:first-child]:border-[var(--accent-blue)]'
-          : 'text-[var(--text-secondary)] hover:bg-[var(--surface-elevated)]'
+          ? 'bg-row-active-bg text-text-primary [&>td:first-child]:border-accent-blue font-medium [&>td:first-child]:border-l-[2px]'
+          : 'text-text-secondary hover:bg-surface-elevated'
       }`}
     >
       {children}

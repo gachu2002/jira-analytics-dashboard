@@ -15,16 +15,6 @@ export const axiosClient = axios.create({
   },
 })
 
-const resolveRefreshUrl = () => {
-  if (env.VITE_AUTH_TOKEN_URL.includes('/token/')) {
-    return env.VITE_AUTH_TOKEN_URL.replace('/token/', '/token/refresh/')
-  }
-
-  return env.VITE_AUTH_TOKEN_URL.endsWith('/')
-    ? `${env.VITE_AUTH_TOKEN_URL}refresh/`
-    : `${env.VITE_AUTH_TOKEN_URL}/refresh/`
-}
-
 const redirectToLogin = () => {
   if (window.location.pathname !== ROUTES.login) {
     window.location.href = ROUTES.login
@@ -50,11 +40,12 @@ axiosClient.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    if (error.response?.status !== 401 || env.VITE_USE_MOCK_AUTH) {
+    if (error.response?.status !== 401) {
       return Promise.reject(error)
     }
 
-    const { tokens, username, setAuthSession, clearAuthSession } = useAuthStore.getState()
+    const { tokens, username, setAuthSession, clearAuthSession } =
+      useAuthStore.getState()
     const refreshToken = tokens?.refresh
 
     if (!refreshToken) {
@@ -66,15 +57,10 @@ axiosClient.interceptors.response.use(
     originalRequest._retry = true
 
     try {
-      const refreshResponse = await axios.post<{ access: string; refresh?: string }>(
-        resolveRefreshUrl(),
-        { refresh: refreshToken },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        },
-      )
+      const refreshResponse = await axiosClient.post<{
+        access: string
+        refresh?: string
+      }>('/api/token/refresh/', { refresh: refreshToken })
 
       const nextAccess = refreshResponse.data.access
 

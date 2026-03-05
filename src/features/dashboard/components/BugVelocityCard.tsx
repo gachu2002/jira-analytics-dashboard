@@ -63,32 +63,33 @@ export const BugVelocityCard = ({ data }: BugVelocityCardProps) => {
     <section className="dashboard-card px-5 py-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-[10px] tracking-[0.1em] text-[var(--text-muted)] uppercase">
+          <p className="text-text-muted text-[10px] tracking-[0.1em] uppercase">
             Bug Fixing Velocity
           </p>
-          <p className="mt-1 text-[13px] text-[var(--text-primary)]">
+          <p className="text-text-primary mt-1 text-[13px]">
             New vs Resolved - Fix Rate Trend
           </p>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-[1px] bg-[var(--accent-red)] opacity-70" />
-            <span className="text-[11px] text-[var(--text-secondary)]">
-              New Bugs
-            </span>
+            <span className="bg-accent-red h-2.5 w-2.5 rounded-[1px] opacity-70" />
+            <span className="text-text-secondary text-[11px]">New Bugs</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-[1px] bg-[var(--accent-green)] opacity-70" />
-            <span className="text-[11px] text-[var(--text-secondary)]">
-              Resolved
-            </span>
+            <span className="bg-accent-green h-2.5 w-2.5 rounded-[1px] opacity-70" />
+            <span className="text-text-secondary text-[11px]">Resolved</span>
           </div>
           <ChartLegendItem color="var(--accent-blue)" label="Fix Rate" />
         </div>
       </div>
 
-      <div style={{ height: 260 }}>
-        <ResponsiveContainer height="100%" width="100%">
+      <div className="min-w-0" style={{ height: 260 }}>
+        <ResponsiveContainer
+          height="100%"
+          minHeight={1}
+          minWidth={0}
+          width="100%"
+        >
           <ComposedChart
             barGap={2}
             data={data}
@@ -219,7 +220,7 @@ export const BugVelocityCard = ({ data }: BugVelocityCardProps) => {
         </ResponsiveContainer>
       </div>
 
-      <div className="mt-4 grid gap-[1px] overflow-hidden rounded-[4px] bg-[var(--border)] min-[1200px]:grid-cols-4">
+      <div className="bg-border mt-4 grid gap-[1px] overflow-hidden rounded-[4px] min-[1200px]:grid-cols-4">
         <StatCell
           label="Avg Rate"
           value={averageRate.toFixed(2)}
@@ -255,14 +256,14 @@ const StatCell = ({
   sub: string
 }) => {
   return (
-    <div className="bg-[var(--surface)] px-3.5 py-2.5">
-      <p className="text-[10px] tracking-[0.08em] text-[var(--text-muted)] uppercase">
+    <div className="bg-surface px-3.5 py-2.5">
+      <p className="text-text-muted text-[10px] tracking-[0.08em] uppercase">
         {label}
       </p>
-      <p className="metric-value text-lg tracking-[-0.01em] text-[var(--text-primary)]">
+      <p className="metric-value text-text-primary text-lg tracking-[-0.01em]">
         {value}
       </p>
-      <p className="text-[10px] text-[var(--text-muted)]">{sub}</p>
+      <p className="text-text-muted text-[10px]">{sub}</p>
     </div>
   )
 }

@@ -114,6 +114,17 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-row-active-bg: var(--row-active-bg);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-green: var(--accent-green);
+  --color-accent-red: var(--accent-red);
+  --color-accent-amber: var(--accent-amber);
+  --color-accent-purple: var(--accent-purple);
   --radius-sm: var(--radius-badge);
   --radius-md: var(--radius);
   --radius-lg: var(--radius);
@@ -158,25 +169,6 @@
     background: linear-gradient(90deg, #181c27 25%, #1e2335 50%, #181c27 75%);
     background-size: 800px 100%;
     animation: shimmer 1.4s ease-in-out infinite;
-  }
-
-  .jql-block {
-    background: var(--background);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 12px 16px;
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    color: var(--text-secondary);
-    overflow-x: auto;
-  }
-
-  .jql-keyword {
-    color: var(--accent-blue);
-  }
-
-  .jql-value {
-    color: var(--accent-amber);
   }
 
   .data-row:hover {

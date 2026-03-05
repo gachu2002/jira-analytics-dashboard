@@ -28,6 +28,17 @@ export const VelocityPage = () => {
     return null
   }
 
+  if (data.velocity.length === 0) {
+    return null
+  }
+
+  const current = data.velocity[data.velocity.length - 1]
+  const peak = data.velocity.reduce(
+    (max, item) => (item.rate > max.rate ? item : max),
+    data.velocity[0],
+  )
+  const belowTarget = data.velocity.filter((item) => item.rate < 0.9).length
+
   const movingAverage = data.velocity.map((item, index, list) => {
     const slice = list.slice(Math.max(0, index - 2), index + 1)
     const average = slice.reduce((sum, row) => sum + row.rate, 0) / slice.length
@@ -41,10 +52,10 @@ export const VelocityPage = () => {
   return (
     <div className="space-y-4">
       <header>
-        <h1 className="metric-value text-base text-[var(--text-primary)]">
+        <h1 className="metric-value text-text-primary text-base">
           Bug Fixing Velocity
         </h1>
-        <p className="mt-1 text-xs text-[var(--text-muted)]">
+        <p className="text-text-muted mt-1 text-xs">
           New vs resolved bugs - fix rate trend with target threshold
         </p>
       </header>
@@ -52,10 +63,10 @@ export const VelocityPage = () => {
       <section className="grid grid-cols-1 gap-3 min-[1024px]:grid-cols-2 min-[1440px]:grid-cols-4">
         <KpiCard
           label="Current Fix Rate"
-          value="0.82"
-          animatedValue={82}
+          value={current.rate.toFixed(2)}
+          animatedValue={Math.round(current.rate * 100)}
           formatter={(value) => (value / 100).toFixed(2)}
-          subtext="Sprint 10 - 84 resolved / 102 new"
+          subtext={`${current.sprint} - ${current.resolvedBugs} resolved / ${current.newBugs} new`}
           delta={{ label: 'Target: 0.90', tone: 'red' }}
         />
         <KpiCard
@@ -63,34 +74,42 @@ export const VelocityPage = () => {
           value="0.76"
           animatedValue={76}
           formatter={(value) => (value / 100).toFixed(2)}
-          subtext="S8-S10 moving average"
+          subtext="Recent 3-sprint moving average"
           delta={{ label: 'Trending flat', tone: 'amber' }}
         />
         <KpiCard
           label="Season Peak"
-          value="1.25"
-          animatedValue={125}
+          value={peak.rate.toFixed(2)}
+          animatedValue={Math.round(peak.rate * 100)}
           formatter={(value) => (value / 100).toFixed(2)}
           subtext="Best single-sprint rate"
-          delta={{ label: 'Sprint S2', tone: 'green' }}
+          delta={{ label: `Sprint ${peak.sprint}`, tone: 'green' }}
         />
         <KpiCard
           label="Below Target"
-          value="8"
-          animatedValue={8}
-          subtext="8 of 12 sprints < 0.90"
-          delta={{ label: '66% of sprints', tone: 'red' }}
+          value={belowTarget.toString()}
+          animatedValue={belowTarget}
+          subtext={`${belowTarget} of ${data.velocity.length} sprints < 0.90`}
+          delta={{
+            label: `${Math.round((belowTarget / data.velocity.length) * 100)}% of sprints`,
+            tone: 'red',
+          }}
         />
       </section>
 
       <BugVelocityCard data={data.velocity} />
 
       <section className="dashboard-card p-4">
-        <p className="mb-3 text-[10px] tracking-[0.1em] text-[var(--text-muted)] uppercase">
+        <p className="text-text-muted mb-3 text-[10px] tracking-[0.1em] uppercase">
           3-Sprint Moving Average - Fix Rate
         </p>
-        <div className="h-30">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-[120px] min-w-0">
+          <ResponsiveContainer
+            minHeight={1}
+            minWidth={0}
+            width="100%"
+            height="100%"
+          >
             <LineChart
               data={movingAverage}
               margin={{ top: 4, right: 24, bottom: 0, left: 0 }}
@@ -125,11 +144,11 @@ export const VelocityPage = () => {
                   }
 
                   return (
-                    <div className="rounded-[4px] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-2">
-                      <p className="metric-value text-[11px] text-[var(--text-secondary)]">
+                    <div className="border-border bg-surface-elevated rounded-[4px] border px-3 py-2">
+                      <p className="metric-value text-text-secondary text-[11px]">
                         {String(label)}
                       </p>
-                      <p className="metric-value text-sm text-[var(--accent-purple)]">
+                      <p className="metric-value text-accent-purple text-sm">
                         MA3: {Number(payload[0]?.value).toFixed(2)}
                       </p>
                     </div>
@@ -158,7 +177,7 @@ export const VelocityPage = () => {
       </section>
 
       <section className="dashboard-card p-4">
-        <p className="mb-3 text-[10px] tracking-[0.1em] text-[var(--text-muted)] uppercase">
+        <p className="text-text-muted mb-3 text-[10px] tracking-[0.1em] uppercase">
           Sprint Detail
         </p>
         <DataTable>
@@ -197,7 +216,7 @@ export const VelocityPage = () => {
                   </DataTableCell>
                   <DataTableCell numeric>
                     <span
-                      className={`metric-value ${aboveTarget ? 'text-[var(--accent-green)]' : 'text-[var(--accent-red)]'}`}
+                      className={`metric-value ${aboveTarget ? 'text-accent-green' : 'text-accent-red'}`}
                     >
                       {(row.rate - 0.9).toFixed(2)}
                     </span>

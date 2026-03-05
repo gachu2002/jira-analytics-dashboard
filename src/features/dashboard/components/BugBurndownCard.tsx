@@ -43,20 +43,25 @@ export const BugBurndownCard = ({ data }: BugBurndownCardProps) => {
     <section className="dashboard-card px-5 py-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-[10px] tracking-[0.1em] text-[var(--text-muted)] uppercase">
+          <p className="text-text-muted text-[10px] tracking-[0.1em] uppercase">
             Bug Burndown
           </p>
-          <p className="mt-1 text-[13px] text-[var(--text-primary)]">
+          <p className="text-text-primary mt-1 text-[13px]">
             Sprint 1 - Sprint 12
           </p>
         </div>
-        <span className="rounded-[2px] border border-[rgba(245,166,35,0.25)] bg-[rgba(245,166,35,0.15)] px-2.5 py-1 text-[10px] text-[var(--accent-amber)]">
+        <span className="text-accent-amber rounded-[2px] border border-[rgba(245,166,35,0.25)] bg-[rgba(245,166,35,0.15)] px-2.5 py-1 text-[10px]">
           21 bugs open
         </span>
       </div>
 
-      <div style={{ height: 220 }}>
-        <ResponsiveContainer height="100%" width="100%">
+      <div className="min-w-0" style={{ height: 220 }}>
+        <ResponsiveContainer
+          height="100%"
+          minHeight={1}
+          minWidth={0}
+          width="100%"
+        >
           <ComposedChart
             data={data}
             margin={{ left: 0, right: 60, top: 10, bottom: 0 }}

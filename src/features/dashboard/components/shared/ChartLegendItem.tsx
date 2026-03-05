@@ -35,7 +35,7 @@ export const ChartLegendItem = ({
           />
         )}
       </svg>
-      <span className="text-[11px] text-[var(--text-secondary)]">{label}</span>
+      <span className="text-text-secondary text-[11px]">{label}</span>
     </div>
   )
 }

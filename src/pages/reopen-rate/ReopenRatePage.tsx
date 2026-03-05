@@ -9,6 +9,10 @@ export const ReopenRatePage = () => {
     return null
   }
 
+  if (data.reopenRateSeries.length === 0) {
+    return null
+  }
+
   const aboveTarget = data.reopenRateSeries.filter(
     (point) => point.rate > point.target,
   ).length
@@ -23,14 +27,15 @@ export const ReopenRatePage = () => {
     (sum, point) => sum + point.resolved,
     0,
   )
+  const worstRate = Math.max(...data.reopenRateSeries.map((item) => item.rate))
 
   return (
     <div className="space-y-4">
       <header>
-        <h1 className="metric-value text-base text-[var(--text-primary)]">
+        <h1 className="metric-value text-text-primary text-base">
           Reopen Rate
         </h1>
-        <p className="mt-1 text-xs text-[var(--text-muted)]">
+        <p className="text-text-muted mt-1 text-xs">
           Bug reopen trend - quality signal with 3% target threshold
         </p>
       </header>
@@ -38,10 +43,10 @@ export const ReopenRatePage = () => {
       <section className="grid grid-cols-1 gap-3 min-[1024px]:grid-cols-2 min-[1440px]:grid-cols-4">
         <KpiCard
           label="Current Rate"
-          value="1.5%"
-          animatedValue={15}
+          value={`${(data.reopenRate.value * 100).toFixed(1)}%`}
+          animatedValue={Math.round(data.reopenRate.value * 1000)}
           formatter={(value) => `${(value / 10).toFixed(1)}%`}
-          subtext="Sprint 10 - 0 reopened"
+          subtext={`Current sprint reopen trend (${data.reopenRateSeries[data.reopenRateSeries.length - 1]?.sprint ?? '--'})`}
           delta={{ label: 'Target: 3%', tone: 'green' }}
         />
         <KpiCard
@@ -64,10 +69,10 @@ export const ReopenRatePage = () => {
         />
         <KpiCard
           label="Worst Sprint"
-          value="4.1%"
-          animatedValue={41}
+          value={`${(worstRate * 100).toFixed(1)}%`}
+          animatedValue={Math.round(worstRate * 1000)}
           formatter={(value) => `${(value / 10).toFixed(1)}%`}
-          subtext="S6 had highest reopen ratio"
+          subtext="Highest observed reopen ratio"
           delta={{ label: 'Quality hotspot', tone: 'red' }}
         />
       </section>
@@ -76,7 +81,7 @@ export const ReopenRatePage = () => {
         <ReopenRateCard data={data.reopenRateSeries} fullWidth />
 
         <section className="dashboard-card p-4">
-          <p className="mb-3 text-[10px] tracking-[0.1em] text-[var(--text-muted)] uppercase">
+          <p className="text-text-muted mb-3 text-[10px] tracking-[0.1em] uppercase">
             Quality Insights
           </p>
 
@@ -108,11 +113,11 @@ export const ReopenRatePage = () => {
             },
           ].map((item) => (
             <div
-              className="mb-3 border-b border-[var(--border)] pb-3 last:mb-0 last:border-b-0 last:pb-0"
+              className="border-border mb-3 border-b pb-3 last:mb-0 last:border-b-0 last:pb-0"
               key={item.title}
             >
               <div className="mb-1 flex items-center justify-between">
-                <span className="text-xs text-[var(--text-secondary)]">
+                <span className="text-text-secondary text-xs">
                   {item.title}
                 </span>
                 <span
@@ -122,16 +127,16 @@ export const ReopenRatePage = () => {
                   {item.value}
                 </span>
               </div>
-              <p className="text-[11px] leading-5 text-[var(--text-muted)]">
+              <p className="text-text-muted text-[11px] leading-5">
                 {item.detail}
               </p>
             </div>
           ))}
 
           <div className="mt-3">
-            <div className="mb-1 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
+            <div className="text-text-secondary mb-1 flex items-center justify-between text-[11px]">
               <span>Target compliance</span>
-              <span className="metric-value text-[var(--text-primary)]">
+              <span className="metric-value text-text-primary">
                 {data.reopenRateSeries.length - aboveTarget}/12
               </span>
             </div>

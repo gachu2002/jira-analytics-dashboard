@@ -57,10 +57,10 @@ export const MilestoneProgressCard = ({
     <section className="dashboard-card px-5 py-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-[10px] tracking-[0.1em] text-[var(--text-muted)] uppercase">
+          <p className="text-text-muted text-[10px] tracking-[0.1em] uppercase">
             Milestone Burnup
           </p>
-          <p className="mt-1 text-[13px] text-[var(--text-primary)]">
+          <p className="text-text-primary mt-1 text-[13px]">
             Sprint 1 - Sprint 10
           </p>
         </div>
@@ -85,8 +85,13 @@ export const MilestoneProgressCard = ({
         </div>
       </div>
 
-      <div style={{ height: fullWidth ? 280 : 220 }}>
-        <ResponsiveContainer height="100%" width="100%">
+      <div className="min-w-0" style={{ height: fullWidth ? 280 : 220 }}>
+        <ResponsiveContainer
+          height="100%"
+          minHeight={1}
+          minWidth={0}
+          width="100%"
+        >
           <ComposedChart
             data={data}
             margin={{ top: 10, right: 20, bottom: 0, left: 0 }}
@@ -218,10 +223,10 @@ export const MilestoneProgressCard = ({
       <div className="mt-4">
         <table className="w-full border-collapse text-[11px]">
           <thead>
-            <tr className="border-b border-[var(--border)]">
+            <tr className="border-border border-b">
               {['Sprint', 'Completed', 'vs Ideal'].map((header, index) => (
                 <th
-                  className={`px-2 py-1 text-[10px] font-normal tracking-[0.08em] text-[var(--text-muted)] uppercase ${
+                  className={`text-text-muted px-2 py-1 text-[10px] font-normal tracking-[0.08em] uppercase ${
                     index === 0 ? 'text-left' : 'text-right'
                   }`}
                   key={header}
@@ -250,8 +255,8 @@ export const MilestoneProgressCard = ({
                   <td
                     className={`metric-value px-2 py-1 text-left ${
                       active
-                        ? 'font-medium text-[var(--text-primary)]'
-                        : 'text-[var(--text-secondary)]'
+                        ? 'text-text-primary font-medium'
+                        : 'text-text-secondary'
                     }`}
                   >
                     {row.sprint}
@@ -259,17 +264,15 @@ export const MilestoneProgressCard = ({
                   <td
                     className={`metric-value px-2 py-1 text-right ${
                       active
-                        ? 'font-medium text-[var(--text-primary)]'
-                        : 'text-[var(--text-secondary)]'
+                        ? 'text-text-primary font-medium'
+                        : 'text-text-secondary'
                     }`}
                   >
                     {row.completed}
                   </td>
                   <td
                     className={`metric-value px-2 py-1 text-right ${
-                      delta >= 0
-                        ? 'text-[var(--accent-green)]'
-                        : 'text-[var(--accent-red)]'
+                      delta >= 0 ? 'text-accent-green' : 'text-accent-red'
                     }`}
                   >
                     {delta >= 0 ? `+${delta}` : delta}

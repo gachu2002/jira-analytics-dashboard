@@ -16,6 +16,8 @@ Setup-only frontend foundation for a Jira task analytics dashboard.
 ## Scripts
 
 - `pnpm dev`: run app in development mode
+- `pnpm mock:server`: run local mock API server on port 8080
+- `pnpm dev:full`: run mock API + frontend together
 - `pnpm build`: build production bundle
 - `pnpm preview`: preview production build locally
 - `pnpm lint`: lint source files

@@ -37,8 +37,8 @@ const CustomTooltip = ({
   }
 
   return (
-    <div className="min-w-36 rounded-[4px] border border-[var(--border)] bg-[var(--surface-elevated)] px-3.5 py-2.5">
-      <p className="metric-value mb-2 text-[11px] text-[var(--text-secondary)]">
+    <div className="border-border bg-surface-elevated min-w-36 rounded-[4px] border px-3.5 py-2.5">
+      <p className="metric-value text-text-secondary mb-2 text-[11px]">
         {String(label ?? '')}
       </p>
       <div className="flex items-center justify-between gap-4">
@@ -50,11 +50,9 @@ const CustomTooltip = ({
                 rate <= 0.03 ? 'var(--accent-green)' : 'var(--accent-red)',
             }}
           />
-          <span className="text-[11px] text-[var(--text-secondary)]">
-            Reopen Rate
-          </span>
+          <span className="text-text-secondary text-[11px]">Reopen Rate</span>
         </div>
-        <span className="metric-value text-[11px] text-[var(--text-primary)]">
+        <span className="metric-value text-text-primary text-[11px]">
           {(rate * 100).toFixed(1)}%
         </span>
       </div>
@@ -97,20 +95,23 @@ export const ReopenRateCard = ({
     <section className="dashboard-card px-5 py-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-[10px] tracking-[0.1em] text-[var(--text-muted)] uppercase">
+          <p className="text-text-muted text-[10px] tracking-[0.1em] uppercase">
             Reopen Rate
           </p>
-          <p className="mt-1 text-[13px] text-[var(--text-primary)]">
-            Bug Reopen Trend
-          </p>
+          <p className="text-text-primary mt-1 text-[13px]">Bug Reopen Trend</p>
         </div>
-        <span className="rounded-[2px] border border-[rgba(61,214,140,0.25)] bg-[rgba(61,214,140,0.12)] px-2 py-1 text-[10px] text-[var(--accent-green)]">
+        <span className="text-accent-green rounded-[2px] border border-[rgba(61,214,140,0.25)] bg-[rgba(61,214,140,0.12)] px-2 py-1 text-[10px]">
           1.5% current
         </span>
       </div>
 
-      <div style={{ height: fullWidth ? 220 : 200 }}>
-        <ResponsiveContainer height="100%" width="100%">
+      <div className="min-w-0" style={{ height: fullWidth ? 220 : 200 }}>
+        <ResponsiveContainer
+          height="100%"
+          minHeight={1}
+          minWidth={0}
+          width="100%"
+        >
           <ComposedChart
             data={data}
             margin={{ top: 10, right: 20, bottom: 0, left: 0 }}
@@ -183,11 +184,11 @@ export const ReopenRateCard = ({
       <div className="mt-3">
         <table className="w-full border-collapse text-xs">
           <thead>
-            <tr className="border-b border-[var(--border)]">
+            <tr className="border-border border-b">
               {['Sprint', 'Target', 'Rate', 'Resolved', 'Reopened'].map(
                 (header, index) => (
                   <th
-                    className={`px-1.5 py-1 text-[10px] font-normal tracking-[0.08em] text-[var(--text-muted)] uppercase ${index === 0 ? 'text-left' : 'text-right'}`}
+                    className={`text-text-muted px-1.5 py-1 text-[10px] font-normal tracking-[0.08em] uppercase ${index === 0 ? 'text-left' : 'text-right'}`}
                     key={header}
                   >
                     {header}
@@ -198,7 +199,7 @@ export const ReopenRateCard = ({
           </thead>
           <tbody>
             {data.map((row) => {
-              const current = row.sprint === 'S10'
+              const current = row.sprint === data[data.length - 1]?.sprint
               const aboveTarget = row.rate > row.target
 
               return (
@@ -215,11 +216,11 @@ export const ReopenRateCard = ({
                   }}
                 >
                   <td
-                    className={`metric-value px-1.5 ${current ? 'font-medium text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}
+                    className={`metric-value px-1.5 ${current ? 'text-text-primary font-medium' : 'text-text-secondary'}`}
                   >
                     {row.sprint}
                   </td>
-                  <td className="metric-value px-1.5 text-right text-[var(--text-muted)]">
+                  <td className="metric-value text-text-muted px-1.5 text-right">
                     3.0%
                   </td>
                   <td className="px-1.5 text-right">
@@ -237,11 +238,11 @@ export const ReopenRateCard = ({
                       {(row.rate * 100).toFixed(1)}%
                     </span>
                   </td>
-                  <td className="metric-value px-1.5 text-right text-[var(--text-secondary)]">
+                  <td className="metric-value text-text-secondary px-1.5 text-right">
                     {row.resolved}
                   </td>
                   <td
-                    className={`metric-value px-1.5 text-right ${row.reopened > 0 ? 'text-[var(--accent-amber)]' : 'text-[var(--text-muted)]'}`}
+                    className={`metric-value px-1.5 text-right ${row.reopened > 0 ? 'text-accent-amber' : 'text-text-muted'}`}
                   >
                     {row.reopened}
                   </td>

@@ -19,6 +19,16 @@ export const MilestonePage = () => {
     return null
   }
 
+  const current =
+    data.burnup[data.burnup.length - 1] ??
+    ({ sprint: 'S0', completed: 0, ideal: 0, scope: 0 } as const)
+  const previous = data.burnup[data.burnup.length - 2]
+  const sprintCount = data.burnup.length
+  const averageVelocity =
+    sprintCount === 0 ? 0 : current.completed / Math.max(sprintCount, 1)
+  const scopeDelta = current.scope - (previous?.scope ?? current.scope)
+  const idealGap = current.completed - current.ideal
+
   const sprintVelocity = data.burnup
     .map((item, index, list) => ({
       sprint: item.sprint,
@@ -32,10 +42,10 @@ export const MilestonePage = () => {
   return (
     <div className="space-y-4">
       <header>
-        <h1 className="metric-value text-base text-[var(--text-primary)]">
+        <h1 className="metric-value text-text-primary text-base">
           Milestone Progress
         </h1>
-        <p className="mt-1 text-xs text-[var(--text-muted)]">
+        <p className="text-text-muted mt-1 text-xs">
           Sprint burnup tracking - scope vs completion trajectory
         </p>
       </header>
@@ -59,34 +69,45 @@ export const MilestonePage = () => {
           label="Scope (pts)"
           value={data.milestoneProgress.total.toString()}
           animatedValue={data.milestoneProgress.total}
-          subtext="Expanded from 60 -> 80"
-          delta={{ label: '↑20 from S6', tone: 'amber' }}
+          subtext="Current scope for selected milestone"
+          delta={{
+            label: `${scopeDelta >= 0 ? '↑' : '↓'}${Math.abs(scopeDelta)} vs previous sprint`,
+            tone: 'amber',
+          }}
         />
         <KpiCard
           label="Sprints Remaining"
-          value="1"
-          animatedValue={1}
-          subtext="27 pts behind ideal"
-          delta={{ label: 'S10 final sprint', tone: 'red' }}
+          value={Math.max(0, 12 - sprintCount).toString()}
+          animatedValue={Math.max(0, 12 - sprintCount)}
+          subtext={`${Math.abs(idealGap)} pts ${idealGap >= 0 ? 'ahead of' : 'behind'} ideal`}
+          delta={{
+            label: `Current: ${current.sprint}`,
+            tone: idealGap >= 0 ? 'green' : 'red',
+          }}
         />
         <KpiCard
           label="Sprint Avg Velocity"
-          value="5.9 pts"
-          animatedValue={59}
+          value={`${averageVelocity.toFixed(1)} pts`}
+          animatedValue={Math.round(averageVelocity * 10)}
           formatter={(value) => `${(value / 10).toFixed(1)} pts`}
-          subtext="Target: 8.0 pts/sprint"
-          delta={{ label: 'Need 27 to close', tone: 'amber' }}
+          subtext="Average completed points per sprint"
+          delta={{ label: `Ideal now: ${current.ideal} pts`, tone: 'amber' }}
         />
       </section>
 
       <MilestoneProgressCard data={data.burnup} fullWidth />
 
       <section className="dashboard-card p-4">
-        <p className="mb-3 text-[10px] tracking-[0.1em] text-[var(--text-muted)] uppercase">
+        <p className="text-text-muted mb-3 text-[10px] tracking-[0.1em] uppercase">
           Sprint Velocity (pts added per sprint)
         </p>
-        <div className="h-30">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-[120px] min-w-0">
+          <ResponsiveContainer
+            minHeight={1}
+            minWidth={0}
+            width="100%"
+            height="100%"
+          >
             <BarChart
               data={sprintVelocity}
               margin={{ top: 4, right: 8, bottom: 0, left: 0 }}
@@ -119,11 +140,11 @@ export const MilestonePage = () => {
                   }
 
                   return (
-                    <div className="rounded-[4px] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-2">
-                      <p className="metric-value text-[11px] text-[var(--text-secondary)]">
+                    <div className="border-border bg-surface-elevated rounded-[4px] border px-3 py-2">
+                      <p className="metric-value text-text-secondary text-[11px]">
                         {String(label)}
                       </p>
-                      <p className="metric-value text-sm text-[var(--accent-blue)]">
+                      <p className="metric-value text-accent-blue text-sm">
                         +{payload[0]?.value} pts
                       </p>
                     </div>

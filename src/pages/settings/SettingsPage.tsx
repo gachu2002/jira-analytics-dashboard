@@ -19,19 +19,19 @@ export const SettingsPage = () => {
   return (
     <section className="dashboard-card max-w-2xl p-6">
       <h2 className="metric-value text-lg font-semibold">Settings</h2>
-      <p className="mt-1 text-sm text-[var(--text-secondary)]">
+      <p className="text-text-secondary mt-1 text-sm">
         Workspace preferences for Sprint Lens.
       </p>
 
-      <div className="mt-5 flex items-center justify-between rounded-[4px] border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3">
+      <div className="border-border bg-surface-elevated mt-5 flex items-center justify-between rounded-[4px] border px-4 py-3">
         <div>
-          <p className="text-sm text-[var(--text-primary)]">Theme</p>
-          <p className="mt-1 text-xs text-[var(--text-secondary)]">
+          <p className="text-text-primary text-sm">Theme</p>
+          <p className="text-text-secondary mt-1 text-xs">
             Switch between dark and light mode.
           </p>
         </div>
         <button
-          className="inline-flex items-center gap-2 rounded-[4px] border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-secondary)] transition-colors hover:border-[var(--accent-blue)] hover:text-[var(--text-primary)]"
+          className="border-border text-text-secondary hover:border-accent-blue hover:text-text-primary inline-flex items-center gap-2 rounded-[4px] border px-3 py-1.5 text-xs transition-colors"
           onClick={toggleTheme}
           type="button"
         >
@@ -44,13 +44,15 @@ export const SettingsPage = () => {
         </button>
       </div>
 
-      <div className="mt-3 flex items-center justify-between rounded-[4px] border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3">
+      <div className="border-border bg-surface-elevated mt-3 flex items-center justify-between rounded-[4px] border px-4 py-3">
         <div>
-          <p className="text-sm text-[var(--text-primary)]">Session</p>
-          <p className="mt-1 text-xs text-[var(--text-secondary)]">Sign out from the current account.</p>
+          <p className="text-text-primary text-sm">Session</p>
+          <p className="text-text-secondary mt-1 text-xs">
+            Sign out from the current account.
+          </p>
         </div>
         <button
-          className="inline-flex items-center gap-2 rounded-[4px] border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-secondary)] transition-colors hover:border-[var(--accent-red)] hover:text-[var(--text-primary)]"
+          className="border-border text-text-secondary hover:border-accent-red hover:text-text-primary inline-flex items-center gap-2 rounded-[4px] border px-3 py-1.5 text-xs transition-colors"
           onClick={handleLogout}
           type="button"
         >
