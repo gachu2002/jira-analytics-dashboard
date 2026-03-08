@@ -3,8 +3,6 @@ export type BurnupPoint = {
   completed: number
   ideal: number
   scope: number
-  startDate?: string
-  endDate?: string
 }
 
 export type BurndownPoint = {
@@ -18,6 +16,7 @@ export type VelocityPoint = {
   newBugs: number
   resolvedBugs: number
   rate: number
+  target: number
 }
 
 export type ReopenRatePoint = {
@@ -29,6 +28,9 @@ export type ReopenRatePoint = {
 }
 
 export type DashboardData = {
+  meta: {
+    currentSprint: string
+  }
   milestoneProgress: {
     completed: number
     total: number
@@ -91,14 +93,25 @@ export type MilestoneDto = {
   project: number
 }
 
-export type MilestoneProgressDto = {
+export type MilestoneSprintDto = {
   id: number
+  ideal_point: number
+  ideal_bug: number
+  bug_fixing_rate: number
+  reopened_rate: number
   sprint: number
   start_date: string
   end_date: string
   completed_point: number
   scope_point: number
-  ideal_point: number
+  resolved_bug: number
+  total_bug: number
+  new_bug: number
+  resolved_bug_velocity: number
+  target_bug_velocity: number
+  target_reopened_rate: number
+  resolved_bug_reopened: number
+  reopened_bug: number
   created_at: string
   milestone: number
 }

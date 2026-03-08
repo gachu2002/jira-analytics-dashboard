@@ -20,24 +20,34 @@ import {
 } from '@/components/common/DataTable/DataTable'
 import { BugVelocityCard } from '@/features/dashboard/components/BugVelocityCard'
 import { useDashboardQuery } from '@/features/dashboard/api/dashboard.api'
+import { useDashboardFilters } from '@/features/dashboard/hooks/useDashboardFilters'
 
 export const VelocityPage = () => {
   const { data } = useDashboardQuery()
+  const { selectedSprintLabel } = useDashboardFilters()
 
   if (!data) {
     return null
   }
 
   if (data.velocity.length === 0) {
-    return null
+    return (
+      <div className="dashboard-card text-text-muted p-4 text-sm">
+        No sprint velocity data is available for this milestone.
+      </div>
+    )
   }
 
-  const current = data.velocity[data.velocity.length - 1]
+  const current =
+    data.velocity.find((item) => item.sprint === selectedSprintLabel) ??
+    data.velocity[data.velocity.length - 1]
   const peak = data.velocity.reduce(
     (max, item) => (item.rate > max.rate ? item : max),
     data.velocity[0],
   )
-  const belowTarget = data.velocity.filter((item) => item.rate < 0.9).length
+  const belowTarget = data.velocity.filter(
+    (item) => item.rate < item.target,
+  ).length
 
   const movingAverage = data.velocity.map((item, index, list) => {
     const slice = list.slice(Math.max(0, index - 2), index + 1)
@@ -48,6 +58,12 @@ export const VelocityPage = () => {
       ma: Number(average.toFixed(3)),
     }
   })
+  const currentMovingAverage = movingAverage[movingAverage.length - 1]?.ma ?? 0
+  const previousMovingAverage = movingAverage[movingAverage.length - 2]?.ma
+  const movingAverageDelta =
+    previousMovingAverage === undefined
+      ? 0
+      : Number((currentMovingAverage - previousMovingAverage).toFixed(2))
 
   return (
     <div className="space-y-4">
@@ -67,15 +83,29 @@ export const VelocityPage = () => {
           animatedValue={Math.round(current.rate * 100)}
           formatter={(value) => (value / 100).toFixed(2)}
           subtext={`${current.sprint} - ${current.resolvedBugs} resolved / ${current.newBugs} new`}
-          delta={{ label: 'Target: 0.90', tone: 'red' }}
+          delta={{
+            label: `Target: ${current.target.toFixed(2)}`,
+            tone: current.rate >= current.target ? 'green' : 'red',
+          }}
         />
         <KpiCard
           label="3-Sprint MA"
-          value="0.76"
-          animatedValue={76}
+          value={currentMovingAverage.toFixed(2)}
+          animatedValue={Math.round(currentMovingAverage * 100)}
           formatter={(value) => (value / 100).toFixed(2)}
           subtext="Recent 3-sprint moving average"
-          delta={{ label: 'Trending flat', tone: 'amber' }}
+          delta={{
+            label:
+              movingAverageDelta === 0
+                ? 'Stable vs previous'
+                : `${movingAverageDelta > 0 ? '+' : ''}${movingAverageDelta.toFixed(2)} vs previous`,
+            tone:
+              movingAverageDelta > 0
+                ? 'green'
+                : movingAverageDelta < 0
+                  ? 'red'
+                  : 'amber',
+          }}
         />
         <KpiCard
           label="Season Peak"
@@ -83,13 +113,13 @@ export const VelocityPage = () => {
           animatedValue={Math.round(peak.rate * 100)}
           formatter={(value) => (value / 100).toFixed(2)}
           subtext="Best single-sprint rate"
-          delta={{ label: `Sprint ${peak.sprint}`, tone: 'green' }}
+          delta={{ label: peak.sprint, tone: 'green' }}
         />
         <KpiCard
           label="Below Target"
           value={belowTarget.toString()}
           animatedValue={belowTarget}
-          subtext={`${belowTarget} of ${data.velocity.length} sprints < 0.90`}
+          subtext={`${belowTarget} of ${data.velocity.length} sprints below target`}
           delta={{
             label: `${Math.round((belowTarget / data.velocity.length) * 100)}% of sprints`,
             tone: 'red',
@@ -97,7 +127,10 @@ export const VelocityPage = () => {
         />
       </section>
 
-      <BugVelocityCard data={data.velocity} />
+      <BugVelocityCard
+        activeSprint={selectedSprintLabel}
+        data={data.velocity}
+      />
 
       <section className="dashboard-card p-4">
         <p className="text-text-muted mb-3 text-[10px] tracking-[0.1em] uppercase">
@@ -156,7 +189,7 @@ export const VelocityPage = () => {
                 }}
               />
               <ReferenceLine
-                y={0.9}
+                y={current.target}
                 stroke="var(--accent-amber)"
                 strokeDasharray="4 3"
               />
@@ -192,10 +225,13 @@ export const VelocityPage = () => {
           </DataTableHeader>
           <DataTableBody>
             {data.velocity.map((row) => {
-              const aboveTarget = row.rate >= 0.9
+              const aboveTarget = row.rate >= row.target
 
               return (
-                <DataTableRow active={row.sprint === 'S10'} key={row.sprint}>
+                <DataTableRow
+                  active={row.sprint === selectedSprintLabel}
+                  key={row.sprint}
+                >
                   <DataTableCell>{row.sprint}</DataTableCell>
                   <DataTableCell numeric>{row.newBugs}</DataTableCell>
                   <DataTableCell numeric>{row.resolvedBugs}</DataTableCell>
@@ -218,7 +254,7 @@ export const VelocityPage = () => {
                     <span
                       className={`metric-value ${aboveTarget ? 'text-accent-green' : 'text-accent-red'}`}
                     >
-                      {(row.rate - 0.9).toFixed(2)}
+                      {(row.rate - row.target).toFixed(2)}
                     </span>
                   </DataTableCell>
                 </DataTableRow>

@@ -11,33 +11,46 @@ import {
 import { KpiCard } from '@/components/common/KpiCard'
 import { MilestoneProgressCard } from '@/features/dashboard/components/MilestoneProgressCard'
 import { useDashboardQuery } from '@/features/dashboard/api/dashboard.api'
+import { useDashboardFilters } from '@/features/dashboard/hooks/useDashboardFilters'
 
 export const MilestonePage = () => {
   const { data } = useDashboardQuery()
+  const { selectedSprintLabel } = useDashboardFilters()
 
   if (!data) {
     return null
   }
 
+  if (data.burnup.length === 0) {
+    return (
+      <div className="dashboard-card text-text-muted p-4 text-sm">
+        No milestone sprint data is available yet.
+      </div>
+    )
+  }
+
   const current =
+    data.burnup.find((item) => item.sprint === selectedSprintLabel) ??
     data.burnup[data.burnup.length - 1] ??
     ({ sprint: 'S0', completed: 0, ideal: 0, scope: 0 } as const)
-  const previous = data.burnup[data.burnup.length - 2]
+  const currentIndex = data.burnup.findIndex(
+    (item) => item.sprint === current.sprint,
+  )
+  const previous = data.burnup[currentIndex - 1]
   const sprintCount = data.burnup.length
-  const averageVelocity =
-    sprintCount === 0 ? 0 : current.completed / Math.max(sprintCount, 1)
   const scopeDelta = current.scope - (previous?.scope ?? current.scope)
   const idealGap = current.completed - current.ideal
 
-  const sprintVelocity = data.burnup
-    .map((item, index, list) => ({
-      sprint: item.sprint,
-      delta:
-        index === 0
-          ? item.completed
-          : item.completed - list[index - 1].completed,
-    }))
-    .slice(1)
+  const sprintVelocity = data.burnup.map((item, index, list) => ({
+    sprint: item.sprint,
+    delta:
+      index === 0 ? item.completed : item.completed - list[index - 1].completed,
+  }))
+  const averageVelocity =
+    sprintVelocity.length === 0
+      ? 0
+      : sprintVelocity.reduce((sum, item) => sum + item.delta, 0) /
+        sprintVelocity.length
 
   return (
     <div className="space-y-4">
@@ -46,7 +59,7 @@ export const MilestonePage = () => {
           Milestone Progress
         </h1>
         <p className="text-text-muted mt-1 text-xs">
-          Sprint burnup tracking - scope vs completion trajectory
+          Milestone burnup tracking - scope vs completion trajectory
         </p>
       </header>
 
@@ -76,9 +89,9 @@ export const MilestonePage = () => {
           }}
         />
         <KpiCard
-          label="Sprints Remaining"
-          value={Math.max(0, 12 - sprintCount).toString()}
-          animatedValue={Math.max(0, 12 - sprintCount)}
+          label="Tracked Sprints"
+          value={sprintCount.toString()}
+          animatedValue={sprintCount}
           subtext={`${Math.abs(idealGap)} pts ${idealGap >= 0 ? 'ahead of' : 'behind'} ideal`}
           delta={{
             label: `Current: ${current.sprint}`,
@@ -95,7 +108,11 @@ export const MilestonePage = () => {
         />
       </section>
 
-      <MilestoneProgressCard data={data.burnup} fullWidth />
+      <MilestoneProgressCard
+        activeSprint={selectedSprintLabel}
+        data={data.burnup}
+        fullWidth
+      />
 
       <section className="dashboard-card p-4">
         <p className="text-text-muted mb-3 text-[10px] tracking-[0.1em] uppercase">

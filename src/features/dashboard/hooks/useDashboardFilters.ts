@@ -3,6 +3,7 @@ import { useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { useDashboardFiltersStore } from '@/features/dashboard/stores/dashboard-filters.store'
+import { toSprintLabel } from '@/features/dashboard/utils/sprint'
 import { dashboardService } from '@/services/dashboard.service'
 
 export const useDashboardFilters = () => {
@@ -18,6 +19,12 @@ export const useDashboardFilters = () => {
   const setSelectedMilestoneId = useDashboardFiltersStore(
     (state) => state.setSelectedMilestoneId,
   )
+  const selectedSprint = useDashboardFiltersStore(
+    (state) => state.selectedSprint,
+  )
+  const setSelectedSprint = useDashboardFiltersStore(
+    (state) => state.setSelectedSprint,
+  )
 
   const projectsQuery = useQuery({
     queryKey: ['projects'],
@@ -32,8 +39,29 @@ export const useDashboardFilters = () => {
     queryFn: () => dashboardService.getMilestones(projectId as number),
   })
 
-  const milestoneId =
-    selectedMilestoneId ?? milestonesQuery.data?.[0]?.id ?? null
+  const milestoneId = milestonesQuery.data?.some(
+    (item) => item.id === selectedMilestoneId,
+  )
+    ? selectedMilestoneId
+    : (milestonesQuery.data?.[0]?.id ?? null)
+
+  const sprintsQuery = useQuery({
+    queryKey: ['milestone-sprints', milestoneId],
+    enabled: milestoneId !== null,
+    queryFn: () => dashboardService.getMilestoneSprints(milestoneId as number),
+  })
+
+  const sprints = useMemo(
+    () =>
+      [...(sprintsQuery.data ?? [])].sort(
+        (left, right) => Number(left.sprint) - Number(right.sprint),
+      ),
+    [sprintsQuery.data],
+  )
+
+  const sprint = sprints.some((item) => item.sprint === selectedSprint)
+    ? selectedSprint
+    : (sprints[sprints.length - 1]?.sprint ?? null)
 
   useEffect(() => {
     if (selectedProjectId === null && projectId !== null) {
@@ -47,6 +75,16 @@ export const useDashboardFilters = () => {
     }
   }, [milestoneId, selectedMilestoneId, setSelectedMilestoneId])
 
+  useEffect(() => {
+    if (sprint !== selectedSprint && sprint !== null) {
+      setSelectedSprint(sprint)
+    }
+
+    if (sprint === null && selectedSprint !== null) {
+      setSelectedSprint(null)
+    }
+  }, [selectedSprint, setSelectedSprint, sprint])
+
   const selectedMilestone = useMemo(
     () => milestonesQuery.data?.find((item) => item.id === milestoneId) ?? null,
     [milestoneId, milestonesQuery.data],
@@ -59,12 +97,19 @@ export const useDashboardFilters = () => {
   return {
     selectedProjectId: projectId,
     selectedMilestoneId: milestoneId,
+    selectedSprint: sprint,
+    selectedSprintLabel: toSprintLabel(sprint),
     selectedMilestone,
     sprintRange,
     projects: projectsQuery.data ?? [],
     milestones: milestonesQuery.data ?? [],
-    isLoading: projectsQuery.isLoading || milestonesQuery.isLoading,
+    sprints,
+    isLoading:
+      projectsQuery.isLoading ||
+      milestonesQuery.isLoading ||
+      sprintsQuery.isLoading,
     setSelectedProjectId,
     setSelectedMilestoneId,
+    setSelectedSprint,
   }
 }

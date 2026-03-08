@@ -1,18 +1,45 @@
 import { create } from 'zustand'
 
-type ThemeMode = 'dark' | 'light'
+export const THEME_OPTIONS = [
+  {
+    value: 'dark',
+    label: 'Midnight Grid',
+    description: 'Deep graphite surfaces with cool signal accents.',
+  },
+  {
+    value: 'light',
+    label: 'Daylight Ledger',
+    description: 'Clean neutral panels for daytime reporting.',
+  },
+  {
+    value: 'ocean',
+    label: 'Tide Ops',
+    description: 'Teal-heavy night mode for dense monitoring work.',
+  },
+  {
+    value: 'sand',
+    label: 'Field Notes',
+    description: 'Warm paper-like theme with calm analytical contrast.',
+  },
+] as const
+
+export type ThemeMode = (typeof THEME_OPTIONS)[number]['value']
+
+const DEFAULT_THEME: ThemeMode = 'dark'
 
 type UiState = {
   theme: ThemeMode
   setTheme: (theme: ThemeMode) => void
-  toggleTheme: () => void
 }
 
 const THEME_STORAGE_KEY = 'sprint-lens-theme'
 
+const isThemeMode = (value: string | null): value is ThemeMode =>
+  THEME_OPTIONS.some((theme) => theme.value === value)
+
 const resolveTheme = (): ThemeMode => {
   const stored = window.localStorage.getItem(THEME_STORAGE_KEY)
-  return stored === 'light' ? 'light' : 'dark'
+  return isThemeMode(stored) ? stored : DEFAULT_THEME
 }
 
 const applyTheme = (theme: ThemeMode) => {
@@ -32,10 +59,4 @@ export const useUiStore = create<UiState>((set) => ({
     applyTheme(theme)
     set({ theme })
   },
-  toggleTheme: () =>
-    set((state) => {
-      const nextTheme: ThemeMode = state.theme === 'dark' ? 'light' : 'dark'
-      applyTheme(nextTheme)
-      return { theme: nextTheme }
-    }),
 }))

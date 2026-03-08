@@ -1,6 +1,6 @@
 import type {
   MilestoneDto,
-  MilestoneProgressDto,
+  MilestoneSprintDto,
   ProjectDto,
 } from '@/features/dashboard/types/dashboard.types'
 import { http } from '@/services/http'
@@ -16,9 +16,9 @@ export const dashboardService = {
     )
     return response.data
   },
-  getMilestoneProgresses: async (milestoneId: number) => {
-    const response = await http.get<MilestoneProgressDto[]>(
-      `/api/milestones/${milestoneId}/progresses/`,
+  getMilestoneSprints: async (milestoneId: number) => {
+    const response = await http.get<MilestoneSprintDto[]>(
+      `/api/milestones/${milestoneId}/sprints/`,
     )
     return response.data
   },

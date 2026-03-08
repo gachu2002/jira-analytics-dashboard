@@ -13,6 +13,7 @@ import {
 import type { ReopenRatePoint } from '@/features/dashboard/types/dashboard.types'
 
 type ReopenRateCardProps = {
+  activeSprint?: string
   data: ReopenRatePoint[]
   fullWidth?: boolean
 }
@@ -88,9 +89,23 @@ const ColoredDot = ({
 }
 
 export const ReopenRateCard = ({
+  activeSprint,
   data,
   fullWidth = false,
 }: ReopenRateCardProps) => {
+  const current =
+    data.find((item) => item.sprint === activeSprint) ?? data[data.length - 1]
+  const currentTarget = current?.target ?? 0.03
+  const sprintWindow =
+    data.length > 0
+      ? `${data[0]?.sprint} - ${data[data.length - 1]?.sprint}`
+      : '--'
+  const yMax = Math.max(
+    currentTarget,
+    ...data.flatMap((row) => [row.rate, row.target]),
+    0.06,
+  )
+
   return (
     <section className="dashboard-card px-5 py-4">
       <div className="mb-4 flex items-center justify-between">
@@ -98,10 +113,10 @@ export const ReopenRateCard = ({
           <p className="text-text-muted text-[10px] tracking-[0.1em] uppercase">
             Reopen Rate
           </p>
-          <p className="text-text-primary mt-1 text-[13px]">Bug Reopen Trend</p>
+          <p className="text-text-primary mt-1 text-[13px]">{sprintWindow}</p>
         </div>
         <span className="text-accent-green rounded-[2px] border border-[rgba(61,214,140,0.25)] bg-[rgba(61,214,140,0.12)] px-2 py-1 text-[10px]">
-          1.5% current
+          {((current?.rate ?? 0) * 100).toFixed(1)}% current
         </span>
       </div>
 
@@ -131,7 +146,7 @@ export const ReopenRateCard = ({
               tickLine={false}
             />
             <YAxis
-              domain={[0, 0.09]}
+              domain={[0, Number((Math.ceil(yMax * 100) / 100).toFixed(2))]}
               tick={{
                 fill: 'var(--text-muted)',
                 fontFamily: 'DM Mono',
@@ -150,7 +165,7 @@ export const ReopenRateCard = ({
               fill="var(--accent-green)"
               fillOpacity={0.06}
               label={{
-                value: 'Target ≤3%',
+                value: `Target <=${Math.round(currentTarget * 100)}%`,
                 position: 'insideTopRight',
                 fill: 'var(--accent-green)',
                 fontSize: 9,
@@ -166,7 +181,7 @@ export const ReopenRateCard = ({
               stroke="var(--accent-green)"
               strokeDasharray="3 3"
               strokeWidth={1}
-              y={0.03}
+              y={currentTarget}
             />
 
             <Line
@@ -199,7 +214,7 @@ export const ReopenRateCard = ({
           </thead>
           <tbody>
             {data.map((row) => {
-              const current = row.sprint === data[data.length - 1]?.sprint
+              const isActive = row.sprint === (activeSprint ?? current?.sprint)
               const aboveTarget = row.rate > row.target
 
               return (
@@ -207,21 +222,21 @@ export const ReopenRateCard = ({
                   className="data-row h-9"
                   key={row.sprint}
                   style={{
-                    background: current
+                    background: isActive
                       ? 'var(--row-active-bg)'
                       : 'transparent',
-                    borderLeft: current
+                    borderLeft: isActive
                       ? '2px solid var(--accent-blue)'
                       : '2px solid transparent',
                   }}
                 >
                   <td
-                    className={`metric-value px-1.5 ${current ? 'text-text-primary font-medium' : 'text-text-secondary'}`}
+                    className={`metric-value px-1.5 ${isActive ? 'text-text-primary font-medium' : 'text-text-secondary'}`}
                   >
                     {row.sprint}
                   </td>
                   <td className="metric-value text-text-muted px-1.5 text-right">
-                    3.0%
+                    {(row.target * 100).toFixed(1)}%
                   </td>
                   <td className="px-1.5 text-right">
                     <span

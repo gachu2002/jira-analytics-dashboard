@@ -3,41 +3,56 @@ import { AlertTriangle } from 'lucide-react'
 import { KpiCard } from '@/components/common/KpiCard'
 import { BugBurndownCard } from '@/features/dashboard/components/BugBurndownCard'
 import { useDashboardQuery } from '@/features/dashboard/api/dashboard.api'
+import { useDashboardFilters } from '@/features/dashboard/hooks/useDashboardFilters'
 
 export const BugTrackingPage = () => {
   const { data } = useDashboardQuery()
+  const { selectedSprintLabel } = useDashboardFilters()
 
   if (!data) {
     return null
   }
 
-  const openBugs = data.remainingBugs.count
-  const criticalHigh = Math.max(Math.round(openBugs * 0.48), 1)
+  if (data.burndown.length === 0) {
+    return (
+      <div className="dashboard-card text-text-muted p-4 text-sm">
+        No bug-tracking sprint data is available for this milestone.
+      </div>
+    )
+  }
+
+  const currentBurndown =
+    data.burndown.find((item) => item.sprint === selectedSprintLabel) ??
+    data.burndown[data.burndown.length - 1]
+  const currentVelocity =
+    data.velocity.find((item) => item.sprint === selectedSprintLabel) ??
+    data.velocity[data.velocity.length - 1]
+  const openBugs = currentBurndown?.remaining ?? data.remainingBugs.count
+  const splitCount = (ratio: number) =>
+    openBugs === 0 ? 0 : Math.max(Math.round(openBugs * ratio), 1)
+  const critical = splitCount(0.14)
+  const high = splitCount(0.34)
+  const medium = splitCount(0.38)
+  const criticalHigh = critical + high
   const priorityData = [
     {
       priority: 'Critical',
-      count: Math.max(Math.round(openBugs * 0.14), 1),
+      count: critical,
       color: '#F75C5C',
     },
     {
       priority: 'High',
-      count: Math.max(Math.round(openBugs * 0.34), 1),
+      count: high,
       color: '#F5A623',
     },
     {
       priority: 'Medium',
-      count: Math.max(Math.round(openBugs * 0.38), 1),
+      count: medium,
       color: '#4F7EF7',
     },
     {
       priority: 'Low',
-      count: Math.max(
-        openBugs -
-          Math.max(Math.round(openBugs * 0.14), 1) -
-          Math.max(Math.round(openBugs * 0.34), 1) -
-          Math.max(Math.round(openBugs * 0.38), 1),
-        0,
-      ),
+      count: Math.max(openBugs - critical - high - medium, 0),
       color: '#4A5068',
     },
   ]
@@ -48,9 +63,8 @@ export const BugTrackingPage = () => {
     age: Math.max(2 + index * 2, 1),
     assignee: ['AL', 'SR', 'MK', 'JT'][index] ?? 'NA',
   }))
-  const resolvedThisSprint =
-    data.velocity[data.velocity.length - 1]?.resolvedBugs ?? 0
-  const newThisSprint = data.velocity[data.velocity.length - 1]?.newBugs ?? 0
+  const resolvedThisSprint = currentVelocity?.resolvedBugs ?? 0
+  const newThisSprint = currentVelocity?.newBugs ?? 0
   const avgAge = Number(
     ((openBugs / Math.max(resolvedThisSprint, 1)) * 2.3).toFixed(1),
   )
@@ -98,7 +112,10 @@ export const BugTrackingPage = () => {
         />
       </section>
 
-      <BugBurndownCard data={data.burndown} />
+      <BugBurndownCard
+        activeSprint={selectedSprintLabel}
+        data={data.burndown}
+      />
 
       <section className="grid grid-cols-1 gap-4 min-[1320px]:grid-cols-3">
         <div className="dashboard-card p-4 min-[1320px]:col-span-1">
@@ -135,8 +152,8 @@ export const BugTrackingPage = () => {
             Behind ideal by{' '}
             <span className="metric-value text-accent-amber">
               {Math.max(
-                data.burndown[data.burndown.length - 1]?.remaining -
-                  data.burndown[data.burndown.length - 1]?.ideal,
+                (currentBurndown?.remaining ?? 0) -
+                  (currentBurndown?.ideal ?? 0),
                 0,
               )}{' '}
               bugs

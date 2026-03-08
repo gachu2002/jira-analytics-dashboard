@@ -15,10 +15,15 @@ import { ChartLegendItem } from '@/features/dashboard/components/shared/ChartLeg
 import type { BurndownPoint } from '@/features/dashboard/types/dashboard.types'
 
 type BugBurndownCardProps = {
+  activeSprint?: string
   data: BurndownPoint[]
 }
 
-const BehindLabel = ({ viewBox }: { viewBox?: { cx: number; cy: number } }) => {
+const CurrentLabel = ({
+  viewBox,
+}: {
+  viewBox?: { cx: number; cy: number }
+}) => {
   if (!viewBox) {
     return null
   }
@@ -32,13 +37,27 @@ const BehindLabel = ({ viewBox }: { viewBox?: { cx: number; cy: number } }) => {
         x={viewBox.cx + 8}
         y={viewBox.cy + 4}
       >
-        Behind target
+        Current
       </text>
     </g>
   )
 }
 
-export const BugBurndownCard = ({ data }: BugBurndownCardProps) => {
+export const BugBurndownCard = ({
+  activeSprint,
+  data,
+}: BugBurndownCardProps) => {
+  const currentPoint =
+    data.find((item) => item.sprint === activeSprint) ?? data[data.length - 1]
+  const sprintWindow =
+    data.length > 0
+      ? `${data[0]?.sprint} - ${data[data.length - 1]?.sprint}`
+      : '--'
+  const yMax = Math.max(
+    10,
+    ...data.flatMap((row) => [row.remaining, row.ideal]),
+  )
+
   return (
     <section className="dashboard-card px-5 py-4">
       <div className="mb-4 flex items-center justify-between">
@@ -46,12 +65,10 @@ export const BugBurndownCard = ({ data }: BugBurndownCardProps) => {
           <p className="text-text-muted text-[10px] tracking-[0.1em] uppercase">
             Bug Burndown
           </p>
-          <p className="text-text-primary mt-1 text-[13px]">
-            Sprint 1 - Sprint 12
-          </p>
+          <p className="text-text-primary mt-1 text-[13px]">{sprintWindow}</p>
         </div>
         <span className="text-accent-amber rounded-[2px] border border-[rgba(245,166,35,0.25)] bg-[rgba(245,166,35,0.15)] px-2.5 py-1 text-[10px]">
-          21 bugs open
+          {currentPoint?.remaining ?? 0} bugs open
         </span>
       </div>
 
@@ -107,7 +124,7 @@ export const BugBurndownCard = ({ data }: BugBurndownCardProps) => {
               tickLine={false}
             />
             <YAxis
-              domain={[0, 55]}
+              domain={[0, Math.ceil(yMax / 10) * 10]}
               tick={{
                 fill: 'var(--text-muted)',
                 fontFamily: 'DM Mono',
@@ -168,9 +185,16 @@ export const BugBurndownCard = ({ data }: BugBurndownCardProps) => {
               stroke="var(--chart-bugs)"
               strokeWidth={2}
             />
-            <ReferenceDot r={0} x="S12" y={10}>
-              <Label content={<BehindLabel />} />
-            </ReferenceDot>
+            {currentPoint ? (
+              <ReferenceDot
+                fill="var(--chart-bugs)"
+                r={0}
+                x={currentPoint.sprint}
+                y={currentPoint.remaining}
+              >
+                <Label content={<CurrentLabel />} />
+              </ReferenceDot>
+            ) : null}
           </ComposedChart>
         </ResponsiveContainer>
       </div>

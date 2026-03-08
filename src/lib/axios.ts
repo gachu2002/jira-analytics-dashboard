@@ -8,6 +8,9 @@ type RetryableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean
 }
 
+const isAuthEndpoint = (url?: string) =>
+  url === '/api/token/' || url === '/api/token/refresh/'
+
 export const axiosClient = axios.create({
   baseURL: env.VITE_API_BASE_URL,
   headers: {
@@ -22,6 +25,10 @@ const redirectToLogin = () => {
 }
 
 axiosClient.interceptors.request.use((config) => {
+  if (isAuthEndpoint(config.url)) {
+    return config
+  }
+
   const accessToken = useAuthStore.getState().tokens?.access
 
   if (accessToken) {
@@ -46,6 +53,13 @@ axiosClient.interceptors.response.use(
 
     const { tokens, username, setAuthSession, clearAuthSession } =
       useAuthStore.getState()
+
+    if (isAuthEndpoint(originalRequest.url)) {
+      clearAuthSession()
+      redirectToLogin()
+      return Promise.reject(error)
+    }
+
     const refreshToken = tokens?.refresh
 
     if (!refreshToken) {
@@ -57,10 +71,12 @@ axiosClient.interceptors.response.use(
     originalRequest._retry = true
 
     try {
-      const refreshResponse = await axiosClient.post<{
+      const refreshResponse = await axios.post<{
         access: string
         refresh?: string
-      }>('/api/token/refresh/', { refresh: refreshToken })
+      }>(`${env.VITE_API_BASE_URL}/api/token/refresh/`, {
+        refresh: refreshToken,
+      })
 
       const nextAccess = refreshResponse.data.access
 

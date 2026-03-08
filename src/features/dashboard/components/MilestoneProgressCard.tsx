@@ -16,11 +16,18 @@ import { ChartLegendItem } from '@/features/dashboard/components/shared/ChartLeg
 import type { BurnupPoint } from '@/features/dashboard/types/dashboard.types'
 
 type MilestoneProgressCardProps = {
+  activeSprint?: string
   data: BurnupPoint[]
   fullWidth?: boolean
 }
 
-const ScopeLabel = ({ viewBox }: { viewBox?: { x: number; y: number } }) => {
+const ScopeLabel = ({
+  label,
+  viewBox,
+}: {
+  label: string
+  viewBox?: { x: number; y: number }
+}) => {
   if (!viewBox) return null
   return (
     <g>
@@ -41,17 +48,27 @@ const ScopeLabel = ({ viewBox }: { viewBox?: { x: number; y: number } }) => {
         x={viewBox.x + 4}
         y={viewBox.y + 14}
       >
-        Scope ↑80
+        {label}
       </text>
     </g>
   )
 }
 
 export const MilestoneProgressCard = ({
+  activeSprint,
   data,
   fullWidth = false,
 }: MilestoneProgressCardProps) => {
-  const currentSprint = data[data.length - 2]?.sprint
+  const currentPoint = data[data.length - 1]
+  const highlightedSprint = activeSprint ?? currentPoint?.sprint
+  const sprintWindow =
+    data.length > 0
+      ? `${data[0]?.sprint} - ${data[data.length - 1]?.sprint}`
+      : '--'
+  const yMax = Math.max(
+    10,
+    ...data.flatMap((row) => [row.completed, row.ideal, row.scope]),
+  )
 
   return (
     <section className="dashboard-card px-5 py-4">
@@ -60,9 +77,7 @@ export const MilestoneProgressCard = ({
           <p className="text-text-muted text-[10px] tracking-[0.1em] uppercase">
             Milestone Burnup
           </p>
-          <p className="text-text-primary mt-1 text-[13px]">
-            Sprint 1 - Sprint 10
-          </p>
+          <p className="text-text-primary mt-1 text-[13px]">{sprintWindow}</p>
         </div>
         <div className="flex items-center gap-4">
           <ChartLegendItem
@@ -126,14 +141,13 @@ export const MilestoneProgressCard = ({
               tickLine={false}
             />
             <YAxis
-              domain={[0, 90]}
+              domain={[0, Math.ceil(yMax / 10) * 10]}
               tick={{
                 fill: 'var(--text-muted)',
                 fontFamily: 'DM Mono',
                 fontSize: 10,
               }}
               tickLine={false}
-              ticks={[0, 25, 50, 75, 90]}
               width={32}
             />
             <Tooltip
@@ -176,9 +190,13 @@ export const MilestoneProgressCard = ({
               cursor={{ stroke: 'var(--border)', strokeWidth: 1 }}
             />
 
-            <ReferenceLine stroke="transparent" x="S6">
-              <Label content={<ScopeLabel />} />
-            </ReferenceLine>
+            {currentPoint ? (
+              <ReferenceLine stroke="transparent" x={currentPoint.sprint}>
+                <Label
+                  content={<ScopeLabel label={`Scope ${currentPoint.scope}`} />}
+                />
+              </ReferenceLine>
+            ) : null}
 
             <Line
               animationBegin={100}
@@ -239,7 +257,7 @@ export const MilestoneProgressCard = ({
           <tbody>
             {data.map((row) => {
               const delta = row.completed - row.ideal
-              const active = row.sprint === currentSprint
+              const active = row.sprint === highlightedSprint
 
               return (
                 <tr

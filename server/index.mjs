@@ -2,8 +2,8 @@ import { createServer } from 'node:http'
 
 import {
   milestonesByProject,
-  progressesByMilestone,
   projects,
+  sprintsByMilestone,
 } from './mock-data.mjs'
 
 const PORT = Number(process.env.PORT ?? 8080)
@@ -132,12 +132,12 @@ const server = createServer(async (req, res) => {
     return
   }
 
-  const milestoneProgressMatch = pathname.match(
-    /^\/api\/milestones\/(\d+)\/progresses\/$/,
+  const milestoneSprintMatch = pathname.match(
+    /^\/api\/milestones\/(\d+)\/sprints\/$/,
   )
-  if (method === 'GET' && milestoneProgressMatch) {
-    const milestoneId = Number(milestoneProgressMatch[1])
-    sendJson(res, 200, progressesByMilestone[milestoneId] ?? [])
+  if (method === 'GET' && milestoneSprintMatch) {
+    const milestoneId = Number(milestoneSprintMatch[1])
+    sendJson(res, 200, sprintsByMilestone[milestoneId] ?? [])
     return
   }
 

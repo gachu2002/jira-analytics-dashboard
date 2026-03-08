@@ -23,6 +23,10 @@
   --destructive: #f75c5c;
   --destructive-foreground: #e8eaf0;
   --ring: #4f7ef7;
+  --shell-glow-a: rgba(79, 126, 247, 0.18);
+  --shell-glow-b: rgba(61, 214, 140, 0.12);
+  --shell-grid: rgba(123, 130, 160, 0.06);
+  --card-shadow: 0 18px 40px rgba(4, 8, 18, 0.28);
   --radius: 4px;
   --radius-badge: 2px;
   --radius-table: 0;
@@ -67,11 +71,19 @@
   --popover-foreground: #131622;
   --border: #d9deec;
   --input: #d9deec;
+  --primary-foreground: #f7f8fc;
   --secondary: #eef1f9;
+  --secondary-foreground: #131622;
   --accent: #eef1f9;
+  --accent-foreground: #131622;
   --muted: #f1f3f9;
   --muted-foreground: #4c5470;
+  --destructive-foreground: #fff7f7;
   --ring: #4f7ef7;
+  --shell-glow-a: rgba(79, 126, 247, 0.1);
+  --shell-glow-b: rgba(245, 166, 35, 0.08);
+  --shell-grid: rgba(102, 112, 143, 0.08);
+  --card-shadow: 0 18px 34px rgba(94, 108, 139, 0.12);
 
   --surface: #ffffff;
   --surface-elevated: #eef1f9;
@@ -84,6 +96,123 @@
   --sidebar-foreground: #4f5875;
   --sidebar-accent: #e9edf7;
   --sidebar-border: #d9deec;
+}
+
+:root[data-theme='ocean'] {
+  --background: #08161b;
+  --foreground: #e6f5f3;
+  --card: #0d1f27;
+  --card-foreground: #e6f5f3;
+  --popover: #10262f;
+  --popover-foreground: #e6f5f3;
+  --border: #224652;
+  --input: #224652;
+  --primary: #2fc7c4;
+  --primary-foreground: #062127;
+  --secondary: #0f2731;
+  --secondary-foreground: #d6eceb;
+  --accent: #12303a;
+  --accent-foreground: #e6f5f3;
+  --muted: #0c1c22;
+  --muted-foreground: #7fa6ad;
+  --destructive: #ef6b73;
+  --destructive-foreground: #fff5f5;
+  --ring: #2fc7c4;
+  --radius: 4px;
+  --shell-glow-a: rgba(47, 199, 196, 0.2);
+  --shell-glow-b: rgba(123, 211, 137, 0.12);
+  --shell-grid: rgba(127, 166, 173, 0.07);
+  --card-shadow: 0 20px 44px rgba(2, 10, 12, 0.34);
+
+  --surface: #0d1f27;
+  --surface-elevated: #10262f;
+  --row-active-bg: #113441;
+  --text-primary: #e6f5f3;
+  --text-secondary: #9dc0c4;
+  --text-muted: #5f8087;
+  --accent-blue: #2fc7c4;
+  --accent-green: #7bd389;
+  --accent-red: #ef6b73;
+  --accent-amber: #f2b766;
+  --accent-purple: #5da9e9;
+
+  --sidebar: #07131a;
+  --sidebar-foreground: #89adb2;
+  --sidebar-primary: #2fc7c4;
+  --sidebar-primary-foreground: #062127;
+  --sidebar-accent: #10262f;
+  --sidebar-accent-foreground: #e6f5f3;
+  --sidebar-border: #224652;
+  --sidebar-ring: #2fc7c4;
+
+  --chart-completed: #2fc7c4;
+  --chart-ideal: #5f8087;
+  --chart-scope: #f2b766;
+  --chart-bugs: #ef6b73;
+  --chart-resolved: #7bd389;
+  --chart-rate: #5da9e9;
+  --chart-reopen-good: #7bd389;
+  --chart-reopen-bad: #ef6b73;
+}
+
+:root[data-theme='sand'] {
+  --background: #f5efe4;
+  --foreground: #2c241c;
+  --card: #fffaf0;
+  --card-foreground: #2c241c;
+  --popover: #fffdf8;
+  --popover-foreground: #2c241c;
+  --border: #d3c1a3;
+  --input: #d3c1a3;
+  --primary: #2a6f97;
+  --primary-foreground: #fdf8ef;
+  --secondary: #efe5d5;
+  --secondary-foreground: #3d3429;
+  --accent: #efe5d5;
+  --accent-foreground: #2c241c;
+  --muted: #f0e8da;
+  --muted-foreground: #75624f;
+  --destructive: #c95f4a;
+  --destructive-foreground: #fffaf4;
+  --ring: #2a6f97;
+  --primary-foreground: #fdf8ef;
+  --secondary-foreground: #3d3429;
+  --accent-foreground: #2c241c;
+  --destructive-foreground: #fffaf4;
+  --shell-glow-a: rgba(42, 111, 151, 0.12);
+  --shell-glow-b: rgba(199, 116, 50, 0.12);
+  --shell-grid: rgba(117, 98, 79, 0.08);
+  --card-shadow: 0 18px 34px rgba(132, 104, 71, 0.14);
+
+  --surface: #fffaf0;
+  --surface-elevated: #f2e9db;
+  --row-active-bg: #ede0cb;
+  --text-primary: #2c241c;
+  --text-secondary: #685543;
+  --text-muted: #8c7862;
+  --accent-blue: #2a6f97;
+  --accent-green: #5b8c5a;
+  --accent-red: #c95f4a;
+  --accent-amber: #c77432;
+  --accent-purple: #7b6aa7;
+
+  --sidebar: #efe5d5;
+  --sidebar-foreground: #6d5d4c;
+  --sidebar-primary: #2a6f97;
+  --sidebar-primary-foreground: #fdf8ef;
+  --sidebar-accent: #e7dac6;
+  --sidebar-accent-foreground: #2c241c;
+  --sidebar-border: #d3c1a3;
+  --sidebar-ring: #2a6f97;
+
+  --chart-completed: #2a6f97;
+  --chart-ideal: #8c7862;
+  --chart-scope: #c77432;
+  --chart-bugs: #c95f4a;
+  --chart-resolved: #5b8c5a;
+  --chart-rate: #2a6f97;
+  --chart-reopen-good: #5b8c5a;
+  --chart-reopen-bad: #c95f4a;
 }
 
 @theme inline {
@@ -137,6 +266,25 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(circle at top left, var(--shell-glow-a), transparent 32%),
+      radial-gradient(
+        circle at top right,
+        var(--shell-glow-b),
+        transparent 28%
+      ),
+      linear-gradient(var(--shell-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--shell-grid) 1px, transparent 1px);
+    background-position:
+      0 0,
+      100% 0,
+      0 0,
+      0 0;
+    background-size:
+      auto,
+      auto,
+      24px 24px,
+      24px 24px;
   }
 
   h1,
@@ -163,10 +311,16 @@
 
   .dashboard-card {
     @apply border-border bg-card rounded-[4px] border;
+    box-shadow: var(--card-shadow);
   }
 
   .skeleton {
-    background: linear-gradient(90deg, #181c27 25%, #1e2335 50%, #181c27 75%);
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--surface) 84%, transparent) 25%,
+      color-mix(in srgb, var(--surface-elevated) 88%, white 4%) 50%,
+      color-mix(in srgb, var(--surface) 84%, transparent) 75%
+    );
     background-size: 800px 100%;
     animation: shimmer 1.4s ease-in-out infinite;
   }

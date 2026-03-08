@@ -5,6 +5,7 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 
 import { PageLoader } from '@/components/common/PageLoader'
 import { ROUTES } from '@/config/routes'
+import { useAuthBootstrap } from '@/features/auth/hooks/useAuthBootstrap'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { DashboardLayout } from '@/layouts/DashboardLayout'
 import { RootLayout } from '@/layouts/RootLayout'
@@ -58,6 +59,28 @@ const withSuspense = (element: ReactElement, blocks = 1) => (
   <Suspense fallback={<PageLoader blocks={blocks} />}>{element}</Suspense>
 )
 
+const HomeRedirect = () => {
+  const { isAuthenticated, isInitialized } = useAuthBootstrap()
+
+  if (!isInitialized) {
+    return <PageLoader blocks={1} />
+  }
+
+  return (
+    <Navigate replace to={isAuthenticated ? ROUTES.overview : ROUTES.login} />
+  )
+}
+
+const AuthBootstrap = () => {
+  const { isInitialized } = useAuthBootstrap()
+
+  if (!isInitialized) {
+    return <PageLoader blocks={1} />
+  }
+
+  return <RouterProvider router={router} />
+}
+
 const router = createBrowserRouter([
   {
     path: ROUTES.home,
@@ -65,7 +88,7 @@ const router = createBrowserRouter([
     children: [
       {
         path: ROUTES.home,
-        element: <Navigate replace to={ROUTES.overview} />,
+        element: <HomeRedirect />,
       },
       {
         path: 'auth',
@@ -125,7 +148,7 @@ const router = createBrowserRouter([
 export const AppRouter = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <AuthBootstrap />
     </QueryClientProvider>
   )
 }

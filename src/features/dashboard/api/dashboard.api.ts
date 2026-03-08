@@ -1,3 +1,5 @@
+import { useMemo } from 'react'
+
 import { useQuery } from '@tanstack/react-query'
 
 import { useDashboardFilters } from '@/features/dashboard/hooks/useDashboardFilters'
@@ -8,26 +10,28 @@ export const useDashboardQuery = () => {
   const { milestones, selectedMilestoneId, selectedProjectId } =
     useDashboardFilters()
 
-  return useQuery({
-    queryKey: ['dashboard', selectedProjectId, selectedMilestoneId],
+  const sprintsQuery = useQuery({
+    queryKey: ['milestone-sprints', selectedMilestoneId],
     enabled: selectedProjectId !== null && selectedMilestoneId !== null,
-    queryFn: async () => {
-      const milestone = milestones.find(
-        (item) => item.id === selectedMilestoneId,
-      )
-
-      if (!milestone) {
-        throw new Error('Missing dashboard context')
-      }
-
-      const progresses = await dashboardService.getMilestoneProgresses(
-        selectedMilestoneId as number,
-      )
-
-      return mapDashboardData({
-        milestone,
-        progresses,
-      })
-    },
+    queryFn: () =>
+      dashboardService.getMilestoneSprints(selectedMilestoneId as number),
   })
+
+  const data = useMemo(() => {
+    const milestone = milestones.find((item) => item.id === selectedMilestoneId)
+
+    if (!milestone || !sprintsQuery.data) {
+      return undefined
+    }
+
+    return mapDashboardData({
+      milestone,
+      sprints: sprintsQuery.data,
+    })
+  }, [milestones, selectedMilestoneId, sprintsQuery.data])
+
+  return {
+    ...sprintsQuery,
+    data,
+  }
 }

@@ -1,8 +1,10 @@
 import { DashboardOverview } from '@/features/dashboard/components/DashboardOverview'
 import { useDashboardQuery } from '@/features/dashboard/api/dashboard.api'
+import { useDashboardFilters } from '@/features/dashboard/hooks/useDashboardFilters'
 
 export const DashboardPage = () => {
   const { data, isLoading } = useDashboardQuery()
+  const { selectedSprintLabel } = useDashboardFilters()
 
   if (isLoading || !data) {
     return (
@@ -17,5 +19,5 @@ export const DashboardPage = () => {
     )
   }
 
-  return <DashboardOverview data={data} />
+  return <DashboardOverview activeSprint={selectedSprintLabel} data={data} />
 }

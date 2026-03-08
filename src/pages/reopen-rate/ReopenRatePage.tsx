@@ -1,16 +1,22 @@
 import { KpiCard } from '@/components/common/KpiCard'
 import { ReopenRateCard } from '@/features/dashboard/components/ReopenRateCard'
 import { useDashboardQuery } from '@/features/dashboard/api/dashboard.api'
+import { useDashboardFilters } from '@/features/dashboard/hooks/useDashboardFilters'
 
 export const ReopenRatePage = () => {
   const { data } = useDashboardQuery()
+  const { selectedSprintLabel } = useDashboardFilters()
 
   if (!data) {
     return null
   }
 
   if (data.reopenRateSeries.length === 0) {
-    return null
+    return (
+      <div className="dashboard-card text-text-muted p-4 text-sm">
+        No reopen-rate data is available for this milestone.
+      </div>
+    )
   }
 
   const aboveTarget = data.reopenRateSeries.filter(
@@ -28,6 +34,29 @@ export const ReopenRatePage = () => {
     0,
   )
   const worstRate = Math.max(...data.reopenRateSeries.map((item) => item.rate))
+  const current =
+    data.reopenRateSeries.find((item) => item.sprint === selectedSprintLabel) ??
+    data.reopenRateSeries[data.reopenRateSeries.length - 1]
+  const recentWindow = data.reopenRateSeries.slice(-3)
+  const recentAverage =
+    recentWindow.reduce((sum, point) => sum + point.rate, 0) /
+    recentWindow.length
+  const currentCompliance = data.reopenRateSeries.length - aboveTarget
+  const trendLabel =
+    current.rate <= averageRate
+      ? 'Improving'
+      : current.rate <= current.target
+        ? 'Stable'
+        : 'At risk'
+  const trendColor =
+    current.rate <= averageRate
+      ? 'var(--accent-green)'
+      : current.rate <= current.target
+        ? 'var(--accent-amber)'
+        : 'var(--accent-red)'
+  const worstSprint =
+    data.reopenRateSeries.find((item) => item.rate === worstRate)?.sprint ??
+    '--'
 
   return (
     <div className="space-y-4">
@@ -47,14 +76,18 @@ export const ReopenRatePage = () => {
           animatedValue={Math.round(data.reopenRate.value * 1000)}
           formatter={(value) => `${(value / 10).toFixed(1)}%`}
           subtext={`Current sprint reopen trend (${data.reopenRateSeries[data.reopenRateSeries.length - 1]?.sprint ?? '--'})`}
-          delta={{ label: 'Target: 3%', tone: 'green' }}
+          delta={{
+            label: `Target: ${(data.reopenRate.target * 100).toFixed(1)}%`,
+            tone:
+              data.reopenRate.value <= data.reopenRate.target ? 'green' : 'red',
+          }}
         />
         <KpiCard
           label="Season Average"
           value={`${(averageRate * 100).toFixed(1)}%`}
           animatedValue={Math.round(averageRate * 1000)}
           formatter={(value) => `${(value / 10).toFixed(1)}%`}
-          subtext={`${aboveTarget} of 12 sprints exceeded 3%`}
+          subtext={`${aboveTarget} of ${data.reopenRateSeries.length} sprints exceeded target`}
           delta={{
             label: `${aboveTarget} above target`,
             tone: aboveTarget > 3 ? 'red' : 'amber',
@@ -73,12 +106,16 @@ export const ReopenRatePage = () => {
           animatedValue={Math.round(worstRate * 1000)}
           formatter={(value) => `${(value / 10).toFixed(1)}%`}
           subtext="Highest observed reopen ratio"
-          delta={{ label: 'Quality hotspot', tone: 'red' }}
+          delta={{ label: worstSprint, tone: 'red' }}
         />
       </section>
 
       <section className="grid grid-cols-1 gap-4 min-[1320px]:grid-cols-2">
-        <ReopenRateCard data={data.reopenRateSeries} fullWidth />
+        <ReopenRateCard
+          activeSprint={selectedSprintLabel}
+          data={data.reopenRateSeries}
+          fullWidth
+        />
 
         <section className="dashboard-card p-4">
           <p className="text-text-muted mb-3 text-[10px] tracking-[0.1em] uppercase">
@@ -88,22 +125,21 @@ export const ReopenRatePage = () => {
           {[
             {
               title: 'Recent Trend',
-              value: 'Improving',
-              color: 'var(--accent-green)',
-              detail:
-                'Last three sprints show consistent improvement below target.',
+              value: trendLabel,
+              color: trendColor,
+              detail: `Last ${recentWindow.length} sprints average ${(recentAverage * 100).toFixed(1)}%.`,
             },
             {
               title: 'High-Risk Sprints',
-              value: 'S5, S6',
+              value: aboveTarget > 0 ? `${aboveTarget} sprints` : 'None',
               color: 'var(--accent-red)',
-              detail: '4%+ reopen rate correlated with major scope changes.',
+              detail: `${currentCompliance}/${data.reopenRateSeries.length} sprints met the target threshold.`,
             },
             {
               title: 'Target Compliance',
-              value: `${data.reopenRateSeries.length - aboveTarget}/${data.reopenRateSeries.length}`,
+              value: `${currentCompliance}/${data.reopenRateSeries.length}`,
               color: 'var(--accent-amber)',
-              detail: 'Sprints meeting the <=3% quality threshold.',
+              detail: `Target threshold is ${(data.reopenRate.target * 100).toFixed(1)}% or lower.`,
             },
             {
               title: 'QA Throughput',
@@ -137,7 +173,7 @@ export const ReopenRatePage = () => {
             <div className="text-text-secondary mb-1 flex items-center justify-between text-[11px]">
               <span>Target compliance</span>
               <span className="metric-value text-text-primary">
-                {data.reopenRateSeries.length - aboveTarget}/12
+                {currentCompliance}/{data.reopenRateSeries.length}
               </span>
             </div>
             <div className="flex gap-1">

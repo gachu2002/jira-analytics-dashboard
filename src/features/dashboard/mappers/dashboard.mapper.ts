@@ -1,123 +1,133 @@
 import type {
   BurnupPoint,
+  BurndownPoint,
   DashboardData,
   MilestoneDto,
-  MilestoneProgressDto,
+  MilestoneSprintDto,
   ReopenRatePoint,
   VelocityPoint,
 } from '@/features/dashboard/types/dashboard.types'
+import { toSprintLabel } from '@/features/dashboard/utils/sprint'
 
 type MapDashboardArgs = {
   milestone: MilestoneDto
-  progresses: MilestoneProgressDto[]
+  sprints: MilestoneSprintDto[]
 }
 
-const toBurnup = (progresses: MilestoneProgressDto[]): BurnupPoint[] =>
-  [...progresses]
-    .sort((left, right) => Number(left.sprint) - Number(right.sprint))
-    .map((item) => ({
-      sprint: `S${item.sprint}`,
-      completed: Number(item.completed_point),
-      ideal: Number(item.ideal_point),
-      scope: Number(item.scope_point),
-      startDate: item.start_date,
-      endDate: item.end_date,
-    }))
+const DEFAULT_FIX_RATE_TARGET = 0.9
+const DEFAULT_REOPEN_RATE_TARGET = 0.03
 
-const toVelocity = (burnup: BurnupPoint[]): VelocityPoint[] => {
-  if (burnup.length === 0) {
-    return []
-  }
+const normalizeFixRateTarget = (value: number) =>
+  value > 0 ? value : DEFAULT_FIX_RATE_TARGET
 
-  return burnup.map((point, index) => {
-    const previous = burnup[index - 1]
-    const completedDelta = previous
-      ? point.completed - previous.completed
-      : point.completed
-    const scopeDelta = previous ? point.scope - previous.scope : 0
+const normalizeReopenRateTarget = (value: number) =>
+  value > 0 ? value : DEFAULT_REOPEN_RATE_TARGET
 
-    const resolvedBugs = Math.max(Math.round(completedDelta), 1)
-    const newBugs = Math.max(
-      Math.round(resolvedBugs * 0.9 + scopeDelta * 0.4),
-      1,
-    )
-    const rate = Number((resolvedBugs / newBugs).toFixed(2))
+const toBurnup = (sprints: MilestoneSprintDto[]): BurnupPoint[] =>
+  sprints.map((item) => ({
+    sprint: toSprintLabel(Number(item.sprint)),
+    completed: Number(item.completed_point),
+    ideal: Number(item.ideal_point),
+    scope: Number(item.scope_point),
+  }))
 
-    return {
-      sprint: point.sprint,
-      newBugs,
-      resolvedBugs,
-      rate,
-    }
-  })
-}
+const toBurndown = (sprints: MilestoneSprintDto[]): BurndownPoint[] =>
+  sprints.map((item) => ({
+    sprint: toSprintLabel(Number(item.sprint)),
+    remaining: Math.max(Number(item.total_bug) - Number(item.resolved_bug), 0),
+    ideal: Math.max(Number(item.ideal_bug), 0),
+  }))
 
-const toReopenRateSeries = (velocity: VelocityPoint[]): ReopenRatePoint[] =>
-  velocity.map((point, index) => {
-    const reopened = Math.max(
-      Math.round(point.newBugs * (0.02 + (index % 3) * 0.005)),
-      1,
-    )
-    const rate = Number(
-      Math.min(reopened / point.resolvedBugs, 0.08).toFixed(3),
-    )
+const toVelocity = (sprints: MilestoneSprintDto[]): VelocityPoint[] =>
+  sprints.map((item) => ({
+    sprint: toSprintLabel(Number(item.sprint)),
+    newBugs: Number(item.new_bug),
+    resolvedBugs: Number(item.resolved_bug_velocity),
+    rate: Number(item.bug_fixing_rate),
+    target: normalizeFixRateTarget(Number(item.target_bug_velocity)),
+  }))
 
-    return {
-      sprint: point.sprint,
-      reopened,
-      resolved: point.resolvedBugs,
-      rate,
-      target: 0.03,
-    }
-  })
+const toReopenRateSeries = (sprints: MilestoneSprintDto[]): ReopenRatePoint[] =>
+  sprints.map((item) => ({
+    sprint: toSprintLabel(Number(item.sprint)),
+    rate: Number(item.reopened_rate),
+    target: normalizeReopenRateTarget(Number(item.target_reopened_rate)),
+    resolved: Number(item.resolved_bug_reopened),
+    reopened: Number(item.reopened_bug),
+  }))
 
 export const mapDashboardData = ({
   milestone,
-  progresses,
+  sprints,
 }: MapDashboardArgs): DashboardData => {
-  const burnup = toBurnup(progresses)
-  const current = burnup[burnup.length - 1] ?? {
-    completed: 0,
-    scope: 0,
-    ideal: 0,
-    sprint: 'S0',
-  }
-  const velocity = toVelocity(burnup)
-  const reopenRateSeries = toReopenRateSeries(velocity)
+  const sortedSprints = [...sprints].sort(
+    (left, right) => Number(left.sprint) - Number(right.sprint),
+  )
+  const burnup = toBurnup(sortedSprints)
+  const burndown = toBurndown(sortedSprints)
+  const velocity = toVelocity(sortedSprints)
+  const reopenRateSeries = toReopenRateSeries(sortedSprints)
 
-  const totalBug = Math.max(Number(milestone.total_bug), 1)
-  const resolvedBug = Number(milestone.resolved_bug)
-  const openBug = Math.max(totalBug - resolvedBug, 0)
-  const bugFixRate = Number((resolvedBug / totalBug).toFixed(2))
-  const currentReopenRate =
-    reopenRateSeries[reopenRateSeries.length - 1]?.rate ?? 0
+  const currentBurnup = burnup[burnup.length - 1]
+  const currentBurndown = burndown[burndown.length - 1]
+  const previousBurndown = burndown[burndown.length - 2]
+  const currentVelocity = velocity[velocity.length - 1]
+  const currentReopenRate = reopenRateSeries[reopenRateSeries.length - 1]
+
+  const remainingBugDelta = currentBurndown
+    ? currentBurndown.remaining -
+      (previousBurndown?.remaining ?? currentBurndown.remaining)
+    : 0
+  const deltaDirection =
+    remainingBugDelta === 0 ? '' : remainingBugDelta > 0 ? '+' : '-'
+  const deltaValue = Math.abs(remainingBugDelta)
 
   return {
+    meta: {
+      currentSprint: currentBurnup?.sprint ?? '--',
+    },
     milestoneProgress: {
-      completed: current.completed,
-      total: current.scope,
-      completionPercent: current.scope
-        ? Number(((current.completed / current.scope) * 100).toFixed(1))
-        : 0,
+      completed: currentBurnup?.completed ?? 0,
+      total: currentBurnup?.scope ?? 0,
+      completionPercent:
+        currentBurnup && currentBurnup.scope > 0
+          ? Number(
+              ((currentBurnup.completed / currentBurnup.scope) * 100).toFixed(
+                1,
+              ),
+            )
+          : 0,
     },
     remainingBugs: {
-      count: openBug,
-      deltaText: `${openBug > 0 ? '-' : ''}${Math.max(Math.round(openBug * 0.15), 1)} vs previous sprint`,
+      count:
+        currentBurndown?.remaining ??
+        Math.max(
+          Number(milestone.total_bug) - Number(milestone.resolved_bug),
+          0,
+        ),
+      deltaText:
+        deltaValue === 0
+          ? 'No change vs previous sprint'
+          : `${deltaDirection}${deltaValue} vs previous sprint`,
     },
     bugFixRate: {
-      value: bugFixRate,
-      target: 0.9,
+      value:
+        currentVelocity?.rate ??
+        (Number(milestone.total_bug) > 0
+          ? Number(
+              (
+                Number(milestone.resolved_bug) / Number(milestone.total_bug)
+              ).toFixed(2),
+            )
+          : 0),
+      target: currentVelocity?.target ?? DEFAULT_FIX_RATE_TARGET,
     },
     reopenRate: {
-      value: currentReopenRate,
-      target: 0.03,
+      value: currentReopenRate?.rate ?? 0,
+      target: currentReopenRate?.target ?? DEFAULT_REOPEN_RATE_TARGET,
     },
     burnup,
-    burndown: burnup.map((point) => ({
-      sprint: point.sprint,
-      remaining: Math.max(point.scope - point.completed, 0),
-      ideal: Math.max(point.scope - point.ideal, 0),
-    })),
+    burndown,
     velocity,
     reopenRateSeries,
   }

@@ -15,10 +15,9 @@ import { ChartLegendItem } from '@/features/dashboard/components/shared/ChartLeg
 import type { VelocityPoint } from '@/features/dashboard/types/dashboard.types'
 
 type BugVelocityCardProps = {
+  activeSprint?: string
   data: VelocityPoint[]
 }
-
-const TARGET_RATE = 0.9
 
 const DiamondDot = ({
   cx,
@@ -32,7 +31,7 @@ const DiamondDot = ({
   if (typeof cx !== 'number' || typeof cy !== 'number' || !payload) return null
 
   const color =
-    payload.rate >= TARGET_RATE ? 'var(--accent-green)' : 'var(--accent-red)'
+    payload.rate >= payload.target ? 'var(--accent-green)' : 'var(--accent-red)'
   const size = 5
 
   return (
@@ -45,7 +44,12 @@ const DiamondDot = ({
   )
 }
 
-export const BugVelocityCard = ({ data }: BugVelocityCardProps) => {
+export const BugVelocityCard = ({
+  activeSprint,
+  data,
+}: BugVelocityCardProps) => {
+  const current =
+    data.find((item) => item.sprint === activeSprint) ?? data[data.length - 1]
   const rates = data.map((item) => item.rate)
   const averageRate =
     rates.reduce((sum, value) => sum + value, 0) / rates.length
@@ -57,7 +61,16 @@ export const BugVelocityCard = ({ data }: BugVelocityCardProps) => {
     (worst, current) => (current.rate < worst.rate ? current : worst),
     data[0],
   )
-  const belowTargetCount = data.filter((item) => item.rate < TARGET_RATE).length
+  const belowTargetCount = data.filter((item) => item.rate < item.target).length
+  const sprintWindow = `${data[0]?.sprint} - ${data[data.length - 1]?.sprint}`
+  const countMax = Math.max(
+    10,
+    ...data.flatMap((item) => [item.newBugs, item.resolvedBugs]),
+  )
+  const rateMax = Math.max(
+    1,
+    ...data.flatMap((item) => [item.rate, item.target]),
+  )
 
   return (
     <section className="dashboard-card px-5 py-4">
@@ -66,9 +79,7 @@ export const BugVelocityCard = ({ data }: BugVelocityCardProps) => {
           <p className="text-text-muted text-[10px] tracking-[0.1em] uppercase">
             Bug Fixing Velocity
           </p>
-          <p className="text-text-primary mt-1 text-[13px]">
-            New vs Resolved - Fix Rate Trend
-          </p>
+          <p className="text-text-primary mt-1 text-[13px]">{sprintWindow}</p>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
@@ -111,7 +122,7 @@ export const BugVelocityCard = ({ data }: BugVelocityCardProps) => {
             />
             <YAxis
               yAxisId="left"
-              domain={[0, 140]}
+              domain={[0, Math.ceil(countMax / 10) * 10]}
               tick={{
                 fill: 'var(--text-muted)',
                 fontFamily: 'DM Mono',
@@ -123,7 +134,7 @@ export const BugVelocityCard = ({ data }: BugVelocityCardProps) => {
             <YAxis
               yAxisId="right"
               orientation="right"
-              domain={[0, 1.4]}
+              domain={[0, Number((Math.ceil(rateMax * 10) / 10).toFixed(1))]}
               tick={{
                 fill: 'var(--text-muted)',
                 fontFamily: 'DM Mono',
@@ -174,12 +185,12 @@ export const BugVelocityCard = ({ data }: BugVelocityCardProps) => {
 
             <ReferenceLine
               yAxisId="right"
-              y={TARGET_RATE}
+              y={current?.target ?? 0.9}
               stroke="var(--accent-amber)"
               strokeDasharray="4 3"
               strokeWidth={1}
               label={{
-                value: 'Target 0.90',
+                value: `Target ${(current?.target ?? 0.9).toFixed(2)}`,
                 fill: 'var(--accent-amber)',
                 fontFamily: 'DM Mono',
                 fontSize: 9,
