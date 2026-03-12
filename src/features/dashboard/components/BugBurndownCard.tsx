@@ -154,6 +154,7 @@ export const BugBurndownCard = ({
               fill="url(#remainingFill)"
               stroke="var(--chart-bugs)"
               strokeWidth={2}
+              type="linear"
             />
             {currentPoint ? (
               <ReferenceDot

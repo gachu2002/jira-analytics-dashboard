@@ -1,5 +1,9 @@
 import type { PropsWithChildren } from 'react'
 
+type DataTableHeaderCellProps = PropsWithChildren<{
+  numeric?: boolean
+}>
+
 export const DataTable = ({ children }: PropsWithChildren) => {
   return (
     <div className="overflow-hidden rounded-[0px]">
@@ -12,9 +16,14 @@ export const DataTableHeader = ({ children }: PropsWithChildren) => {
   return <thead className="bg-surface-elevated">{children}</thead>
 }
 
-export const DataTableHeaderCell = ({ children }: PropsWithChildren) => {
+export const DataTableHeaderCell = ({
+  children,
+  numeric = false,
+}: DataTableHeaderCellProps) => {
   return (
-    <th className="border-border text-text-muted border-b px-2 py-1 text-left text-[10px] font-normal tracking-[0.08em] uppercase">
+    <th
+      className={`border-border text-text-muted border-b px-2 py-1 text-[10px] font-normal tracking-[0.08em] uppercase ${numeric ? 'text-right' : 'text-left'}`}
+    >
       {children}
     </th>
   )

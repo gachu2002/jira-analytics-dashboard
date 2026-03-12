@@ -104,10 +104,10 @@ export const BugTrackingPage = () => {
           <DataTableHeader>
             <tr>
               <DataTableHeaderCell>Sprint</DataTableHeaderCell>
-              <DataTableHeaderCell>Remaining</DataTableHeaderCell>
-              <DataTableHeaderCell>New</DataTableHeaderCell>
-              <DataTableHeaderCell>Resolved</DataTableHeaderCell>
-              <DataTableHeaderCell>Net Change</DataTableHeaderCell>
+              <DataTableHeaderCell numeric>Remaining</DataTableHeaderCell>
+              <DataTableHeaderCell numeric>New</DataTableHeaderCell>
+              <DataTableHeaderCell numeric>Resolved</DataTableHeaderCell>
+              <DataTableHeaderCell numeric>Net Change</DataTableHeaderCell>
             </tr>
           </DataTableHeader>
           <DataTableBody>

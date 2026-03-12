@@ -29,6 +29,13 @@ export const MilestonePage = () => {
   const previous = getPreviousSprint(data.burnup, selectedSprint)
   const sprintCount = data.burnup.length
   const scopeDelta = current.scope - (previous?.scope ?? current.scope)
+  const remainingScope = Math.max(current.scope - current.completed, 0)
+  const previousRemainingScope = Math.max(
+    (previous?.scope ?? current.scope) -
+      (previous?.completed ?? current.completed),
+    0,
+  )
+  const remainingScopeDelta = remainingScope - previousRemainingScope
 
   return (
     <div className="space-y-4">
@@ -67,9 +74,14 @@ export const MilestonePage = () => {
           }}
         />
         <KpiCard
-          label="Current Sprint"
-          value={current.sprint}
-          subtext="Sprint selected in the global filter"
+          label="Remaining Scope"
+          value={remainingScope.toString()}
+          animatedValue={remainingScope}
+          subtext={`${current.sprint} points left to finish`}
+          delta={{
+            label: `${remainingScopeDelta >= 0 ? '↑' : '↓'}${Math.abs(remainingScopeDelta)} vs previous sprint`,
+            tone: remainingScopeDelta <= 0 ? 'green' : 'amber',
+          }}
         />
         <KpiCard
           label="Tracked Sprints"

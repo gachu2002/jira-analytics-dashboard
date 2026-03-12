@@ -155,6 +155,7 @@ export const VelocityPage = () => {
                 dataKey="rate"
                 stroke="var(--chart-trend)"
                 strokeWidth={2}
+                type="linear"
                 dot={{
                   r: 3,
                   fill: 'var(--chart-trend)',
@@ -175,10 +176,10 @@ export const VelocityPage = () => {
           <DataTableHeader>
             <tr>
               <DataTableHeaderCell>Sprint</DataTableHeaderCell>
-              <DataTableHeaderCell>New Bugs</DataTableHeaderCell>
-              <DataTableHeaderCell>Resolved</DataTableHeaderCell>
-              <DataTableHeaderCell>Fix Rate</DataTableHeaderCell>
-              <DataTableHeaderCell>vs Target</DataTableHeaderCell>
+              <DataTableHeaderCell numeric>New Bugs</DataTableHeaderCell>
+              <DataTableHeaderCell numeric>Resolved</DataTableHeaderCell>
+              <DataTableHeaderCell numeric>Fix Rate</DataTableHeaderCell>
+              <DataTableHeaderCell numeric>vs Target</DataTableHeaderCell>
             </tr>
           </DataTableHeader>
           <DataTableBody>

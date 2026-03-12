@@ -188,7 +188,7 @@ export const ReopenRateCard = ({
               dot={<ColoredDot />}
               stroke="var(--text-secondary)"
               strokeWidth={1.5}
-              type="monotone"
+              type="linear"
             />
           </ComposedChart>
         </ResponsiveContainer>

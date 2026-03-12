@@ -149,7 +149,7 @@ export const MilestoneProgressCard = ({
               stroke="var(--chart-scope)"
               strokeDasharray="3 3"
               strokeWidth={1}
-              type="stepAfter"
+              type="linear"
             />
             <Area
               activeDot={{ r: 4, fill: 'var(--chart-completed)' }}
@@ -165,7 +165,7 @@ export const MilestoneProgressCard = ({
               fill="url(#completedFill)"
               stroke="var(--chart-completed)"
               strokeWidth={2}
-              type="monotone"
+              type="linear"
             />
           </ComposedChart>
         </ResponsiveContainer>

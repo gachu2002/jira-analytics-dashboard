@@ -218,6 +218,7 @@ export const BugVelocityCard = ({
               dot={<DiamondDot />}
               animationBegin={300}
               animationDuration={900}
+              type="linear"
             />
           </ComposedChart>
         </ResponsiveContainer>
