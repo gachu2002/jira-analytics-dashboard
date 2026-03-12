@@ -8,11 +8,11 @@ type MetricDeltaChipProps = {
 }
 
 const toneClasses: Record<DeltaTone, string> = {
-  green: 'bg-[#3dd68c26] text-accent-green',
-  red: 'bg-[#f75c5c26] text-accent-red',
-  amber: 'bg-[#f5a62326] text-accent-amber',
-  blue: 'bg-[#4f7ef726] text-accent-blue',
-  purple: 'bg-[#9b7ef726] text-accent-purple',
+  green: 'bg-success-soft text-success',
+  red: 'bg-danger-soft text-danger',
+  amber: 'bg-warning-soft text-warning',
+  blue: 'bg-info-soft text-info',
+  purple: 'bg-info-soft text-chart-trend',
 }
 
 export const MetricDeltaChip = ({ label, tone }: MetricDeltaChipProps) => {

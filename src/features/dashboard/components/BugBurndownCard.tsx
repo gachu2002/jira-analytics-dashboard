@@ -13,9 +13,10 @@ import {
 import { ChartTooltip } from '@/components/common/ChartTooltip'
 import { ChartLegendItem } from '@/features/dashboard/components/shared/ChartLegendItem'
 import type { BurndownPoint } from '@/features/dashboard/types/dashboard.types'
+import { getActiveSprint } from '@/features/dashboard/utils/sprint'
 
 type BugBurndownCardProps = {
-  activeSprint?: string
+  activeSprintId?: number | null
   data: BurndownPoint[]
 }
 
@@ -44,19 +45,15 @@ const CurrentLabel = ({
 }
 
 export const BugBurndownCard = ({
-  activeSprint,
+  activeSprintId,
   data,
 }: BugBurndownCardProps) => {
-  const currentPoint =
-    data.find((item) => item.sprint === activeSprint) ?? data[data.length - 1]
+  const currentPoint = getActiveSprint(data, activeSprintId)
   const sprintWindow =
     data.length > 0
       ? `${data[0]?.sprint} - ${data[data.length - 1]?.sprint}`
       : '--'
-  const yMax = Math.max(
-    10,
-    ...data.flatMap((row) => [row.remaining, row.ideal]),
-  )
+  const yMax = Math.max(10, ...data.map((row) => row.remaining))
 
   return (
     <section className="dashboard-card px-5 py-4">
@@ -67,7 +64,7 @@ export const BugBurndownCard = ({
           </p>
           <p className="text-text-primary mt-1 text-[13px]">{sprintWindow}</p>
         </div>
-        <span className="text-accent-amber rounded-[2px] border border-[rgba(245,166,35,0.25)] bg-[rgba(245,166,35,0.15)] px-2.5 py-1 text-[10px]">
+        <span className="status-chip status-chip-warning px-2.5 py-1">
           {currentPoint?.remaining ?? 0} bugs open
         </span>
       </div>
@@ -93,18 +90,6 @@ export const BugBurndownCard = ({
                 <stop
                   offset="100%"
                   stopColor="var(--chart-bugs)"
-                  stopOpacity={0.01}
-                />
-              </linearGradient>
-              <linearGradient id="idealFill" x1="0" x2="0" y1="0" y2="1">
-                <stop
-                  offset="0%"
-                  stopColor="var(--chart-ideal)"
-                  stopOpacity={0.05}
-                />
-                <stop
-                  offset="100%"
-                  stopColor="var(--chart-ideal)"
                   stopOpacity={0.01}
                 />
               </linearGradient>
@@ -150,25 +135,10 @@ export const BugBurndownCard = ({
                         value: point.remaining,
                         color: 'var(--chart-bugs)',
                       },
-                      {
-                        label: 'Ideal',
-                        value: point.ideal,
-                        color: 'var(--chart-ideal)',
-                      },
                     ]}
                   />
                 )
               }}
-            />
-            <Area
-              animationBegin={100}
-              animationDuration={900}
-              dataKey="ideal"
-              dot={false}
-              fill="url(#idealFill)"
-              stroke="var(--chart-ideal)"
-              strokeDasharray="4 3"
-              strokeWidth={1.5}
             />
             <Area
               activeDot={{ r: 4, fill: 'var(--chart-bugs)' }}
@@ -200,12 +170,7 @@ export const BugBurndownCard = ({
       </div>
 
       <div className="mt-3 flex items-center gap-4">
-        <ChartLegendItem color="var(--accent-red)" label="Remaining Bugs" />
-        <ChartLegendItem
-          color="var(--text-muted)"
-          dashed
-          label="Ideal Burndown"
-        />
+        <ChartLegendItem color="var(--chart-bugs)" label="Remaining Bugs" />
       </div>
     </section>
   )

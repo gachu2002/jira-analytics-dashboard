@@ -10,55 +10,14 @@ import {
   YAxis,
 } from 'recharts'
 
+import { ChartTooltip } from '@/components/common/ChartTooltip'
 import type { ReopenRatePoint } from '@/features/dashboard/types/dashboard.types'
+import { getActiveSprint } from '@/features/dashboard/utils/sprint'
 
 type ReopenRateCardProps = {
-  activeSprint?: string
+  activeSprintId?: number | null
   data: ReopenRatePoint[]
   fullWidth?: boolean
-}
-
-const CustomTooltip = ({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean
-  payload?: Array<{ dataKey: string; value: number }>
-  label?: string | number
-}) => {
-  if (!active || !payload?.length) {
-    return null
-  }
-
-  const rate = payload.find((item) => item.dataKey === 'rate')?.value
-
-  if (rate === undefined) {
-    return null
-  }
-
-  return (
-    <div className="border-border bg-surface-elevated min-w-36 rounded-[4px] border px-3.5 py-2.5">
-      <p className="metric-value text-text-secondary mb-2 text-[11px]">
-        {String(label ?? '')}
-      </p>
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <span
-            className="h-1.5 w-1.5 rounded-full"
-            style={{
-              background:
-                rate <= 0.03 ? 'var(--accent-green)' : 'var(--accent-red)',
-            }}
-          />
-          <span className="text-text-secondary text-[11px]">Reopen Rate</span>
-        </div>
-        <span className="metric-value text-text-primary text-[11px]">
-          {(rate * 100).toFixed(1)}%
-        </span>
-      </div>
-    </div>
-  )
 }
 
 const ColoredDot = ({
@@ -75,7 +34,9 @@ const ColoredDot = ({
   }
 
   const color =
-    payload.rate <= 0.03 ? 'var(--accent-green)' : 'var(--accent-red)'
+    payload.rate <= payload.target
+      ? 'var(--status-success)'
+      : 'var(--status-danger)'
   return (
     <circle
       cx={cx}
@@ -89,13 +50,12 @@ const ColoredDot = ({
 }
 
 export const ReopenRateCard = ({
-  activeSprint,
+  activeSprintId,
   data,
   fullWidth = false,
 }: ReopenRateCardProps) => {
-  const current =
-    data.find((item) => item.sprint === activeSprint) ?? data[data.length - 1]
-  const currentTarget = current?.target ?? 0.03
+  const current = getActiveSprint(data, activeSprintId)
+  const currentTarget = current?.target ?? 0
   const sprintWindow =
     data.length > 0
       ? `${data[0]?.sprint} - ${data[data.length - 1]?.sprint}`
@@ -115,7 +75,7 @@ export const ReopenRateCard = ({
           </p>
           <p className="text-text-primary mt-1 text-[13px]">{sprintWindow}</p>
         </div>
-        <span className="text-accent-green rounded-[2px] border border-[rgba(61,214,140,0.25)] bg-[rgba(61,214,140,0.12)] px-2 py-1 text-[10px]">
+        <span className="status-chip status-chip-success px-2 py-1">
           {((current?.rate ?? 0) * 100).toFixed(1)}% current
         </span>
       </div>
@@ -157,32 +117,70 @@ export const ReopenRateCard = ({
               width={36}
             />
             <Tooltip
-              content={<CustomTooltip />}
+              content={({ active, payload, label }) => {
+                if (!active || !payload?.length) {
+                  return null
+                }
+
+                const point = payload[0]?.payload as ReopenRatePoint
+
+                return (
+                  <ChartTooltip
+                    sprintLabel={String(label ?? '')}
+                    rows={[
+                      {
+                        label: 'Rate',
+                        value: `${(point.rate * 100).toFixed(1)}%`,
+                        color: 'var(--text-secondary)',
+                      },
+                      {
+                        label: 'Target',
+                        value: `${(point.target * 100).toFixed(1)}%`,
+                        color: 'var(--status-success)',
+                      },
+                      {
+                        label: 'Resolved',
+                        value: point.resolved,
+                        color: 'var(--status-info)',
+                      },
+                      {
+                        label: 'Reopened',
+                        value: point.reopened,
+                        color: 'var(--status-warning)',
+                      },
+                    ]}
+                  />
+                )
+              }}
               cursor={{ stroke: 'var(--border)', strokeWidth: 1 }}
             />
 
-            <ReferenceArea
-              fill="var(--accent-green)"
-              fillOpacity={0.06}
-              label={{
-                value: `Target <=${Math.round(currentTarget * 100)}%`,
-                position: 'insideTopRight',
-                fill: 'var(--accent-green)',
-                fontSize: 9,
-              }}
-              stroke="var(--accent-green)"
-              strokeDasharray="3 3"
-              strokeOpacity={0.35}
-              strokeWidth={1}
-              y1={0}
-              y2={0.03}
-            />
-            <ReferenceLine
-              stroke="var(--accent-green)"
-              strokeDasharray="3 3"
-              strokeWidth={1}
-              y={currentTarget}
-            />
+            {currentTarget > 0 ? (
+              <>
+                <ReferenceArea
+                  fill="var(--status-success)"
+                  fillOpacity={0.06}
+                  label={{
+                    value: `Target <=${Math.round(currentTarget * 100)}%`,
+                    position: 'insideTopRight',
+                    fill: 'var(--status-success)',
+                    fontSize: 9,
+                  }}
+                  stroke="var(--status-success)"
+                  strokeDasharray="3 3"
+                  strokeOpacity={0.35}
+                  strokeWidth={1}
+                  y1={0}
+                  y2={currentTarget}
+                />
+                <ReferenceLine
+                  stroke="var(--status-success)"
+                  strokeDasharray="3 3"
+                  strokeWidth={1}
+                  y={currentTarget}
+                />
+              </>
+            ) : null}
 
             <Line
               animationDuration={900}
@@ -214,7 +212,7 @@ export const ReopenRateCard = ({
           </thead>
           <tbody>
             {data.map((row) => {
-              const isActive = row.sprint === (activeSprint ?? current?.sprint)
+              const isActive = row.sprintId === current?.sprintId
               const aboveTarget = row.rate > row.target
 
               return (
@@ -226,7 +224,7 @@ export const ReopenRateCard = ({
                       ? 'var(--row-active-bg)'
                       : 'transparent',
                     borderLeft: isActive
-                      ? '2px solid var(--accent-blue)'
+                      ? '2px solid var(--primary)'
                       : '2px solid transparent',
                   }}
                 >
@@ -243,11 +241,11 @@ export const ReopenRateCard = ({
                       className="metric-value rounded-[2px] px-1.5 py-0.5 text-[10px]"
                       style={{
                         background: aboveTarget
-                          ? 'rgba(247,92,92,0.15)'
-                          : 'rgba(61,214,140,0.12)',
+                          ? 'var(--status-danger-soft)'
+                          : 'var(--status-success-soft)',
                         color: aboveTarget
-                          ? 'var(--accent-red)'
-                          : 'var(--accent-green)',
+                          ? 'var(--status-danger)'
+                          : 'var(--status-success)',
                       }}
                     >
                       {(row.rate * 100).toFixed(1)}%
@@ -257,7 +255,7 @@ export const ReopenRateCard = ({
                     {row.resolved}
                   </td>
                   <td
-                    className={`metric-value px-1.5 text-right ${row.reopened > 0 ? 'text-accent-amber' : 'text-text-muted'}`}
+                    className={`metric-value px-1.5 text-right ${row.reopened > 0 ? 'text-warning' : 'text-text-muted'}`}
                   >
                     {row.reopened}
                   </td>

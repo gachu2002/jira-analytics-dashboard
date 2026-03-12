@@ -2,10 +2,11 @@ import { KpiCard } from '@/components/common/KpiCard'
 import { ReopenRateCard } from '@/features/dashboard/components/ReopenRateCard'
 import { useDashboardQuery } from '@/features/dashboard/api/dashboard.api'
 import { useDashboardFilters } from '@/features/dashboard/hooks/useDashboardFilters'
+import { getActiveSprint } from '@/features/dashboard/utils/sprint'
 
 export const ReopenRatePage = () => {
   const { data } = useDashboardQuery()
-  const { selectedSprintLabel } = useDashboardFilters()
+  const { selectedSprint } = useDashboardFilters()
 
   if (!data) {
     return null
@@ -19,12 +20,6 @@ export const ReopenRatePage = () => {
     )
   }
 
-  const aboveTarget = data.reopenRateSeries.filter(
-    (point) => point.rate > point.target,
-  ).length
-  const averageRate =
-    data.reopenRateSeries.reduce((sum, point) => sum + point.rate, 0) /
-    data.reopenRateSeries.length
   const totalReopened = data.reopenRateSeries.reduce(
     (sum, point) => sum + point.reopened,
     0,
@@ -33,30 +28,10 @@ export const ReopenRatePage = () => {
     (sum, point) => sum + point.resolved,
     0,
   )
-  const worstRate = Math.max(...data.reopenRateSeries.map((item) => item.rate))
-  const current =
-    data.reopenRateSeries.find((item) => item.sprint === selectedSprintLabel) ??
-    data.reopenRateSeries[data.reopenRateSeries.length - 1]
-  const recentWindow = data.reopenRateSeries.slice(-3)
-  const recentAverage =
-    recentWindow.reduce((sum, point) => sum + point.rate, 0) /
-    recentWindow.length
-  const currentCompliance = data.reopenRateSeries.length - aboveTarget
-  const trendLabel =
-    current.rate <= averageRate
-      ? 'Improving'
-      : current.rate <= current.target
-        ? 'Stable'
-        : 'At risk'
-  const trendColor =
-    current.rate <= averageRate
-      ? 'var(--accent-green)'
-      : current.rate <= current.target
-        ? 'var(--accent-amber)'
-        : 'var(--accent-red)'
-  const worstSprint =
-    data.reopenRateSeries.find((item) => item.rate === worstRate)?.sprint ??
-    '--'
+  const current = getActiveSprint(data.reopenRateSeries, selectedSprint)
+  const overallRate =
+    totalResolved > 0 ? (totalReopened / totalResolved) * 100 : 0
+  const currentTargetDelta = current.target - current.rate
 
   return (
     <div className="space-y-4">
@@ -72,141 +47,82 @@ export const ReopenRatePage = () => {
       <section className="grid grid-cols-1 gap-3 min-[1024px]:grid-cols-2 min-[1440px]:grid-cols-4">
         <KpiCard
           label="Current Rate"
-          value={`${(data.reopenRate.value * 100).toFixed(1)}%`}
-          animatedValue={Math.round(data.reopenRate.value * 1000)}
+          value={`${(current.rate * 100).toFixed(1)}%`}
+          animatedValue={Math.round(current.rate * 1000)}
           formatter={(value) => `${(value / 10).toFixed(1)}%`}
-          subtext={`Current sprint reopen trend (${data.reopenRateSeries[data.reopenRateSeries.length - 1]?.sprint ?? '--'})`}
+          subtext={`${current.sprint} reopen rate`}
           delta={{
-            label: `Target: ${(data.reopenRate.target * 100).toFixed(1)}%`,
-            tone:
-              data.reopenRate.value <= data.reopenRate.target ? 'green' : 'red',
+            label: `Target: ${(current.target * 100).toFixed(1)}%`,
+            tone: current.rate <= current.target ? 'green' : 'red',
           }}
         />
         <KpiCard
-          label="Season Average"
-          value={`${(averageRate * 100).toFixed(1)}%`}
-          animatedValue={Math.round(averageRate * 1000)}
-          formatter={(value) => `${(value / 10).toFixed(1)}%`}
-          subtext={`${aboveTarget} of ${data.reopenRateSeries.length} sprints exceeded target`}
+          label="Resolved Bugs"
+          value={current.resolved.toString()}
+          animatedValue={current.resolved}
+          subtext={`${current.sprint} resolved bugs used in reopen-rate calculations`}
+        />
+        <KpiCard
+          label="Reopened Bugs"
+          value={current.reopened.toString()}
+          animatedValue={current.reopened}
+          subtext={`${current.sprint} reopened bug count`}
           delta={{
-            label: `${aboveTarget} above target`,
-            tone: aboveTarget > 3 ? 'red' : 'amber',
+            label: `${overallRate.toFixed(1)}% overall rate`,
+            tone: 'amber',
           }}
         />
         <KpiCard
-          label="Total Reopened"
-          value={totalReopened.toString()}
-          animatedValue={totalReopened}
-          subtext={`${((totalReopened / totalResolved) * 100).toFixed(1)}% overall reopen rate`}
-          delta={{ label: `of ${totalResolved} resolved`, tone: 'amber' }}
+          label="Target Gap"
+          value={`${(Math.abs(currentTargetDelta) * 100).toFixed(1)}%`}
+          animatedValue={Math.round(Math.abs(currentTargetDelta) * 1000)}
+          formatter={(value) => `${(value / 10).toFixed(1)}%`}
+          subtext={
+            currentTargetDelta >= 0
+              ? 'Below target threshold'
+              : 'Above target threshold'
+          }
+          delta={{
+            label: `Target: ${(current.target * 100).toFixed(1)}%`,
+            tone: currentTargetDelta >= 0 ? 'green' : 'red',
+          }}
         />
         <KpiCard
-          label="Worst Sprint"
-          value={`${(worstRate * 100).toFixed(1)}%`}
-          animatedValue={Math.round(worstRate * 1000)}
+          label="Overall Reopen Rate"
+          value={`${overallRate.toFixed(1)}%`}
+          animatedValue={Math.round(overallRate * 10)}
           formatter={(value) => `${(value / 10).toFixed(1)}%`}
-          subtext="Highest observed reopen ratio"
-          delta={{ label: worstSprint, tone: 'red' }}
+          subtext="Across all returned sprints"
         />
       </section>
 
       <section className="grid grid-cols-1 gap-4 min-[1320px]:grid-cols-2">
         <ReopenRateCard
-          activeSprint={selectedSprintLabel}
+          activeSprintId={selectedSprint}
           data={data.reopenRateSeries}
           fullWidth
         />
 
         <section className="dashboard-card p-4">
           <p className="text-text-muted mb-3 text-[10px] tracking-[0.1em] uppercase">
-            Quality Insights
+            Current Sprint Details
           </p>
-
-          {[
-            {
-              title: 'Recent Trend',
-              value: trendLabel,
-              color: trendColor,
-              detail: `Last ${recentWindow.length} sprints average ${(recentAverage * 100).toFixed(1)}%.`,
-            },
-            {
-              title: 'High-Risk Sprints',
-              value: aboveTarget > 0 ? `${aboveTarget} sprints` : 'None',
-              color: 'var(--accent-red)',
-              detail: `${currentCompliance}/${data.reopenRateSeries.length} sprints met the target threshold.`,
-            },
-            {
-              title: 'Target Compliance',
-              value: `${currentCompliance}/${data.reopenRateSeries.length}`,
-              color: 'var(--accent-amber)',
-              detail: `Target threshold is ${(data.reopenRate.target * 100).toFixed(1)}% or lower.`,
-            },
-            {
-              title: 'QA Throughput',
-              value: `${totalResolved} total`,
-              color: 'var(--accent-blue)',
-              detail: `${totalResolved} bugs verified across all sprints.`,
-            },
-          ].map((item) => (
-            <div
-              className="border-border mb-3 border-b pb-3 last:mb-0 last:border-b-0 last:pb-0"
-              key={item.title}
-            >
-              <div className="mb-1 flex items-center justify-between">
-                <span className="text-text-secondary text-xs">
-                  {item.title}
-                </span>
-                <span
-                  className="metric-value text-xs"
-                  style={{ color: item.color }}
-                >
-                  {item.value}
-                </span>
-              </div>
-              <p className="text-text-muted text-[11px] leading-5">
-                {item.detail}
+          <div className="grid gap-3 min-[768px]:grid-cols-2">
+            <div className="border-border rounded-[4px] border p-3">
+              <p className="text-text-muted text-[10px] tracking-[0.08em] uppercase">
+                Sprint
+              </p>
+              <p className="metric-value text-text-primary mt-1 text-lg">
+                {current.sprint}
               </p>
             </div>
-          ))}
-
-          <div className="mt-3">
-            <div className="text-text-secondary mb-1 flex items-center justify-between text-[11px]">
-              <span>Target compliance</span>
-              <span className="metric-value text-text-primary">
-                {currentCompliance}/{data.reopenRateSeries.length}
-              </span>
-            </div>
-            <div className="flex gap-1">
-              {data.reopenRateSeries.map((point) => {
-                const good = point.rate <= point.target
-
-                return (
-                  <div
-                    className="flex h-5 flex-1 items-center justify-center rounded-[2px] border"
-                    key={point.sprint}
-                    style={{
-                      background: good
-                        ? 'rgba(61,214,140,0.25)'
-                        : 'rgba(247,92,92,0.25)',
-                      borderColor: good
-                        ? 'rgba(61,214,140,0.45)'
-                        : 'rgba(247,92,92,0.45)',
-                    }}
-                    title={`${point.sprint}: ${(point.rate * 100).toFixed(1)}%`}
-                  >
-                    <span
-                      className="metric-value text-[9px]"
-                      style={{
-                        color: good
-                          ? 'var(--accent-green)'
-                          : 'var(--accent-red)',
-                      }}
-                    >
-                      {point.sprint.replace('S', '')}
-                    </span>
-                  </div>
-                )
-              })}
+            <div className="border-border rounded-[4px] border p-3">
+              <p className="text-text-muted text-[10px] tracking-[0.08em] uppercase">
+                Reopened / Resolved
+              </p>
+              <p className="metric-value text-text-primary mt-1 text-lg">
+                {current.reopened} / {current.resolved}
+              </p>
             </div>
           </div>
         </section>

@@ -1,6 +1,8 @@
 import { createServer } from 'node:http'
 
 import {
+  customJqlResponses,
+  milestoneJqlById,
   milestonesByProject,
   projects,
   sprintsByMilestone,
@@ -138,6 +140,35 @@ const server = createServer(async (req, res) => {
   if (method === 'GET' && milestoneSprintMatch) {
     const milestoneId = Number(milestoneSprintMatch[1])
     sendJson(res, 200, sprintsByMilestone[milestoneId] ?? [])
+    return
+  }
+
+  const milestoneJqlMatch = pathname.match(/^\/api\/milestones\/(\d+)\/jql\/$/)
+  if (method === 'GET' && milestoneJqlMatch) {
+    const milestoneId = Number(milestoneJqlMatch[1])
+    sendJson(res, 200, { jql: milestoneJqlById[milestoneId] ?? '' })
+    return
+  }
+
+  if (method === 'GET' && pathname === '/api/sprints/jql/customize/') {
+    const jql = (url.searchParams.get('jql') ?? '').trim()
+    const matchedResponse = customJqlResponses.find((item) =>
+      item.match.test(jql),
+    )
+
+    sendJson(
+      res,
+      200,
+      matchedResponse?.response ?? {
+        start_date: '2026-03-12',
+        end_date: '2026-03-12',
+        closed_ticket: 0,
+        total_ticket: 0,
+        resolved_bug: 0,
+        total_bug: 0,
+        sprints: [],
+      },
+    )
     return
   }
 

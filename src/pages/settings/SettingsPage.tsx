@@ -5,45 +5,6 @@ import { ROUTES } from '@/config/routes'
 import { useAuthStore } from '@/features/auth/stores/auth.store'
 import { THEME_OPTIONS, useUiStore } from '@/stores/ui.store'
 
-const THEME_PREVIEWS = {
-  dark: {
-    background: {
-      background: 'linear-gradient(135deg, #0f1117, #1b2030)',
-      borderColor: '#2a2f45',
-    },
-    surface: { background: '#1e2335', borderColor: '#2a2f45' },
-    accent: { background: '#4f7ef7', borderColor: '#4f7ef7' },
-    support: { background: '#3dd68c', borderColor: '#3dd68c' },
-  },
-  light: {
-    background: {
-      background: 'linear-gradient(135deg, #f7f8fc, #eef1f9)',
-      borderColor: '#d9deec',
-    },
-    surface: { background: '#ffffff', borderColor: '#d9deec' },
-    accent: { background: '#4f7ef7', borderColor: '#4f7ef7' },
-    support: { background: '#f5a623', borderColor: '#f5a623' },
-  },
-  ocean: {
-    background: {
-      background: 'linear-gradient(135deg, #08161b, #12303a)',
-      borderColor: '#224652',
-    },
-    surface: { background: '#10262f', borderColor: '#224652' },
-    accent: { background: '#2fc7c4', borderColor: '#2fc7c4' },
-    support: { background: '#7bd389', borderColor: '#7bd389' },
-  },
-  sand: {
-    background: {
-      background: 'linear-gradient(135deg, #f5efe4, #ece2d0)',
-      borderColor: '#d3c1a3',
-    },
-    surface: { background: '#fffaf0', borderColor: '#d3c1a3' },
-    accent: { background: '#2a6f97', borderColor: '#2a6f97' },
-    support: { background: '#c77432', borderColor: '#c77432' },
-  },
-} as const
-
 export const SettingsPage = () => {
   const navigate = useNavigate()
   const theme = useUiStore((state) => state.theme)
@@ -76,7 +37,7 @@ export const SettingsPage = () => {
 
             return (
               <button
-                className="border-border bg-card hover:border-accent-blue relative overflow-hidden rounded-[4px] border p-3 text-left transition-colors"
+                className="border-border bg-card hover:border-primary relative overflow-hidden rounded-[4px] border p-3 text-left transition-colors"
                 key={option.value}
                 onClick={() => setTheme(option.value)}
                 type="button"
@@ -89,28 +50,44 @@ export const SettingsPage = () => {
                     </p>
                   </div>
                   <span
-                    className={`inline-flex h-5 w-5 items-center justify-center rounded-full border ${active ? 'border-accent-blue bg-accent-blue/15 text-accent-blue' : 'border-border text-text-muted'}`}
+                    className={`inline-flex h-5 w-5 items-center justify-center rounded-full border ${active ? 'border-primary bg-info-soft text-primary' : 'border-border text-text-muted'}`}
                   >
                     {active ? <Check size={12} strokeWidth={2} /> : null}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-4 gap-2">
+                <div
+                  className="grid grid-cols-4 gap-2"
+                  data-theme={option.value}
+                >
                   <span
                     className="h-10 rounded-[3px] border"
-                    style={THEME_PREVIEWS[option.value].background}
+                    style={{
+                      background:
+                        'linear-gradient(135deg, var(--background), var(--surface-elevated))',
+                      borderColor: 'var(--border)',
+                    }}
                   />
                   <span
                     className="h-10 rounded-[3px] border"
-                    style={THEME_PREVIEWS[option.value].surface}
+                    style={{
+                      background: 'var(--surface)',
+                      borderColor: 'var(--border)',
+                    }}
                   />
                   <span
                     className="h-10 rounded-[3px] border"
-                    style={THEME_PREVIEWS[option.value].accent}
+                    style={{
+                      background: 'var(--primary)',
+                      borderColor: 'var(--primary)',
+                    }}
                   />
                   <span
                     className="h-10 rounded-[3px] border"
-                    style={THEME_PREVIEWS[option.value].support}
+                    style={{
+                      background: 'var(--status-success)',
+                      borderColor: 'var(--status-success)',
+                    }}
                   />
                 </div>
               </button>
@@ -127,7 +104,7 @@ export const SettingsPage = () => {
           </p>
         </div>
         <button
-          className="border-border text-text-secondary hover:border-accent-red hover:text-text-primary inline-flex items-center gap-2 rounded-[4px] border px-3 py-1.5 text-xs transition-colors"
+          className="border-border text-text-secondary hover:border-danger hover:text-text-primary inline-flex items-center gap-2 rounded-[4px] border px-3 py-1.5 text-xs transition-colors"
           onClick={handleLogout}
           type="button"
         >

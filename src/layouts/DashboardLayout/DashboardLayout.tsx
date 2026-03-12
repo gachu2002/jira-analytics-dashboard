@@ -10,7 +10,7 @@ export const DashboardLayout = () => {
   return (
     <div className="bg-background text-foreground flex min-h-screen">
       <Sidebar compact={isCompact} />
-      <div className="min-w-0 flex-1">
+      <div className={`min-w-0 flex-1 ${isCompact ? 'ml-12' : 'ml-[220px]'}`}>
         <Topbar />
         <main className="p-6">
           <div className="mx-auto max-w-[1680px]">

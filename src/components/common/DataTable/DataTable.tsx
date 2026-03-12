@@ -36,7 +36,7 @@ export const DataTableRow = ({
     <tr
       className={`data-row border-border h-9 border-b text-xs transition-colors duration-150 ${
         active
-          ? 'bg-row-active-bg text-text-primary [&>td:first-child]:border-accent-blue font-medium [&>td:first-child]:border-l-[2px]'
+          ? 'bg-row-active-bg text-text-primary [&>td:first-child]:border-primary font-medium [&>td:first-child]:border-l-[2px]'
           : 'text-text-secondary hover:bg-surface-elevated'
       }`}
     >

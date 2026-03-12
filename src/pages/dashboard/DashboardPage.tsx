@@ -4,7 +4,7 @@ import { useDashboardFilters } from '@/features/dashboard/hooks/useDashboardFilt
 
 export const DashboardPage = () => {
   const { data, isLoading } = useDashboardQuery()
-  const { selectedSprintLabel } = useDashboardFilters()
+  const { selectedSprint } = useDashboardFilters()
 
   if (isLoading || !data) {
     return (
@@ -19,5 +19,5 @@ export const DashboardPage = () => {
     )
   }
 
-  return <DashboardOverview activeSprint={selectedSprintLabel} data={data} />
+  return <DashboardOverview activeSprintId={selectedSprint} data={data} />
 }

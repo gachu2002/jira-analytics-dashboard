@@ -1,17 +1,18 @@
 export type BurnupPoint = {
+  sprintId: number
   sprint: string
   completed: number
-  ideal: number
   scope: number
 }
 
 export type BurndownPoint = {
+  sprintId: number
   sprint: string
   remaining: number
-  ideal: number
 }
 
 export type VelocityPoint = {
+  sprintId: number
   sprint: string
   newBugs: number
   resolvedBugs: number
@@ -20,6 +21,7 @@ export type VelocityPoint = {
 }
 
 export type ReopenRatePoint = {
+  sprintId: number
   sprint: string
   rate: number
   target: number
@@ -38,7 +40,6 @@ export type DashboardData = {
   }
   remainingBugs: {
     count: number
-    deltaText: string
   }
   bugFixRate: {
     value: number
@@ -93,15 +94,13 @@ export type MilestoneDto = {
   project: number
 }
 
-export type MilestoneSprintDto = {
-  id: number
-  ideal_point: number
-  ideal_bug: number
-  bug_fixing_rate: number
-  reopened_rate: number
-  sprint: number
-  start_date: string
-  end_date: string
+export type SprintMetricsDto = {
+  sprint: {
+    id: number
+    name: string
+    start_date: string
+    end_date: string
+  }
   completed_point: number
   scope_point: number
   resolved_bug: number
@@ -112,6 +111,25 @@ export type MilestoneSprintDto = {
   target_reopened_rate: number
   resolved_bug_reopened: number
   reopened_bug: number
+}
+
+export type MilestoneSprintDto = SprintMetricsDto & {
+  id: number
   created_at: string
+  active: boolean
   milestone: number
+}
+
+export type MilestoneJqlDto = {
+  jql: string
+}
+
+export type CustomJqlResponseDto = {
+  start_date: string
+  end_date: string
+  closed_ticket: number
+  total_ticket: number
+  resolved_bug: number
+  total_bug: number
+  sprints: SprintMetricsDto[]
 }

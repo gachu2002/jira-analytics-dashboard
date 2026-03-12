@@ -41,7 +41,9 @@ const GridBackground = () => {
         <div
           className="login-grid-cell"
           key={index}
-          style={{ backgroundColor: isOn ? '#4F7EF720' : 'transparent' }}
+          style={{
+            backgroundColor: isOn ? 'var(--status-info-soft)' : 'transparent',
+          }}
         />
       ))}
     </div>
@@ -80,8 +82,9 @@ export const LoginForm = () => {
 
   const inputStyle = useMemo(
     () => (fieldName: Exclude<FocusedField, null>) => ({
-      background: focused === fieldName ? '#1E2335' : '#181C27',
-      borderColor: focused === fieldName ? '#4F7EF7' : '#2A2F45',
+      background:
+        focused === fieldName ? 'var(--surface-elevated)' : 'var(--surface)',
+      borderColor: focused === fieldName ? 'var(--primary)' : 'var(--border)',
     }),
     [focused],
   )
@@ -141,9 +144,9 @@ export const LoginForm = () => {
           <div className="login-brand-row">
             <div className="login-brand-mark">
               <svg fill="none" height="14" viewBox="0 0 14 14" width="14">
-                <rect fill="#4F7EF7" height="5" width="3" x="1" y="8" />
+                <rect fill="currentColor" height="5" width="3" x="1" y="8" />
                 <rect
-                  fill="#4F7EF7"
+                  fill="currentColor"
                   height="8"
                   opacity="0.7"
                   width="3"
@@ -151,7 +154,7 @@ export const LoginForm = () => {
                   y="5"
                 />
                 <rect
-                  fill="#4F7EF7"
+                  fill="currentColor"
                   height="11"
                   opacity="0.4"
                   width="3"
@@ -302,12 +305,12 @@ export const LoginForm = () => {
                     cx="6"
                     cy="6"
                     r="5"
-                    stroke="#4A5068"
+                    stroke="var(--text-muted)"
                     strokeWidth="1.5"
                   />
                   <path
                     d="M6 1a5 5 0 015 5"
-                    stroke="#4F7EF7"
+                    stroke="var(--primary)"
                     strokeLinecap="round"
                     strokeWidth="1.5"
                   />
@@ -323,8 +326,8 @@ export const LoginForm = () => {
 
         <div className="login-footer-meta">
           <div className="login-badges">
-            <SprintBadge color="#4F7EF7" label="S10" />
-            <SprintBadge color="#3DD68C" label="LIVE" />
+            <SprintBadge color="var(--status-info)" label="S10" />
+            <SprintBadge color="var(--status-success)" label="LIVE" />
           </div>
           <span className="login-meta-version">v2.4.1</span>
         </div>

@@ -50,7 +50,7 @@ export const KpiCard = ({
         <div className="mt-3">
           <div className="bg-border h-[3px] overflow-hidden rounded-[2px]">
             <div
-              className="bg-accent-blue h-full transition-all duration-500"
+              className="bg-primary h-full transition-all duration-500"
               style={{
                 width: `${Math.min((progress.value / progress.max) * 100, 100)}%`,
               }}

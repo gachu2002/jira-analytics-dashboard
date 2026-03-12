@@ -3,7 +3,7 @@ import { useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { useDashboardFiltersStore } from '@/features/dashboard/stores/dashboard-filters.store'
-import { toSprintLabel } from '@/features/dashboard/utils/sprint'
+import { sortSprints } from '@/features/dashboard/utils/sprint'
 import { dashboardService } from '@/services/dashboard.service'
 
 export const useDashboardFilters = () => {
@@ -52,16 +52,15 @@ export const useDashboardFilters = () => {
   })
 
   const sprints = useMemo(
-    () =>
-      [...(sprintsQuery.data ?? [])].sort(
-        (left, right) => Number(left.sprint) - Number(right.sprint),
-      ),
+    () => sortSprints(sprintsQuery.data ?? []),
     [sprintsQuery.data],
   )
 
-  const sprint = sprints.some((item) => item.sprint === selectedSprint)
+  const sprint = sprints.some((item) => item.sprint.id === selectedSprint)
     ? selectedSprint
-    : (sprints[sprints.length - 1]?.sprint ?? null)
+    : (sprints.find((item) => item.active)?.sprint.id ??
+      sprints[sprints.length - 1]?.sprint.id ??
+      null)
 
   useEffect(() => {
     if (selectedProjectId === null && projectId !== null) {
@@ -90,17 +89,11 @@ export const useDashboardFilters = () => {
     [milestoneId, milestonesQuery.data],
   )
 
-  const sprintRange = selectedMilestone
-    ? `${selectedMilestone.start_date} - ${selectedMilestone.end_date}`
-    : '--'
-
   return {
     selectedProjectId: projectId,
     selectedMilestoneId: milestoneId,
     selectedSprint: sprint,
-    selectedSprintLabel: toSprintLabel(sprint),
     selectedMilestone,
-    sprintRange,
     projects: projectsQuery.data ?? [],
     milestones: milestonesQuery.data ?? [],
     sprints,

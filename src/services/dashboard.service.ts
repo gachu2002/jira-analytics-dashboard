@@ -1,4 +1,5 @@
 import type {
+  MilestoneJqlDto,
   MilestoneDto,
   MilestoneSprintDto,
   ProjectDto,
@@ -19,6 +20,12 @@ export const dashboardService = {
   getMilestoneSprints: async (milestoneId: number) => {
     const response = await http.get<MilestoneSprintDto[]>(
       `/api/milestones/${milestoneId}/sprints/`,
+    )
+    return response.data
+  },
+  getMilestoneJql: async (milestoneId: number) => {
+    const response = await http.get<MilestoneJqlDto>(
+      `/api/milestones/${milestoneId}/jql/`,
     )
     return response.data
   },

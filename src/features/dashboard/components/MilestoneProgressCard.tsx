@@ -2,9 +2,7 @@ import {
   Area,
   CartesianGrid,
   ComposedChart,
-  Label,
   Line,
-  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -14,60 +12,27 @@ import {
 import { ChartTooltip } from '@/components/common/ChartTooltip'
 import { ChartLegendItem } from '@/features/dashboard/components/shared/ChartLegendItem'
 import type { BurnupPoint } from '@/features/dashboard/types/dashboard.types'
+import { getActiveSprint } from '@/features/dashboard/utils/sprint'
 
 type MilestoneProgressCardProps = {
-  activeSprint?: string
+  activeSprintId?: number | null
   data: BurnupPoint[]
   fullWidth?: boolean
 }
 
-const ScopeLabel = ({
-  label,
-  viewBox,
-}: {
-  label: string
-  viewBox?: { x: number; y: number }
-}) => {
-  if (!viewBox) return null
-  return (
-    <g>
-      <line
-        stroke="var(--accent-amber)"
-        strokeDasharray="3 3"
-        strokeOpacity={0.5}
-        strokeWidth={1}
-        x1={viewBox.x}
-        x2={viewBox.x}
-        y1={viewBox.y}
-        y2={viewBox.y + 200}
-      />
-      <text
-        fill="var(--accent-amber)"
-        fontFamily="DM Mono"
-        fontSize={9}
-        x={viewBox.x + 4}
-        y={viewBox.y + 14}
-      >
-        {label}
-      </text>
-    </g>
-  )
-}
-
 export const MilestoneProgressCard = ({
-  activeSprint,
+  activeSprintId,
   data,
   fullWidth = false,
 }: MilestoneProgressCardProps) => {
-  const currentPoint = data[data.length - 1]
-  const highlightedSprint = activeSprint ?? currentPoint?.sprint
+  const highlightedSprintId = getActiveSprint(data, activeSprintId)?.sprintId
   const sprintWindow =
     data.length > 0
       ? `${data[0]?.sprint} - ${data[data.length - 1]?.sprint}`
       : '--'
   const yMax = Math.max(
     10,
-    ...data.flatMap((row) => [row.completed, row.ideal, row.scope]),
+    ...data.flatMap((row) => [row.completed, row.scope]),
   )
 
   return (
@@ -81,18 +46,12 @@ export const MilestoneProgressCard = ({
         </div>
         <div className="flex items-center gap-4">
           <ChartLegendItem
-            color="var(--accent-blue)"
+            color="var(--chart-completed)"
             label="Completed"
             width={20}
           />
           <ChartLegendItem
-            color="var(--text-muted)"
-            dashed
-            label="Ideal"
-            width={20}
-          />
-          <ChartLegendItem
-            color="var(--accent-amber)"
+            color="var(--chart-scope)"
             dashed
             label="Scope"
             width={20}
@@ -115,12 +74,12 @@ export const MilestoneProgressCard = ({
               <linearGradient id="completedFill" x1="0" x2="0" y1="0" y2="1">
                 <stop
                   offset="0%"
-                  stopColor="var(--accent-blue)"
+                  stopColor="var(--chart-completed)"
                   stopOpacity={0.12}
                 />
                 <stop
                   offset="100%"
-                  stopColor="var(--accent-blue)"
+                  stopColor="var(--chart-completed)"
                   stopOpacity={0.01}
                 />
               </linearGradient>
@@ -157,9 +116,6 @@ export const MilestoneProgressCard = ({
                 const completed = payload.find(
                   (entry) => entry.dataKey === 'completed',
                 )?.value
-                const ideal = payload.find(
-                  (entry) => entry.dataKey === 'ideal',
-                )?.value
                 const scope = payload.find(
                   (entry) => entry.dataKey === 'scope',
                 )?.value
@@ -171,17 +127,12 @@ export const MilestoneProgressCard = ({
                       {
                         label: 'Completed',
                         value: `${completed ?? '-'} pts`,
-                        color: 'var(--accent-blue)',
-                      },
-                      {
-                        label: 'Ideal',
-                        value: `${ideal ?? '-'} pts`,
-                        color: 'var(--text-muted)',
+                        color: 'var(--chart-completed)',
                       },
                       {
                         label: 'Scope',
                         value: `${scope ?? '-'} pts`,
-                        color: 'var(--accent-amber)',
+                        color: 'var(--chart-scope)',
                       },
                     ]}
                   />
@@ -190,47 +141,29 @@ export const MilestoneProgressCard = ({
               cursor={{ stroke: 'var(--border)', strokeWidth: 1 }}
             />
 
-            {currentPoint ? (
-              <ReferenceLine stroke="transparent" x={currentPoint.sprint}>
-                <Label
-                  content={<ScopeLabel label={`Scope ${currentPoint.scope}`} />}
-                />
-              </ReferenceLine>
-            ) : null}
-
             <Line
               animationBegin={100}
               animationDuration={800}
-              dataKey="ideal"
-              dot={false}
-              stroke="var(--text-muted)"
-              strokeDasharray="4 3"
-              strokeWidth={1.5}
-              type="monotone"
-            />
-            <Line
-              animationBegin={200}
-              animationDuration={800}
               dataKey="scope"
               dot={false}
-              stroke="var(--accent-amber)"
+              stroke="var(--chart-scope)"
               strokeDasharray="3 3"
               strokeWidth={1}
               type="stepAfter"
             />
             <Area
-              activeDot={{ r: 4, fill: 'var(--accent-blue)' }}
+              activeDot={{ r: 4, fill: 'var(--chart-completed)' }}
               animationBegin={0}
               animationDuration={900}
               dataKey="completed"
               dot={{
                 r: 3,
-                fill: 'var(--accent-blue)',
+                fill: 'var(--chart-completed)',
                 stroke: 'var(--surface)',
                 strokeWidth: 1.5,
               }}
               fill="url(#completedFill)"
-              stroke="var(--accent-blue)"
+              stroke="var(--chart-completed)"
               strokeWidth={2}
               type="monotone"
             />
@@ -242,7 +175,7 @@ export const MilestoneProgressCard = ({
         <table className="w-full border-collapse text-[11px]">
           <thead>
             <tr className="border-border border-b">
-              {['Sprint', 'Completed', 'vs Ideal'].map((header, index) => (
+              {['Sprint', 'Completed', 'Scope'].map((header, index) => (
                 <th
                   className={`text-text-muted px-2 py-1 text-[10px] font-normal tracking-[0.08em] uppercase ${
                     index === 0 ? 'text-left' : 'text-right'
@@ -256,8 +189,7 @@ export const MilestoneProgressCard = ({
           </thead>
           <tbody>
             {data.map((row) => {
-              const delta = row.completed - row.ideal
-              const active = row.sprint === highlightedSprint
+              const active = row.sprintId === highlightedSprintId
 
               return (
                 <tr
@@ -266,7 +198,7 @@ export const MilestoneProgressCard = ({
                   style={{
                     background: active ? 'var(--row-active-bg)' : 'transparent',
                     borderLeft: active
-                      ? '2px solid var(--accent-blue)'
+                      ? '2px solid var(--primary)'
                       : '2px solid transparent',
                   }}
                 >
@@ -290,10 +222,12 @@ export const MilestoneProgressCard = ({
                   </td>
                   <td
                     className={`metric-value px-2 py-1 text-right ${
-                      delta >= 0 ? 'text-accent-green' : 'text-accent-red'
+                      active
+                        ? 'text-text-primary font-medium'
+                        : 'text-text-secondary'
                     }`}
                   >
-                    {delta >= 0 ? `+${delta}` : delta}
+                    {row.scope}
                   </td>
                 </tr>
               )

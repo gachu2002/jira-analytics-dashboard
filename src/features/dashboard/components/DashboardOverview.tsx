@@ -2,6 +2,10 @@ import { lazy, Suspense } from 'react'
 
 import { KpiCard } from '@/components/common/KpiCard'
 import type { DashboardData } from '@/features/dashboard/types/dashboard.types'
+import {
+  getActiveSprint,
+  getPreviousSprint,
+} from '@/features/dashboard/utils/sprint'
 
 const MilestoneProgressCard = lazy(() =>
   import('@/features/dashboard/components/MilestoneProgressCard').then(
@@ -17,30 +21,19 @@ const BugBurndownCard = lazy(() =>
 )
 
 type DashboardOverviewProps = {
-  activeSprint?: string
+  activeSprintId?: number | null
   data: DashboardData
 }
 
 export const DashboardOverview = ({
-  activeSprint,
+  activeSprintId,
   data,
 }: DashboardOverviewProps) => {
-  const burnupPoint =
-    data.burnup.find((item) => item.sprint === activeSprint) ??
-    data.burnup[data.burnup.length - 1]
-  const burndownPoint =
-    data.burndown.find((item) => item.sprint === activeSprint) ??
-    data.burndown[data.burndown.length - 1]
-  const burndownIndex = data.burndown.findIndex(
-    (item) => item.sprint === burndownPoint?.sprint,
-  )
-  const previousBurndownPoint = data.burndown[burndownIndex - 1]
-  const velocityPoint =
-    data.velocity.find((item) => item.sprint === activeSprint) ??
-    data.velocity[data.velocity.length - 1]
-  const reopenPoint =
-    data.reopenRateSeries.find((item) => item.sprint === activeSprint) ??
-    data.reopenRateSeries[data.reopenRateSeries.length - 1]
+  const burnupPoint = getActiveSprint(data.burnup, activeSprintId)
+  const burndownPoint = getActiveSprint(data.burndown, activeSprintId)
+  const previousBurndownPoint = getPreviousSprint(data.burndown, activeSprintId)
+  const velocityPoint = getActiveSprint(data.velocity, activeSprintId)
+  const reopenPoint = getActiveSprint(data.reopenRateSeries, activeSprintId)
   const completionPercent = burnupPoint?.scope
     ? Number(((burnupPoint.completed / burnupPoint.scope) * 100).toFixed(1))
     : 0
@@ -90,7 +83,7 @@ export const DashboardOverview = ({
             burndownPoint?.remaining ?? data.remainingBugs.count
           ).toString()}
           animatedValue={burndownPoint?.remaining ?? data.remainingBugs.count}
-          subtext={`${activeSprint ?? data.meta.currentSprint} open defects`}
+          subtext={`${burndownPoint?.sprint ?? data.meta.currentSprint} open defects`}
           delta={{
             label: remainingBugDeltaText,
             tone: remainingBugDelta <= 0 ? 'green' : 'red',
@@ -128,14 +121,17 @@ export const DashboardOverview = ({
         <div className="min-w-0 min-[1320px]:col-span-3">
           <Suspense fallback={<ChartSkeleton />}>
             <MilestoneProgressCard
-              activeSprint={activeSprint}
+              activeSprintId={activeSprintId}
               data={data.burnup}
             />
           </Suspense>
         </div>
         <div className="min-w-0 min-[1320px]:col-span-2">
           <Suspense fallback={<ChartSkeleton />}>
-            <BugBurndownCard activeSprint={activeSprint} data={data.burndown} />
+            <BugBurndownCard
+              activeSprintId={activeSprintId}
+              data={data.burndown}
+            />
           </Suspense>
         </div>
       </section>

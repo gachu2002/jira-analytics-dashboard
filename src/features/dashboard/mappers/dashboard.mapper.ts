@@ -1,86 +1,101 @@
 import type {
   BurnupPoint,
   BurndownPoint,
+  CustomJqlResponseDto,
   DashboardData,
   MilestoneDto,
-  MilestoneSprintDto,
   ReopenRatePoint,
+  SprintMetricsDto,
   VelocityPoint,
 } from '@/features/dashboard/types/dashboard.types'
-import { toSprintLabel } from '@/features/dashboard/utils/sprint'
+import { getSprintLabel, sortSprints } from '@/features/dashboard/utils/sprint'
 
 type MapDashboardArgs = {
-  milestone: MilestoneDto
-  sprints: MilestoneSprintDto[]
+  summary: Pick<
+    MilestoneDto | CustomJqlResponseDto,
+    'start_date' | 'end_date' | 'resolved_bug' | 'total_bug'
+  >
+  sprints: SprintMetricsDto[]
 }
 
-const DEFAULT_FIX_RATE_TARGET = 0.9
-const DEFAULT_REOPEN_RATE_TARGET = 0.03
+const toNumber = (value: number) => Number(value)
 
-const normalizeFixRateTarget = (value: number) =>
-  value > 0 ? value : DEFAULT_FIX_RATE_TARGET
+const getResolvedVelocity = (sprint: SprintMetricsDto) =>
+  Math.max(toNumber(sprint.resolved_bug_velocity), 0)
 
-const normalizeReopenRateTarget = (value: number) =>
-  value > 0 ? value : DEFAULT_REOPEN_RATE_TARGET
+const getResolvedForReopenRate = (sprint: SprintMetricsDto) =>
+  Math.max(toNumber(sprint.resolved_bug_reopened), 0)
 
-const toBurnup = (sprints: MilestoneSprintDto[]): BurnupPoint[] =>
-  sprints.map((item) => ({
-    sprint: toSprintLabel(Number(item.sprint)),
-    completed: Number(item.completed_point),
-    ideal: Number(item.ideal_point),
-    scope: Number(item.scope_point),
-  }))
+const createBurnupPoint = (sprint: SprintMetricsDto): BurnupPoint => ({
+  sprintId: sprint.sprint.id,
+  sprint: getSprintLabel(sprint.sprint),
+  completed: Math.max(toNumber(sprint.completed_point), 0),
+  scope: Math.max(toNumber(sprint.scope_point), 0),
+})
 
-const toBurndown = (sprints: MilestoneSprintDto[]): BurndownPoint[] =>
-  sprints.map((item) => ({
-    sprint: toSprintLabel(Number(item.sprint)),
-    remaining: Math.max(Number(item.total_bug) - Number(item.resolved_bug), 0),
-    ideal: Math.max(Number(item.ideal_bug), 0),
-  }))
+const createBurndownPoint = (
+  sprint: SprintMetricsDto,
+  totalBugs: number,
+): BurndownPoint => {
+  const resolvedBugs = Math.max(toNumber(sprint.resolved_bug), 0)
 
-const toVelocity = (sprints: MilestoneSprintDto[]): VelocityPoint[] =>
-  sprints.map((item) => ({
-    sprint: toSprintLabel(Number(item.sprint)),
-    newBugs: Number(item.new_bug),
-    resolvedBugs: Number(item.resolved_bug_velocity),
-    rate: Number(item.bug_fixing_rate),
-    target: normalizeFixRateTarget(Number(item.target_bug_velocity)),
-  }))
+  return {
+    sprintId: sprint.sprint.id,
+    sprint: getSprintLabel(sprint.sprint),
+    remaining: Math.max(totalBugs - resolvedBugs, 0),
+  }
+}
 
-const toReopenRateSeries = (sprints: MilestoneSprintDto[]): ReopenRatePoint[] =>
-  sprints.map((item) => ({
-    sprint: toSprintLabel(Number(item.sprint)),
-    rate: Number(item.reopened_rate),
-    target: normalizeReopenRateTarget(Number(item.target_reopened_rate)),
-    resolved: Number(item.resolved_bug_reopened),
-    reopened: Number(item.reopened_bug),
-  }))
+const createVelocityPoint = (sprint: SprintMetricsDto): VelocityPoint => {
+  const newBugs = Math.max(toNumber(sprint.new_bug), 0)
+  const resolvedBugs = getResolvedVelocity(sprint)
+
+  return {
+    sprintId: sprint.sprint.id,
+    sprint: getSprintLabel(sprint.sprint),
+    newBugs,
+    resolvedBugs,
+    rate: Number((resolvedBugs / Math.max(newBugs, 1)).toFixed(2)),
+    target: Math.max(toNumber(sprint.target_bug_velocity), 0),
+  }
+}
+
+const createReopenRatePoint = (sprint: SprintMetricsDto): ReopenRatePoint => {
+  const reopened = Math.max(toNumber(sprint.reopened_bug), 0)
+  const resolved = getResolvedForReopenRate(sprint)
+
+  return {
+    sprintId: sprint.sprint.id,
+    sprint: getSprintLabel(sprint.sprint),
+    rate: Number((reopened / Math.max(resolved, 1)).toFixed(3)),
+    target: Math.max(toNumber(sprint.target_reopened_rate), 0),
+    resolved,
+    reopened,
+  }
+}
 
 export const mapDashboardData = ({
-  milestone,
+  summary,
   sprints,
 }: MapDashboardArgs): DashboardData => {
-  const sortedSprints = [...sprints].sort(
-    (left, right) => Number(left.sprint) - Number(right.sprint),
+  const sortedSprints = sortSprints(sprints)
+  const totalScope = Math.max(
+    ...sortedSprints.map((sprint) => toNumber(sprint.scope_point)),
+    0,
   )
-  const burnup = toBurnup(sortedSprints)
-  const burndown = toBurndown(sortedSprints)
-  const velocity = toVelocity(sortedSprints)
-  const reopenRateSeries = toReopenRateSeries(sortedSprints)
+  const totalBugs = Math.max(toNumber(summary.total_bug), 0)
+
+  const burnup = sortedSprints.map(createBurnupPoint)
+  const burndown = sortedSprints.map((sprint) =>
+    createBurndownPoint(sprint, totalBugs),
+  )
+  const velocity = sortedSprints.map(createVelocityPoint)
+  const reopenRateSeries = sortedSprints.map(createReopenRatePoint)
 
   const currentBurnup = burnup[burnup.length - 1]
   const currentBurndown = burndown[burndown.length - 1]
-  const previousBurndown = burndown[burndown.length - 2]
   const currentVelocity = velocity[velocity.length - 1]
   const currentReopenRate = reopenRateSeries[reopenRateSeries.length - 1]
-
-  const remainingBugDelta = currentBurndown
-    ? currentBurndown.remaining -
-      (previousBurndown?.remaining ?? currentBurndown.remaining)
-    : 0
-  const deltaDirection =
-    remainingBugDelta === 0 ? '' : remainingBugDelta > 0 ? '+' : '-'
-  const deltaValue = Math.abs(remainingBugDelta)
 
   return {
     meta: {
@@ -88,7 +103,7 @@ export const mapDashboardData = ({
     },
     milestoneProgress: {
       completed: currentBurnup?.completed ?? 0,
-      total: currentBurnup?.scope ?? 0,
+      total: currentBurnup?.scope ?? totalScope,
       completionPercent:
         currentBurnup && currentBurnup.scope > 0
           ? Number(
@@ -99,32 +114,15 @@ export const mapDashboardData = ({
           : 0,
     },
     remainingBugs: {
-      count:
-        currentBurndown?.remaining ??
-        Math.max(
-          Number(milestone.total_bug) - Number(milestone.resolved_bug),
-          0,
-        ),
-      deltaText:
-        deltaValue === 0
-          ? 'No change vs previous sprint'
-          : `${deltaDirection}${deltaValue} vs previous sprint`,
+      count: currentBurndown?.remaining ?? Math.max(totalBugs, 0),
     },
     bugFixRate: {
-      value:
-        currentVelocity?.rate ??
-        (Number(milestone.total_bug) > 0
-          ? Number(
-              (
-                Number(milestone.resolved_bug) / Number(milestone.total_bug)
-              ).toFixed(2),
-            )
-          : 0),
-      target: currentVelocity?.target ?? DEFAULT_FIX_RATE_TARGET,
+      value: currentVelocity?.rate ?? 0,
+      target: currentVelocity?.target ?? 0,
     },
     reopenRate: {
       value: currentReopenRate?.rate ?? 0,
-      target: currentReopenRate?.target ?? DEFAULT_REOPEN_RATE_TARGET,
+      target: currentReopenRate?.target ?? 0,
     },
     burnup,
     burndown,
