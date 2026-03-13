@@ -19,7 +19,10 @@ import {
 } from '@/components/ui/select'
 import { useDashboardQuery } from '@/features/dashboard/api/dashboard.api'
 import { useDashboardFilters } from '@/features/dashboard/hooks/useDashboardFilters'
-import { useDashboardDataSourceStore } from '@/features/dashboard/stores/dashboard-data-source.store'
+import {
+  useDashboardDataSourceStore,
+  type JqlModeEntryBehavior,
+} from '@/features/dashboard/stores/dashboard-data-source.store'
 import type { JqlFormFields } from '@/features/dashboard/utils/jql'
 import {
   toRecordSprintOptions,
@@ -37,7 +40,12 @@ const textareaClassName =
 export const DataSourceBar = () => {
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const { data: dashboardData, isFetching } = useDashboardQuery()
+  const {
+    data: dashboardData,
+    isFetching,
+    isJqlDraftMode,
+    isUsingJqlResults,
+  } = useDashboardQuery()
   const {
     milestones,
     projects,
@@ -53,12 +61,14 @@ export const DataSourceBar = () => {
     activateJqlMode,
     appliedJql,
     draftJql,
+    jqlModeEntryBehavior,
     jqlFields,
     resetToRecordMode,
     seedFromMilestoneJql,
     sourceMode,
     updateJqlField,
     setDraftJql,
+    setJqlModeEntryBehavior,
     applyCustomJql,
   } = useDashboardDataSourceStore()
 
@@ -92,9 +102,11 @@ export const DataSourceBar = () => {
   const sprintOptions = useMemo<SprintOption[]>(
     () =>
       isJqlMode
-        ? toSeriesSprintOptions(dashboardData?.burnup ?? [])
+        ? isUsingJqlResults
+          ? toSeriesSprintOptions(dashboardData?.burnup ?? [])
+          : []
         : toRecordSprintOptions(sprints),
-    [dashboardData?.burnup, isJqlMode, sprints],
+    [dashboardData?.burnup, isJqlMode, isUsingJqlResults, sprints],
   )
 
   const sprintValue = sprintOptions.some(
@@ -103,9 +115,33 @@ export const DataSourceBar = () => {
     ? String(selectedSprint)
     : (sprintOptions[sprintOptions.length - 1]?.value ?? '')
 
+  useEffect(() => {
+    if (!isJqlMode) {
+      return
+    }
+
+    const fallbackSprint =
+      sprintOptions.length > 0
+        ? Number(sprintOptions[sprintOptions.length - 1]?.value)
+        : null
+
+    const hasSelectedSprint = sprintOptions.some(
+      (item) => item.value === String(selectedSprint),
+    )
+
+    if (!hasSelectedSprint && fallbackSprint !== selectedSprint) {
+      setSelectedSprint(fallbackSprint)
+    }
+
+    if (sprintOptions.length === 0 && selectedSprint !== null) {
+      setSelectedSprint(null)
+    }
+  }, [isJqlMode, selectedSprint, setSelectedSprint, sprintOptions])
+
   const summary = getSummaryCopy({
     appliedJql,
     isExecutingJql,
+    isJqlDraftMode,
     isJqlMode,
     isMilestoneJqlLoading: milestoneJqlQuery.isLoading,
   })
@@ -171,10 +207,13 @@ export const DataSourceBar = () => {
                 draftJql={draftJql}
                 isApplyDisabled={draftJql.trim().length === 0 || isExecutingJql}
                 isExecutingJql={isExecutingJql}
+                isJqlDraftMode={isJqlDraftMode}
+                jqlModeEntryBehavior={jqlModeEntryBehavior}
                 jqlFields={jqlFields}
                 onApply={applyCustomJql}
                 onDraftChange={setDraftJql}
                 onFieldChange={updateJqlField}
+                onModeEntryBehaviorChange={setJqlModeEntryBehavior}
                 onSprintChange={setSelectedSprint}
                 onToggleAdvanced={() => setAdvancedOpen((current) => !current)}
                 sprintOptions={sprintOptions}
@@ -230,10 +269,13 @@ const JqlControls = ({
   draftJql,
   isApplyDisabled,
   isExecutingJql,
+  isJqlDraftMode,
+  jqlModeEntryBehavior,
   jqlFields,
   onApply,
   onDraftChange,
   onFieldChange,
+  onModeEntryBehaviorChange,
   onSprintChange,
   onToggleAdvanced,
   sprintOptions,
@@ -244,6 +286,8 @@ const JqlControls = ({
   draftJql: string
   isApplyDisabled: boolean
   isExecutingJql: boolean
+  isJqlDraftMode: boolean
+  jqlModeEntryBehavior: JqlModeEntryBehavior
   jqlFields: JqlFormFields
   onApply: () => void
   onDraftChange: (value: string) => void
@@ -251,12 +295,35 @@ const JqlControls = ({
     field: 'projectKey' | 'labels' | 'assignees' | 'startDate' | 'endDate',
     value: string,
   ) => void
+  onModeEntryBehaviorChange: (behavior: JqlModeEntryBehavior) => void
   onSprintChange: (value: number | null) => void
   onToggleAdvanced: () => void
   sprintOptions: SprintOption[]
   sprintValue: string
 }) => (
   <div className="space-y-3">
+    <div className="border-border bg-surface-elevated flex flex-wrap items-center justify-between gap-3 rounded-[4px] border px-3 py-2.5">
+      <div>
+        <p className="text-text-primary text-xs">When switching to JQL</p>
+        <p className="text-text-muted mt-0.5 text-[11px]">
+          Choose whether JQL should follow the current record milestone or keep
+          your current JQL state.
+        </p>
+      </div>
+      <div className="border-border bg-background inline-flex rounded-[4px] border p-1">
+        <EntryBehaviorButton
+          active={jqlModeEntryBehavior === 'sync-record'}
+          label="Sync with record"
+          onClick={() => onModeEntryBehaviorChange('sync-record')}
+        />
+        <EntryBehaviorButton
+          active={jqlModeEntryBehavior === 'keep-current'}
+          label="Keep current"
+          onClick={() => onModeEntryBehaviorChange('keep-current')}
+        />
+      </div>
+    </div>
+
     <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_160px_160px_auto]">
       <FieldBlock label="Project key">
         <input
@@ -327,18 +394,28 @@ const JqlControls = ({
             className={`status-chip ${
               isExecutingJql
                 ? 'status-chip-warning'
-                : appliedJql
-                  ? 'status-chip-success'
-                  : 'status-chip-neutral'
+                : isJqlDraftMode
+                  ? 'status-chip-neutral'
+                  : appliedJql
+                    ? 'status-chip-success'
+                    : 'status-chip-neutral'
             }`}
           >
-            {isExecutingJql ? 'Running' : appliedJql ? 'Loaded' : 'Pending'}
+            {isExecutingJql
+              ? 'Running'
+              : isJqlDraftMode
+                ? 'Draft only'
+                : appliedJql
+                  ? 'Loaded'
+                  : 'Pending'}
           </span>
         </div>
         <p className="text-text-muted mt-0.5 text-[11px]">
           {isExecutingJql
             ? 'JQL execution may take a while. Existing results stay visible until the new response arrives.'
-            : 'Select which returned sprint drives the cards and charts.'}
+            : isJqlDraftMode
+              ? 'Run the current JQL to load result sprints and drive the cards and charts.'
+              : 'Select which returned sprint drives the cards and charts.'}
         </p>
       </div>
       <div className="max-w-full min-w-[220px] flex-1 sm:flex-none">
@@ -385,11 +462,13 @@ const JqlControls = ({
 const getSummaryCopy = ({
   appliedJql,
   isExecutingJql,
+  isJqlDraftMode,
   isJqlMode,
   isMilestoneJqlLoading,
 }: {
   appliedJql: string | null
   isExecutingJql: boolean
+  isJqlDraftMode: boolean
   isJqlMode: boolean
   isMilestoneJqlLoading: boolean
 }) => {
@@ -413,6 +492,14 @@ const getSummaryCopy = ({
       label: 'JQL running',
       description:
         'Query execution can take a bit. Current dashboard results remain visible while loading.',
+    }
+  }
+
+  if (isJqlDraftMode) {
+    return {
+      label: 'JQL draft',
+      description:
+        'Draft query is ready, but the dashboard will not switch to JQL results until you run it.',
     }
   }
 
@@ -445,6 +532,28 @@ const ModeButton = ({
     type="button"
   >
     {icon}
+    {label}
+  </button>
+)
+
+const EntryBehaviorButton = ({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean
+  label: string
+  onClick: () => void
+}) => (
+  <button
+    className={`rounded-[3px] px-3 py-1.5 text-[11px] transition-colors ${
+      active
+        ? 'bg-primary text-primary-foreground'
+        : 'text-text-secondary hover:bg-surface-elevated hover:text-text-primary'
+    }`}
+    onClick={onClick}
+    type="button"
+  >
     {label}
   </button>
 )

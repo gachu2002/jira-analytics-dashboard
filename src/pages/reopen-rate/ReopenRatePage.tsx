@@ -1,3 +1,4 @@
+import { DashboardStateNotice } from '@/features/dashboard/components/DashboardStateNotice'
 import { KpiCard } from '@/components/common/KpiCard'
 import {
   DataTable,
@@ -13,8 +14,17 @@ import { useDashboardFilters } from '@/features/dashboard/hooks/useDashboardFilt
 import { getActiveSprint } from '@/features/dashboard/utils/sprint'
 
 export const ReopenRatePage = () => {
-  const { data } = useDashboardQuery()
+  const { data, isJqlDraftMode } = useDashboardQuery()
   const { selectedSprint } = useDashboardFilters()
+
+  if (isJqlDraftMode) {
+    return (
+      <DashboardStateNotice
+        message="Run the current JQL to populate reopened-rate cards, chart, and table."
+        title="JQL draft only"
+      />
+    )
+  }
 
   if (!data) {
     return null

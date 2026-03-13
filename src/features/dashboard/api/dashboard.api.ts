@@ -12,12 +12,13 @@ export const useDashboardQuery = () => {
   const { milestones, selectedMilestoneId, selectedProjectId } =
     useDashboardFilters()
   const { appliedJql, sourceMode } = useDashboardDataSourceStore()
+  const isJqlMode = sourceMode === 'jql'
   const isJqlModeActive = sourceMode === 'jql' && Boolean(appliedJql)
 
   const milestoneSprintsQuery = useQuery({
     queryKey: ['milestone-sprints', selectedMilestoneId],
     enabled:
-      (sourceMode === 'record' || !isJqlModeActive) &&
+      sourceMode === 'record' &&
       selectedProjectId !== null &&
       selectedMilestoneId !== null,
     queryFn: () =>
@@ -66,5 +67,8 @@ export const useDashboardQuery = () => {
   return {
     ...activeQuery,
     data,
+    isJqlDraftMode: isJqlMode && !appliedJql,
+    isJqlMode,
+    isUsingJqlResults: isJqlModeActive,
   }
 }

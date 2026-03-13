@@ -1,10 +1,21 @@
+import { DashboardStateNotice } from '@/features/dashboard/components/DashboardStateNotice'
 import { DashboardOverview } from '@/features/dashboard/components/DashboardOverview'
 import { useDashboardQuery } from '@/features/dashboard/api/dashboard.api'
 import { useDashboardFilters } from '@/features/dashboard/hooks/useDashboardFilters'
 
 export const DashboardPage = () => {
-  const { data, isLoading } = useDashboardQuery()
+  const { data, isJqlDraftMode, isLoading, isUsingJqlResults } =
+    useDashboardQuery()
   const { selectedSprint } = useDashboardFilters()
+
+  if (isJqlDraftMode) {
+    return (
+      <DashboardStateNotice
+        message="Run the current JQL to load overview metrics and sprint charts."
+        title="JQL draft only"
+      />
+    )
+  }
 
   if (isLoading || !data) {
     return (
@@ -16,6 +27,15 @@ export const DashboardPage = () => {
           />
         ))}
       </div>
+    )
+  }
+
+  if (isUsingJqlResults && data.burnup.length === 0) {
+    return (
+      <DashboardStateNotice
+        message="The current JQL ran successfully, but it did not return sprint data that can drive the overview charts."
+        title="No JQL sprint results"
+      />
     )
   }
 

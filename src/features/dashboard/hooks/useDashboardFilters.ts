@@ -3,6 +3,7 @@ import { useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { useDashboardFiltersStore } from '@/features/dashboard/stores/dashboard-filters.store'
+import { useDashboardDataSourceStore } from '@/features/dashboard/stores/dashboard-data-source.store'
 import { sortSprints } from '@/features/dashboard/utils/sprint'
 import { dashboardService } from '@/services/dashboard.service'
 
@@ -19,11 +20,18 @@ export const useDashboardFilters = () => {
   const setSelectedMilestoneId = useDashboardFiltersStore(
     (state) => state.setSelectedMilestoneId,
   )
-  const selectedSprint = useDashboardFiltersStore(
+  const selectedRecordSprint = useDashboardFiltersStore(
     (state) => state.selectedSprint,
   )
-  const setSelectedSprint = useDashboardFiltersStore(
+  const setSelectedRecordSprint = useDashboardFiltersStore(
     (state) => state.setSelectedSprint,
+  )
+  const sourceMode = useDashboardDataSourceStore((state) => state.sourceMode)
+  const selectedJqlSprint = useDashboardDataSourceStore(
+    (state) => state.selectedJqlSprint,
+  )
+  const setSelectedJqlSprint = useDashboardDataSourceStore(
+    (state) => state.setSelectedJqlSprint,
   )
 
   const projectsQuery = useQuery({
@@ -47,7 +55,7 @@ export const useDashboardFilters = () => {
 
   const sprintsQuery = useQuery({
     queryKey: ['milestone-sprints', milestoneId],
-    enabled: milestoneId !== null,
+    enabled: sourceMode === 'record' && milestoneId !== null,
     queryFn: () => dashboardService.getMilestoneSprints(milestoneId as number),
   })
 
@@ -56,11 +64,22 @@ export const useDashboardFilters = () => {
     [sprintsQuery.data],
   )
 
-  const sprint = sprints.some((item) => item.sprint.id === selectedSprint)
-    ? selectedSprint
+  const sprint = sprints.some((item) => item.sprint.id === selectedRecordSprint)
+    ? selectedRecordSprint
     : (sprints.find((item) => item.active)?.sprint.id ??
       sprints[sprints.length - 1]?.sprint.id ??
       null)
+
+  const selectedSprint = sourceMode === 'jql' ? selectedJqlSprint : sprint
+
+  const setSelectedSprint = (nextSprint: number | null) => {
+    if (sourceMode === 'jql') {
+      setSelectedJqlSprint(nextSprint)
+      return
+    }
+
+    setSelectedRecordSprint(nextSprint)
+  }
 
   useEffect(() => {
     if (selectedProjectId === null && projectId !== null) {
@@ -75,14 +94,18 @@ export const useDashboardFilters = () => {
   }, [milestoneId, selectedMilestoneId, setSelectedMilestoneId])
 
   useEffect(() => {
-    if (sprint !== selectedSprint && sprint !== null) {
-      setSelectedSprint(sprint)
+    if (sourceMode !== 'record') {
+      return
     }
 
-    if (sprint === null && selectedSprint !== null) {
-      setSelectedSprint(null)
+    if (sprint !== selectedRecordSprint && sprint !== null) {
+      setSelectedRecordSprint(sprint)
     }
-  }, [selectedSprint, setSelectedSprint, sprint])
+
+    if (sprint === null && selectedRecordSprint !== null) {
+      setSelectedRecordSprint(null)
+    }
+  }, [selectedRecordSprint, setSelectedRecordSprint, sourceMode, sprint])
 
   const selectedMilestone = useMemo(
     () => milestonesQuery.data?.find((item) => item.id === milestoneId) ?? null,
@@ -92,7 +115,7 @@ export const useDashboardFilters = () => {
   return {
     selectedProjectId: projectId,
     selectedMilestoneId: milestoneId,
-    selectedSprint: sprint,
+    selectedSprint,
     selectedMilestone,
     projects: projectsQuery.data ?? [],
     milestones: milestonesQuery.data ?? [],

@@ -1,3 +1,4 @@
+import { DashboardStateNotice } from '@/features/dashboard/components/DashboardStateNotice'
 import { KpiCard } from '@/components/common/KpiCard'
 import {
   DataTable,
@@ -16,8 +17,17 @@ import {
 } from '@/features/dashboard/utils/sprint'
 
 export const MilestonePage = () => {
-  const { data } = useDashboardQuery()
+  const { data, isJqlDraftMode } = useDashboardQuery()
   const { selectedSprint } = useDashboardFilters()
+
+  if (isJqlDraftMode) {
+    return (
+      <DashboardStateNotice
+        message="Run the current JQL to populate milestone cards, chart, and table."
+        title="JQL draft only"
+      />
+    )
+  }
 
   if (!data) {
     return null
