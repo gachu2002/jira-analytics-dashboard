@@ -11,8 +11,8 @@ import { BugBurndownCard } from '@/features/dashboard/components/BugBurndownCard
 import { useDashboardQuery } from '@/features/dashboard/api/dashboard.api'
 import { useDashboardFilters } from '@/features/dashboard/hooks/useDashboardFilters'
 import {
-  createSprintLookup,
   getActiveSprint,
+  getPreviousSprint,
 } from '@/features/dashboard/utils/sprint'
 
 export const BugTrackingPage = () => {
@@ -31,105 +31,86 @@ export const BugTrackingPage = () => {
     )
   }
 
-  const currentBurndown = getActiveSprint(data.burndown, selectedSprint)
-  const currentVelocity = getActiveSprint(data.velocity, selectedSprint)
-  const openBugs = currentBurndown?.remaining ?? data.remainingBugs.count
-  const resolvedThisSprint = currentVelocity?.resolvedBugs ?? 0
-  const newThisSprint = currentVelocity?.newBugs ?? 0
-  const velocityBySprintId = createSprintLookup(data.velocity)
-  const sprintRows = data.burndown.map((burndownPoint) => {
-    const velocityPoint = velocityBySprintId.get(burndownPoint.sprintId)
-
-    return {
-      sprint: burndownPoint.sprint,
-      sprintId: burndownPoint.sprintId,
-      remaining: burndownPoint.remaining,
-      newBugs: velocityPoint?.newBugs ?? 0,
-      resolvedBugs: velocityPoint?.resolvedBugs ?? 0,
-      netChange:
-        (velocityPoint?.newBugs ?? 0) - (velocityPoint?.resolvedBugs ?? 0),
-    }
-  })
+  const current = getActiveSprint(data.burndown, selectedSprint)
+  const previous = getPreviousSprint(data.burndown, selectedSprint)
+  const idealDelta = current.ideal - (previous?.ideal ?? current.ideal)
+  const resolvedDelta =
+    current.resolved - (previous?.resolved ?? current.resolved)
 
   return (
     <div className="space-y-4">
       <header>
-        <h1 className="metric-value text-text-primary text-base">
-          Bug Tracking
-        </h1>
+        <h1 className="metric-value text-text-primary text-base">Bug Fix</h1>
         <p className="text-text-muted mt-1 text-xs">
-          Bug burndown - remaining vs ideal resolution trajectory
+          Resolved bugs against total scope and ideal trajectory
         </p>
       </header>
 
       <section className="grid grid-cols-1 gap-3 min-[1024px]:grid-cols-2 min-[1440px]:grid-cols-4">
         <KpiCard
-          label="Open Bugs"
-          value={openBugs.toString()}
-          animatedValue={openBugs}
-          subtext="Current unresolved bug count"
-        />
-        <KpiCard
-          label="Resolved This Sprint"
-          value={resolvedThisSprint.toString()}
-          animatedValue={resolvedThisSprint}
-          subtext={`${currentVelocity?.sprint ?? data.meta.currentSprint} resolved defects`}
-        />
-        <KpiCard
-          label="New Bugs This Sprint"
-          value={newThisSprint.toString()}
-          animatedValue={newThisSprint}
-          subtext={`${currentVelocity?.sprint ?? data.meta.currentSprint} newly reported defects`}
-        />
-        <KpiCard
-          label="Net Bug Change"
-          value={`${newThisSprint - resolvedThisSprint >= 0 ? '+' : ''}${newThisSprint - resolvedThisSprint}`}
-          animatedValue={Math.abs(newThisSprint - resolvedThisSprint)}
-          formatter={() => {
-            const signedValue = newThisSprint - resolvedThisSprint
-
-            return `${signedValue >= 0 ? '+' : ''}${signedValue}`
+          label="Resolved Bugs"
+          value={current.resolved.toString()}
+          animatedValue={current.resolved}
+          subtext={`${current.sprint} cumulative resolved bugs`}
+          delta={{
+            label: `${resolvedDelta >= 0 ? '+' : ''}${resolvedDelta} vs previous sprint`,
+            tone: resolvedDelta >= 0 ? 'green' : 'amber',
           }}
-          subtext="New bugs minus resolved bugs"
+        />
+        <KpiCard
+          label="Total Bugs"
+          value={current.total.toString()}
+          animatedValue={current.total}
+          subtext="Milestone total bugs baseline"
+        />
+        <KpiCard
+          label="Ideal"
+          value={current.ideal.toFixed(1)}
+          animatedValue={Math.round(current.ideal * 10)}
+          formatter={(value) => (value / 10).toFixed(1)}
+          subtext={`Total bugs / ${data.burndown.length} sprints x sprint ${current.sprintNumber}`}
+          delta={{
+            label: `${idealDelta >= 0 ? '+' : ''}${idealDelta.toFixed(1)} vs previous sprint`,
+            tone: 'amber',
+          }}
+        />
+        <KpiCard
+          label="Sprint Number"
+          value={current.sprintNumber.toString()}
+          animatedValue={current.sprintNumber}
+          subtext={`Selected sprint out of ${data.burndown.length}`}
         />
       </section>
 
-      <BugBurndownCard activeSprintId={selectedSprint} data={data.burndown} />
+      <BugBurndownCard
+        activeSprintId={selectedSprint}
+        data={data.burndown}
+        showTable={false}
+      />
 
       <section className="dashboard-card p-4">
         <p className="text-text-muted mb-3 text-[10px] tracking-[0.1em] uppercase">
-          Sprint Bug Summary
+          Sprint Detail
         </p>
         <DataTable>
           <DataTableHeader>
             <tr>
               <DataTableHeaderCell>Sprint</DataTableHeaderCell>
-              <DataTableHeaderCell numeric>Remaining</DataTableHeaderCell>
-              <DataTableHeaderCell numeric>New</DataTableHeaderCell>
-              <DataTableHeaderCell numeric>Resolved</DataTableHeaderCell>
-              <DataTableHeaderCell numeric>Net Change</DataTableHeaderCell>
+              <DataTableHeaderCell numeric>Resolved Bugs</DataTableHeaderCell>
+              <DataTableHeaderCell numeric>Total Bugs</DataTableHeaderCell>
+              <DataTableHeaderCell numeric>Ideal</DataTableHeaderCell>
             </tr>
           </DataTableHeader>
           <DataTableBody>
-            {sprintRows.map((row) => (
+            {data.burndown.map((row) => (
               <DataTableRow
-                active={row.sprintId === selectedSprint}
+                active={row.sprintId === current.sprintId}
                 key={row.sprintId}
               >
                 <DataTableCell>{row.sprint}</DataTableCell>
-                <DataTableCell numeric>{row.remaining}</DataTableCell>
-                <DataTableCell numeric>{row.newBugs}</DataTableCell>
-                <DataTableCell numeric>{row.resolvedBugs}</DataTableCell>
-                <DataTableCell numeric>
-                  <span
-                    className={
-                      row.netChange <= 0 ? 'text-success' : 'text-danger'
-                    }
-                  >
-                    {row.netChange >= 0 ? '+' : ''}
-                    {row.netChange}
-                  </span>
-                </DataTableCell>
+                <DataTableCell numeric>{row.resolved}</DataTableCell>
+                <DataTableCell numeric>{row.total}</DataTableCell>
+                <DataTableCell numeric>{row.ideal.toFixed(1)}</DataTableCell>
               </DataTableRow>
             ))}
           </DataTableBody>

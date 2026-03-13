@@ -1,9 +1,8 @@
 import {
   Area,
   CartesianGrid,
-  Label,
   ComposedChart,
-  ReferenceDot,
+  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -18,55 +17,38 @@ import { getActiveSprint } from '@/features/dashboard/utils/sprint'
 type BugBurndownCardProps = {
   activeSprintId?: number | null
   data: BurndownPoint[]
-}
-
-const CurrentLabel = ({
-  viewBox,
-}: {
-  viewBox?: { cx: number; cy: number }
-}) => {
-  if (!viewBox) {
-    return null
-  }
-
-  return (
-    <g>
-      <circle cx={viewBox.cx} cy={viewBox.cy} fill="var(--chart-bugs)" r={5} />
-      <text
-        fill="var(--chart-bugs)"
-        fontSize={9}
-        x={viewBox.cx + 8}
-        y={viewBox.cy + 4}
-      >
-        Current
-      </text>
-    </g>
-  )
+  showTable?: boolean
 }
 
 export const BugBurndownCard = ({
   activeSprintId,
   data,
+  showTable = true,
 }: BugBurndownCardProps) => {
   const currentPoint = getActiveSprint(data, activeSprintId)
   const sprintWindow =
     data.length > 0
       ? `${data[0]?.sprint} - ${data[data.length - 1]?.sprint}`
       : '--'
-  const yMax = Math.max(10, ...data.map((row) => row.remaining))
+  const yMax = Math.max(
+    10,
+    ...data.flatMap((row) => [row.resolved, row.total, row.ideal]),
+  )
 
   return (
     <section className="dashboard-card px-5 py-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-text-muted text-[10px] tracking-[0.1em] uppercase">
-            Bug Burndown
+            Bug Fix Progress
           </p>
           <p className="text-text-primary mt-1 text-[13px]">{sprintWindow}</p>
         </div>
-        <span className="status-chip status-chip-warning px-2.5 py-1">
-          {currentPoint?.remaining ?? 0} bugs open
-        </span>
+        <div className="flex items-center gap-4">
+          <ChartLegendItem color="var(--chart-resolved)" label="Resolved" />
+          <ChartLegendItem color="var(--chart-bugs)" label="Total Bugs" />
+          <ChartLegendItem color="var(--status-warning)" dashed label="Ideal" />
+        </div>
       </div>
 
       <div className="min-w-0" style={{ height: 220 }}>
@@ -81,15 +63,15 @@ export const BugBurndownCard = ({
             margin={{ left: 0, right: 60, top: 10, bottom: 0 }}
           >
             <defs>
-              <linearGradient id="remainingFill" x1="0" x2="0" y1="0" y2="1">
+              <linearGradient id="resolvedFill" x1="0" x2="0" y1="0" y2="1">
                 <stop
                   offset="0%"
-                  stopColor="var(--chart-bugs)"
-                  stopOpacity={0.09}
+                  stopColor="var(--chart-resolved)"
+                  stopOpacity={0.18}
                 />
                 <stop
                   offset="100%"
-                  stopColor="var(--chart-bugs)"
+                  stopColor="var(--chart-resolved)"
                   stopOpacity={0.01}
                 />
               </linearGradient>
@@ -131,9 +113,19 @@ export const BugBurndownCard = ({
                     sprintLabel={String(label ?? '')}
                     rows={[
                       {
-                        label: 'Remaining',
-                        value: point.remaining,
+                        label: 'Resolved',
+                        value: point.resolved,
+                        color: 'var(--chart-resolved)',
+                      },
+                      {
+                        label: 'Total Bugs',
+                        value: point.total,
                         color: 'var(--chart-bugs)',
+                      },
+                      {
+                        label: 'Ideal',
+                        value: point.ideal.toFixed(1),
+                        color: 'var(--status-warning)',
                       },
                     ]}
                   />
@@ -141,38 +133,120 @@ export const BugBurndownCard = ({
               }}
             />
             <Area
-              activeDot={{ r: 4, fill: 'var(--chart-bugs)' }}
+              activeDot={{ r: 4, fill: 'var(--chart-resolved)' }}
               animationBegin={0}
               animationDuration={1000}
-              dataKey="remaining"
+              dataKey="resolved"
               dot={{
                 r: 3,
-                fill: 'var(--chart-bugs)',
+                fill: 'var(--chart-resolved)',
                 stroke: 'var(--surface)',
                 strokeWidth: 1.5,
               }}
-              fill="url(#remainingFill)"
+              fill="url(#resolvedFill)"
+              stroke="var(--chart-resolved)"
+              strokeWidth={2.5}
+              type="linear"
+            />
+            <Line
+              dataKey="total"
+              dot={false}
               stroke="var(--chart-bugs)"
+              strokeDasharray="10 3"
               strokeWidth={2}
               type="linear"
             />
-            {currentPoint ? (
-              <ReferenceDot
-                fill="var(--chart-bugs)"
-                r={0}
-                x={currentPoint.sprint}
-                y={currentPoint.remaining}
-              >
-                <Label content={<CurrentLabel />} />
-              </ReferenceDot>
-            ) : null}
+            <Line
+              dataKey="ideal"
+              dot={false}
+              stroke="var(--status-warning)"
+              strokeDasharray="1 5"
+              strokeWidth={1.5}
+              type="linear"
+            />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
 
-      <div className="mt-3 flex items-center gap-4">
-        <ChartLegendItem color="var(--chart-bugs)" label="Remaining Bugs" />
-      </div>
+      {showTable ? (
+        <div className="mt-4">
+          <table className="w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="border-border border-b">
+                {['Sprint', 'Resolved', 'Total Bugs', 'Ideal'].map(
+                  (header, index) => (
+                    <th
+                      className={`text-text-muted px-2 py-1 text-[10px] font-normal tracking-[0.08em] uppercase ${
+                        index === 0 ? 'text-left' : 'text-right'
+                      }`}
+                      key={header}
+                    >
+                      {header}
+                    </th>
+                  ),
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((row) => {
+                const active = row.sprintId === currentPoint?.sprintId
+
+                return (
+                  <tr
+                    className="data-row"
+                    key={row.sprint}
+                    style={{
+                      background: active
+                        ? 'var(--row-active-bg)'
+                        : 'transparent',
+                      borderLeft: active
+                        ? '2px solid var(--primary)'
+                        : '2px solid transparent',
+                    }}
+                  >
+                    <td
+                      className={`metric-value px-2 py-1 text-left ${
+                        active
+                          ? 'text-text-primary font-medium'
+                          : 'text-text-secondary'
+                      }`}
+                    >
+                      {row.sprint}
+                    </td>
+                    <td
+                      className={`metric-value px-2 py-1 text-right ${
+                        active
+                          ? 'text-text-primary font-medium'
+                          : 'text-text-secondary'
+                      }`}
+                    >
+                      {row.resolved}
+                    </td>
+                    <td
+                      className={`metric-value px-2 py-1 text-right ${
+                        active
+                          ? 'text-text-primary font-medium'
+                          : 'text-text-secondary'
+                      }`}
+                    >
+                      {row.total}
+                    </td>
+                    <td
+                      className={`metric-value px-2 py-1 text-right ${
+                        active
+                          ? 'text-text-primary font-medium'
+                          : 'text-text-secondary'
+                      }`}
+                    >
+                      {row.ideal.toFixed(1)}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
     </section>
   )
 }

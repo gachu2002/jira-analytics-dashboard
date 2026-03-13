@@ -27,6 +27,7 @@ export const useDashboardQuery = () => {
   const customJqlQuery = useQuery({
     queryKey: ['custom-jql-dashboard', appliedJql],
     enabled: isJqlModeActive,
+    placeholderData: (previousData) => previousData,
     queryFn: () => jqlService.executeCustomJql(appliedJql as string),
   })
 

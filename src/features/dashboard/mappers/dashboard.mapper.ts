@@ -26,23 +26,47 @@ const getResolvedVelocity = (sprint: SprintMetricsDto) =>
 const getResolvedForReopenRate = (sprint: SprintMetricsDto) =>
   Math.max(toNumber(sprint.resolved_bug_reopened), 0)
 
-const createBurnupPoint = (sprint: SprintMetricsDto): BurnupPoint => ({
+const getIdealValue = (
+  total: number,
+  sprintCount: number,
+  sprintNumber: number,
+) =>
+  sprintCount > 0
+    ? Number(((total / sprintCount) * sprintNumber).toFixed(2))
+    : 0
+
+const createBurnupPoint = (
+  sprint: SprintMetricsDto,
+  sprintCount: number,
+  sprintNumber: number,
+): BurnupPoint => ({
   sprintId: sprint.sprint.id,
   sprint: getSprintLabel(sprint.sprint),
+  sprintNumber,
   completed: Math.max(toNumber(sprint.completed_point), 0),
   scope: Math.max(toNumber(sprint.scope_point), 0),
+  ideal: getIdealValue(
+    Math.max(toNumber(sprint.scope_point), 0),
+    sprintCount,
+    sprintNumber,
+  ),
 })
 
 const createBurndownPoint = (
   sprint: SprintMetricsDto,
   totalBugs: number,
+  sprintCount: number,
+  sprintNumber: number,
 ): BurndownPoint => {
   const resolvedBugs = Math.max(toNumber(sprint.resolved_bug), 0)
 
   return {
     sprintId: sprint.sprint.id,
     sprint: getSprintLabel(sprint.sprint),
-    remaining: Math.max(totalBugs - resolvedBugs, 0),
+    sprintNumber,
+    resolved: resolvedBugs,
+    total: totalBugs,
+    ideal: getIdealValue(totalBugs, sprintCount, sprintNumber),
   }
 }
 
@@ -55,7 +79,7 @@ const createVelocityPoint = (sprint: SprintMetricsDto): VelocityPoint => {
     sprint: getSprintLabel(sprint.sprint),
     newBugs,
     resolvedBugs,
-    rate: Number((resolvedBugs / Math.max(newBugs, 1)).toFixed(2)),
+    rate: Number((newBugs > 0 ? resolvedBugs / newBugs : 0).toFixed(2)),
     target: Math.max(toNumber(sprint.target_bug_velocity), 0),
   }
 }
@@ -67,7 +91,7 @@ const createReopenRatePoint = (sprint: SprintMetricsDto): ReopenRatePoint => {
   return {
     sprintId: sprint.sprint.id,
     sprint: getSprintLabel(sprint.sprint),
-    rate: Number((reopened / Math.max(resolved, 1)).toFixed(3)),
+    rate: Number((resolved > 0 ? reopened / resolved : 0).toFixed(3)),
     target: Math.max(toNumber(sprint.target_reopened_rate), 0),
     resolved,
     reopened,
@@ -79,15 +103,18 @@ export const mapDashboardData = ({
   sprints,
 }: MapDashboardArgs): DashboardData => {
   const sortedSprints = sortSprints(sprints)
+  const sprintCount = sortedSprints.length
   const totalScope = Math.max(
     ...sortedSprints.map((sprint) => toNumber(sprint.scope_point)),
     0,
   )
   const totalBugs = Math.max(toNumber(summary.total_bug), 0)
 
-  const burnup = sortedSprints.map(createBurnupPoint)
-  const burndown = sortedSprints.map((sprint) =>
-    createBurndownPoint(sprint, totalBugs),
+  const burnup = sortedSprints.map((sprint, index) =>
+    createBurnupPoint(sprint, sprintCount, index + 1),
+  )
+  const burndown = sortedSprints.map((sprint, index) =>
+    createBurndownPoint(sprint, totalBugs, sprintCount, index + 1),
   )
   const velocity = sortedSprints.map(createVelocityPoint)
   const reopenRateSeries = sortedSprints.map(createReopenRatePoint)
@@ -114,7 +141,7 @@ export const mapDashboardData = ({
           : 0,
     },
     remainingBugs: {
-      count: currentBurndown?.remaining ?? Math.max(totalBugs, 0),
+      count: Math.max(totalBugs - (currentBurndown?.resolved ?? 0), 0),
     },
     bugFixRate: {
       value: currentVelocity?.rate ?? 0,

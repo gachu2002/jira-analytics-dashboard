@@ -18,12 +18,14 @@ type MilestoneProgressCardProps = {
   activeSprintId?: number | null
   data: BurnupPoint[]
   fullWidth?: boolean
+  showTable?: boolean
 }
 
 export const MilestoneProgressCard = ({
   activeSprintId,
   data,
   fullWidth = false,
+  showTable = true,
 }: MilestoneProgressCardProps) => {
   const highlightedSprintId = getActiveSprint(data, activeSprintId)?.sprintId
   const sprintWindow =
@@ -40,7 +42,7 @@ export const MilestoneProgressCard = ({
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-text-muted text-[10px] tracking-[0.1em] uppercase">
-            Milestone Burnup
+            Milestone Burndown
           </p>
           <p className="text-text-primary mt-1 text-[13px]">{sprintWindow}</p>
         </div>
@@ -51,9 +53,15 @@ export const MilestoneProgressCard = ({
             width={20}
           />
           <ChartLegendItem
-            color="var(--chart-scope)"
+            color="var(--chart-trend)"
             dashed
             label="Scope"
+            width={20}
+          />
+          <ChartLegendItem
+            color="var(--status-warning)"
+            dashed
+            label="Ideal"
             width={20}
           />
         </div>
@@ -119,6 +127,9 @@ export const MilestoneProgressCard = ({
                 const scope = payload.find(
                   (entry) => entry.dataKey === 'scope',
                 )?.value
+                const ideal = payload.find(
+                  (entry) => entry.dataKey === 'ideal',
+                )?.value
 
                 return (
                   <ChartTooltip
@@ -132,7 +143,12 @@ export const MilestoneProgressCard = ({
                       {
                         label: 'Scope',
                         value: `${scope ?? '-'} pts`,
-                        color: 'var(--chart-scope)',
+                        color: 'var(--chart-trend)',
+                      },
+                      {
+                        label: 'Ideal',
+                        value: `${ideal ?? '-'} pts`,
+                        color: 'var(--status-warning)',
                       },
                     ]}
                   />
@@ -144,11 +160,22 @@ export const MilestoneProgressCard = ({
             <Line
               animationBegin={100}
               animationDuration={800}
+              dataKey="ideal"
+              dot={false}
+              stroke="var(--status-warning)"
+              strokeDasharray="1 5"
+              strokeLinecap="round"
+              strokeWidth={1.5}
+              type="linear"
+            />
+            <Line
+              animationBegin={150}
+              animationDuration={800}
               dataKey="scope"
               dot={false}
-              stroke="var(--chart-scope)"
-              strokeDasharray="3 3"
-              strokeWidth={1}
+              stroke="var(--chart-trend)"
+              strokeDasharray="10 4"
+              strokeWidth={2.25}
               type="linear"
             />
             <Area
@@ -171,70 +198,85 @@ export const MilestoneProgressCard = ({
         </ResponsiveContainer>
       </div>
 
-      <div className="mt-4">
-        <table className="w-full border-collapse text-[11px]">
-          <thead>
-            <tr className="border-border border-b">
-              {['Sprint', 'Completed', 'Scope'].map((header, index) => (
-                <th
-                  className={`text-text-muted px-2 py-1 text-[10px] font-normal tracking-[0.08em] uppercase ${
-                    index === 0 ? 'text-left' : 'text-right'
-                  }`}
-                  key={header}
-                >
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((row) => {
-              const active = row.sprintId === highlightedSprintId
+      {showTable ? (
+        <div className="mt-4">
+          <table className="w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="border-border border-b">
+                {['Sprint', 'Completed', 'Scope', 'Ideal'].map(
+                  (header, index) => (
+                    <th
+                      className={`text-text-muted px-2 py-1 text-[10px] font-normal tracking-[0.08em] uppercase ${
+                        index === 0 ? 'text-left' : 'text-right'
+                      }`}
+                      key={header}
+                    >
+                      {header}
+                    </th>
+                  ),
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((row) => {
+                const active = row.sprintId === highlightedSprintId
 
-              return (
-                <tr
-                  className="data-row"
-                  key={row.sprint}
-                  style={{
-                    background: active ? 'var(--row-active-bg)' : 'transparent',
-                    borderLeft: active
-                      ? '2px solid var(--primary)'
-                      : '2px solid transparent',
-                  }}
-                >
-                  <td
-                    className={`metric-value px-2 py-1 text-left ${
-                      active
-                        ? 'text-text-primary font-medium'
-                        : 'text-text-secondary'
-                    }`}
+                return (
+                  <tr
+                    className="data-row"
+                    key={row.sprint}
+                    style={{
+                      background: active
+                        ? 'var(--row-active-bg)'
+                        : 'transparent',
+                      borderLeft: active
+                        ? '2px solid var(--primary)'
+                        : '2px solid transparent',
+                    }}
                   >
-                    {row.sprint}
-                  </td>
-                  <td
-                    className={`metric-value px-2 py-1 text-right ${
-                      active
-                        ? 'text-text-primary font-medium'
-                        : 'text-text-secondary'
-                    }`}
-                  >
-                    {row.completed}
-                  </td>
-                  <td
-                    className={`metric-value px-2 py-1 text-right ${
-                      active
-                        ? 'text-text-primary font-medium'
-                        : 'text-text-secondary'
-                    }`}
-                  >
-                    {row.scope}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                    <td
+                      className={`metric-value px-2 py-1 text-left ${
+                        active
+                          ? 'text-text-primary font-medium'
+                          : 'text-text-secondary'
+                      }`}
+                    >
+                      {row.sprint}
+                    </td>
+                    <td
+                      className={`metric-value px-2 py-1 text-right ${
+                        active
+                          ? 'text-text-primary font-medium'
+                          : 'text-text-secondary'
+                      }`}
+                    >
+                      {row.completed}
+                    </td>
+                    <td
+                      className={`metric-value px-2 py-1 text-right ${
+                        active
+                          ? 'text-text-primary font-medium'
+                          : 'text-text-secondary'
+                      }`}
+                    >
+                      {row.scope}
+                    </td>
+                    <td
+                      className={`metric-value px-2 py-1 text-right ${
+                        active
+                          ? 'text-text-primary font-medium'
+                          : 'text-text-secondary'
+                      }`}
+                    >
+                      {row.ideal.toFixed(1)}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
     </section>
   )
 }

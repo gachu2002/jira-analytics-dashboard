@@ -1,4 +1,12 @@
 import { KpiCard } from '@/components/common/KpiCard'
+import {
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHeader,
+  DataTableHeaderCell,
+  DataTableRow,
+} from '@/components/common/DataTable/DataTable'
 import { MilestoneProgressCard } from '@/features/dashboard/components/MilestoneProgressCard'
 import { useDashboardQuery } from '@/features/dashboard/api/dashboard.api'
 import { useDashboardFilters } from '@/features/dashboard/hooks/useDashboardFilters'
@@ -29,13 +37,8 @@ export const MilestonePage = () => {
   const previous = getPreviousSprint(data.burnup, selectedSprint)
   const sprintCount = data.burnup.length
   const scopeDelta = current.scope - (previous?.scope ?? current.scope)
-  const remainingScope = Math.max(current.scope - current.completed, 0)
-  const previousRemainingScope = Math.max(
-    (previous?.scope ?? current.scope) -
-      (previous?.completed ?? current.completed),
-    0,
-  )
-  const remainingScopeDelta = remainingScope - previousRemainingScope
+  const completionPercent =
+    current.scope > 0 ? (current.completed / current.scope) * 100 : 0
 
   return (
     <div className="space-y-4">
@@ -44,13 +47,13 @@ export const MilestonePage = () => {
           Milestone Progress
         </h1>
         <p className="text-text-muted mt-1 text-xs">
-          Milestone burnup tracking - scope vs completion trajectory
+          Milestone burndown tracking - scope vs completion trajectory
         </p>
       </header>
 
       <section className="grid grid-cols-1 gap-3 min-[1024px]:grid-cols-2 min-[1440px]:grid-cols-4">
         <KpiCard
-          label="Points Completed"
+          label="Completed Work (Points)"
           value={current.completed.toString()}
           animatedValue={current.completed}
           subtext={`${current.sprint} completed points`}
@@ -64,9 +67,9 @@ export const MilestonePage = () => {
           }}
         />
         <KpiCard
-          label="Scope (pts)"
-          value={data.milestoneProgress.total.toString()}
-          animatedValue={data.milestoneProgress.total}
+          label="Milestone Scope (Points)"
+          value={current.scope.toString()}
+          animatedValue={current.scope}
           subtext="Current scope for selected milestone"
           delta={{
             label: `${scopeDelta >= 0 ? '↑' : '↓'}${Math.abs(scopeDelta)} vs previous sprint`,
@@ -74,20 +77,21 @@ export const MilestonePage = () => {
           }}
         />
         <KpiCard
-          label="Remaining Scope"
-          value={remainingScope.toString()}
-          animatedValue={remainingScope}
-          subtext={`${current.sprint} points left to finish`}
+          label="Ideal (Points)"
+          value={current.ideal.toFixed(1)}
+          animatedValue={Math.round(current.ideal * 10)}
+          formatter={(value) => (value / 10).toFixed(1)}
+          subtext={`Scope / ${sprintCount} sprints x sprint ${current.sprintNumber}`}
           delta={{
-            label: `${remainingScopeDelta >= 0 ? '↑' : '↓'}${Math.abs(remainingScopeDelta)} vs previous sprint`,
-            tone: remainingScopeDelta <= 0 ? 'green' : 'amber',
+            label: `${completionPercent.toFixed(1)}% completion`,
+            tone: 'blue',
           }}
         />
         <KpiCard
-          label="Tracked Sprints"
-          value={sprintCount.toString()}
-          animatedValue={sprintCount}
-          subtext="Sprints returned for this milestone"
+          label="Sprint Number"
+          value={current.sprintNumber.toString()}
+          animatedValue={current.sprintNumber}
+          subtext={`Selected sprint out of ${sprintCount}`}
         />
       </section>
 
@@ -95,7 +99,37 @@ export const MilestonePage = () => {
         activeSprintId={selectedSprint}
         data={data.burnup}
         fullWidth
+        showTable={false}
       />
+
+      <section className="dashboard-card p-4">
+        <p className="text-text-muted mb-3 text-[10px] tracking-[0.1em] uppercase">
+          Sprint Detail
+        </p>
+        <DataTable>
+          <DataTableHeader>
+            <tr>
+              <DataTableHeaderCell>Sprint</DataTableHeaderCell>
+              <DataTableHeaderCell numeric>Completed Work</DataTableHeaderCell>
+              <DataTableHeaderCell numeric>Milestone Scope</DataTableHeaderCell>
+              <DataTableHeaderCell numeric>Ideal</DataTableHeaderCell>
+            </tr>
+          </DataTableHeader>
+          <DataTableBody>
+            {data.burnup.map((row) => (
+              <DataTableRow
+                active={row.sprintId === current.sprintId}
+                key={row.sprintId}
+              >
+                <DataTableCell>{row.sprint}</DataTableCell>
+                <DataTableCell numeric>{row.completed}</DataTableCell>
+                <DataTableCell numeric>{row.scope}</DataTableCell>
+                <DataTableCell numeric>{row.ideal.toFixed(1)}</DataTableCell>
+              </DataTableRow>
+            ))}
+          </DataTableBody>
+        </DataTable>
+      </section>
     </div>
   )
 }

@@ -10,9 +10,13 @@ export const DashboardLayout = () => {
   return (
     <div className="bg-background text-foreground flex min-h-screen">
       <Sidebar compact={isCompact} />
-      <div className={`min-w-0 flex-1 ${isCompact ? 'ml-12' : 'ml-[220px]'}`}>
+      <div
+        className={`flex h-screen min-w-0 flex-1 flex-col overflow-hidden ${
+          isCompact ? 'ml-12' : 'ml-[220px]'
+        }`}
+      >
         <Topbar />
-        <main className="p-6">
+        <main className="flex-1 overflow-y-auto px-6 pt-10 pb-6">
           <div className="mx-auto max-w-[1680px]">
             <Outlet />
           </div>

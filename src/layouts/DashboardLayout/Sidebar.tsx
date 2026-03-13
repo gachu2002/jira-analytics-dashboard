@@ -22,9 +22,9 @@ type SidebarProps = {
 const navItems = [
   { label: 'Overview', to: ROUTES.overview, icon: LayoutDashboard },
   { label: 'Milestone', to: ROUTES.milestone, icon: Milestone },
-  { label: 'Bug Tracking', to: ROUTES.bugTracking, icon: AlertTriangle },
-  { label: 'Velocity', to: ROUTES.velocity, icon: Gauge },
-  { label: 'Reopen Rate', to: ROUTES.reopenRate, icon: TrendingUp },
+  { label: 'Bug Fix', to: ROUTES.bugTracking, icon: AlertTriangle },
+  { label: 'Bug Fix Velocity', to: ROUTES.velocity, icon: Gauge },
+  { label: 'Reopened Rate', to: ROUTES.reopenRate, icon: TrendingUp },
 ]
 
 export const Sidebar = ({ compact = false }: SidebarProps) => {
@@ -48,7 +48,7 @@ export const Sidebar = ({ compact = false }: SidebarProps) => {
   return (
     <aside
       className={cn(
-        'border-sidebar-border bg-sidebar fixed inset-y-0 left-0 z-30 flex flex-col overflow-y-auto border-r px-2 py-3',
+        'border-sidebar-border/80 bg-sidebar/94 fixed inset-y-0 left-0 z-30 flex flex-col overflow-y-auto border-r px-2 py-3 shadow-[8px_0_24px_rgba(15,23,42,0.05)] backdrop-blur-md',
         compact ? 'w-12' : 'w-[220px] px-3',
       )}
     >

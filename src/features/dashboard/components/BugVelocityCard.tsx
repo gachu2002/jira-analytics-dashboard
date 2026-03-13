@@ -3,7 +3,6 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
-  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -13,10 +12,9 @@ import {
 import { ChartTooltip } from '@/components/common/ChartTooltip'
 import { ChartLegendItem } from '@/features/dashboard/components/shared/ChartLegendItem'
 import type { VelocityPoint } from '@/features/dashboard/types/dashboard.types'
-import { getActiveSprint } from '@/features/dashboard/utils/sprint'
 
 type BugVelocityCardProps = {
-  activeSprintId?: number | null
+  chartHeight?: number
   data: VelocityPoint[]
 }
 
@@ -48,10 +46,9 @@ const DiamondDot = ({
 }
 
 export const BugVelocityCard = ({
-  activeSprintId,
+  chartHeight = 220,
   data,
 }: BugVelocityCardProps) => {
-  const current = getActiveSprint(data, activeSprintId)
   const sprintWindow = `${data[0]?.sprint} - ${data[data.length - 1]?.sprint}`
   const countMax = Math.max(
     10,
@@ -81,10 +78,15 @@ export const BugVelocityCard = ({
             <span className="text-text-secondary text-[11px]">Resolved</span>
           </div>
           <ChartLegendItem color="var(--chart-rate)" label="Fix Rate" />
+          <ChartLegendItem
+            color="var(--status-warning)"
+            dashed
+            label="Target"
+          />
         </div>
       </div>
 
-      <div className="min-w-0" style={{ height: 260 }}>
+      <div className="min-w-0" style={{ height: chartHeight }}>
         <ResponsiveContainer
           height="100%"
           minHeight={1}
@@ -92,7 +94,8 @@ export const BugVelocityCard = ({
           width="100%"
         >
           <ComposedChart
-            barGap={2}
+            barCategoryGap="14%"
+            barGap={0}
             data={data}
             margin={{ top: 10, right: 48, bottom: 0, left: 0 }}
           >
@@ -146,6 +149,9 @@ export const BugVelocityCard = ({
                 const rate = payload.find(
                   (entry) => entry.dataKey === 'rate',
                 )?.value
+                const target = payload.find(
+                  (entry) => entry.dataKey === 'target',
+                )?.value
 
                 return (
                   <ChartTooltip
@@ -166,6 +172,12 @@ export const BugVelocityCard = ({
                         value: typeof rate === 'number' ? rate.toFixed(2) : '-',
                         color: 'var(--chart-rate)',
                       },
+                      {
+                        label: 'Target',
+                        value:
+                          typeof target === 'number' ? target.toFixed(2) : '-',
+                        color: 'var(--status-warning)',
+                      },
                     ]}
                   />
                 )
@@ -173,42 +185,36 @@ export const BugVelocityCard = ({
               cursor={{ fill: 'var(--surface-overlay)' }}
             />
 
-            {current && current.target > 0 ? (
-              <ReferenceLine
-                yAxisId="right"
-                y={current.target}
-                stroke="var(--status-warning)"
-                strokeDasharray="4 3"
-                strokeWidth={1}
-                label={{
-                  value: `Target ${current.target.toFixed(2)}`,
-                  fill: 'var(--status-warning)',
-                  fontFamily: 'DM Mono',
-                  fontSize: 9,
-                  position: 'insideTopRight',
-                }}
-              />
-            ) : null}
-
             <Bar
               yAxisId="left"
+              barSize={16}
               dataKey="newBugs"
               fill="var(--chart-bugs)"
               fillOpacity={0.6}
               radius={[2, 2, 0, 0]}
-              maxBarSize={18}
               animationBegin={0}
               animationDuration={700}
             />
             <Bar
               yAxisId="left"
+              barSize={16}
               dataKey="resolvedBugs"
               fill="var(--chart-resolved)"
               fillOpacity={0.7}
               radius={[2, 2, 0, 0]}
-              maxBarSize={18}
               animationBegin={100}
               animationDuration={700}
+            />
+            <Line
+              yAxisId="right"
+              dataKey="target"
+              stroke="var(--status-warning)"
+              strokeDasharray="4 3"
+              strokeWidth={1.5}
+              dot={false}
+              animationBegin={220}
+              animationDuration={900}
+              type="linear"
             />
             <Line
               yAxisId="right"

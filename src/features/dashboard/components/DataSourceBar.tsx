@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, Database, ExternalLink, Sparkles } from 'lucide-react'
+import {
+  ChevronDown,
+  Database,
+  ExternalLink,
+  LoaderCircle,
+  Sparkles,
+} from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -31,7 +37,7 @@ const textareaClassName =
 export const DataSourceBar = () => {
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const { data: dashboardData } = useDashboardQuery()
+  const { data: dashboardData, isFetching } = useDashboardQuery()
   const {
     milestones,
     projects,
@@ -57,6 +63,7 @@ export const DataSourceBar = () => {
   } = useDashboardDataSourceStore()
 
   const isJqlMode = sourceMode === 'jql'
+  const isExecutingJql = isJqlMode && Boolean(appliedJql) && isFetching
 
   const milestoneJqlQuery = useQuery({
     queryKey: ['milestone-jql', selectedMilestoneId],
@@ -98,111 +105,119 @@ export const DataSourceBar = () => {
 
   const summary = getSummaryCopy({
     appliedJql,
+    isExecutingJql,
     isJqlMode,
     isMilestoneJqlLoading: milestoneJqlQuery.isLoading,
   })
 
   return (
-    <section className="border-border border-b px-6 py-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <span
-            className={`status-chip ${isJqlMode ? 'status-chip-warning' : 'status-chip-info'}`}
-          >
-            {summary.label}
-          </span>
-          <p className="text-text-muted truncate text-[11px]">
-            {summary.description}
-          </p>
+    <section className="relative">
+      <div className="border-border/80 bg-surface-elevated/96 border-b shadow-[0_8px_22px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <span
+                className={`status-chip ${isJqlMode ? 'status-chip-warning' : 'status-chip-info'}`}
+              >
+                {summary.label}
+              </span>
+              <p className="text-text-muted truncate text-[11px]">
+                {summary.description}
+              </p>
+            </div>
+
+            <button
+              className="text-text-muted hover:text-text-primary inline-flex items-center gap-2 text-[10px] tracking-[0.08em] uppercase transition-colors"
+              onClick={() => setExpanded((current) => !current)}
+              type="button"
+            >
+              <span>{expanded ? 'Hide controls' : 'Edit controls'}</span>
+              <ChevronDown
+                className={expanded ? 'rotate-180' : ''}
+                size={12}
+                strokeWidth={1.6}
+              />
+            </button>
+          </div>
         </div>
 
-        <button
-          className="text-text-muted hover:text-text-primary inline-flex items-center gap-2 text-[10px] tracking-[0.08em] uppercase transition-colors"
-          onClick={() => setExpanded((current) => !current)}
-          type="button"
+        <div
+          className={`absolute top-full right-0 left-0 z-30 transition-all duration-200 ${
+            expanded
+              ? 'pointer-events-auto translate-y-0 opacity-100'
+              : 'pointer-events-none -translate-y-2 opacity-0'
+          }`}
         >
-          <span>{expanded ? 'Hide controls' : 'Edit controls'}</span>
-          <ChevronDown
-            className={expanded ? 'rotate-180' : ''}
-            size={12}
-            strokeWidth={1.6}
-          />
-        </button>
-      </div>
-
-      <div
-        className={`grid overflow-hidden transition-all duration-200 ${
-          expanded ? 'max-h-[520px] pt-3 opacity-100' : 'max-h-0 opacity-0'
-        }`}
-      >
-        <div className="border-border border-t pt-3">
-          <div className="mb-3 flex flex-wrap gap-2">
-            <ModeButton
-              active={!isJqlMode}
-              icon={<Database size={14} strokeWidth={1.6} />}
-              label="Record"
-              onClick={resetToRecordMode}
-            />
-            <ModeButton
-              active={isJqlMode}
-              icon={<Sparkles size={14} strokeWidth={1.6} />}
-              label="JQL"
-              onClick={activateJqlMode}
-            />
-          </div>
-
-          {isJqlMode ? (
-            <JqlControls
-              advancedOpen={advancedOpen}
-              appliedJql={appliedJql}
-              draftJql={draftJql}
-              isApplyDisabled={draftJql.trim().length === 0}
-              jqlFields={jqlFields}
-              onApply={applyCustomJql}
-              onDraftChange={setDraftJql}
-              onFieldChange={updateJqlField}
-              onSprintChange={setSelectedSprint}
-              onToggleAdvanced={() => setAdvancedOpen((current) => !current)}
-              sprintOptions={sprintOptions}
-              sprintValue={sprintValue}
-            />
-          ) : (
-            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
-              <FilterSelect
-                onChange={(value) => setSelectedProjectId(Number(value))}
-                options={projects.map((project) => ({
-                  label: project.name,
-                  value: String(project.id),
-                }))}
-                placeholder="Select project"
-                value={
-                  selectedProjectId !== null ? String(selectedProjectId) : ''
-                }
+          <div className="border-border/80 bg-surface-elevated/96 border-b px-6 pt-3 pb-4 shadow-[0_16px_36px_rgba(15,23,42,0.14)] backdrop-blur-xl">
+            <div className="mb-3 flex flex-wrap gap-2">
+              <ModeButton
+                active={!isJqlMode}
+                icon={<Database size={14} strokeWidth={1.6} />}
+                label="Record"
+                onClick={resetToRecordMode}
               />
-              <FilterSelect
-                onChange={(value) => setSelectedMilestoneId(Number(value))}
-                options={milestones.map((milestone) => ({
-                  label: milestone.name,
-                  value: String(milestone.id),
-                }))}
-                placeholder="Select milestone"
-                value={
-                  selectedMilestoneId !== null
-                    ? String(selectedMilestoneId)
-                    : ''
-                }
-              />
-              <FilterSelect
-                disabled={sprintOptions.length === 0}
-                onChange={(value) => setSelectedSprint(Number(value))}
-                options={sprintOptions}
-                placeholder={
-                  sprintOptions.length === 0 ? 'No sprints' : 'Select sprint'
-                }
-                value={sprintValue}
+              <ModeButton
+                active={isJqlMode}
+                icon={<Sparkles size={14} strokeWidth={1.6} />}
+                label="JQL"
+                onClick={activateJqlMode}
               />
             </div>
-          )}
+
+            {isJqlMode ? (
+              <JqlControls
+                advancedOpen={advancedOpen}
+                appliedJql={appliedJql}
+                draftJql={draftJql}
+                isApplyDisabled={draftJql.trim().length === 0 || isExecutingJql}
+                isExecutingJql={isExecutingJql}
+                jqlFields={jqlFields}
+                onApply={applyCustomJql}
+                onDraftChange={setDraftJql}
+                onFieldChange={updateJqlField}
+                onSprintChange={setSelectedSprint}
+                onToggleAdvanced={() => setAdvancedOpen((current) => !current)}
+                sprintOptions={sprintOptions}
+                sprintValue={sprintValue}
+              />
+            ) : (
+              <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+                <FilterSelect
+                  onChange={(value) => setSelectedProjectId(Number(value))}
+                  options={projects.map((project) => ({
+                    label: project.name,
+                    value: String(project.id),
+                  }))}
+                  placeholder="Select project"
+                  value={
+                    selectedProjectId !== null ? String(selectedProjectId) : ''
+                  }
+                />
+                <FilterSelect
+                  onChange={(value) => setSelectedMilestoneId(Number(value))}
+                  options={milestones.map((milestone) => ({
+                    label: milestone.name,
+                    value: String(milestone.id),
+                  }))}
+                  placeholder="Select milestone"
+                  value={
+                    selectedMilestoneId !== null
+                      ? String(selectedMilestoneId)
+                      : ''
+                  }
+                />
+                <FilterSelect
+                  disabled={sprintOptions.length === 0}
+                  onChange={(value) => setSelectedSprint(Number(value))}
+                  options={sprintOptions}
+                  placeholder={
+                    sprintOptions.length === 0 ? 'No sprints' : 'Select sprint'
+                  }
+                  value={sprintValue}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </section>
@@ -214,6 +229,7 @@ const JqlControls = ({
   appliedJql,
   draftJql,
   isApplyDisabled,
+  isExecutingJql,
   jqlFields,
   onApply,
   onDraftChange,
@@ -227,6 +243,7 @@ const JqlControls = ({
   appliedJql: string | null
   draftJql: string
   isApplyDisabled: boolean
+  isExecutingJql: boolean
   jqlFields: JqlFormFields
   onApply: () => void
   onDraftChange: (value: string) => void
@@ -292,8 +309,12 @@ const JqlControls = ({
           size="sm"
           type="button"
         >
-          <ExternalLink />
-          Run JQL
+          {isExecutingJql ? (
+            <LoaderCircle className="animate-spin" />
+          ) : (
+            <ExternalLink />
+          )}
+          {isExecutingJql ? 'Running JQL...' : 'Run JQL'}
         </Button>
       </div>
     </div>
@@ -304,14 +325,20 @@ const JqlControls = ({
           <p className="text-text-primary text-xs">Results</p>
           <span
             className={`status-chip ${
-              appliedJql ? 'status-chip-success' : 'status-chip-neutral'
+              isExecutingJql
+                ? 'status-chip-warning'
+                : appliedJql
+                  ? 'status-chip-success'
+                  : 'status-chip-neutral'
             }`}
           >
-            {appliedJql ? 'Loaded' : 'Pending'}
+            {isExecutingJql ? 'Running' : appliedJql ? 'Loaded' : 'Pending'}
           </span>
         </div>
         <p className="text-text-muted mt-0.5 text-[11px]">
-          Select which returned sprint drives the cards and charts.
+          {isExecutingJql
+            ? 'JQL execution may take a while. Existing results stay visible until the new response arrives.'
+            : 'Select which returned sprint drives the cards and charts.'}
         </p>
       </div>
       <div className="max-w-full min-w-[220px] flex-1 sm:flex-none">
@@ -357,10 +384,12 @@ const JqlControls = ({
 
 const getSummaryCopy = ({
   appliedJql,
+  isExecutingJql,
   isJqlMode,
   isMilestoneJqlLoading,
 }: {
   appliedJql: string | null
+  isExecutingJql: boolean
   isJqlMode: boolean
   isMilestoneJqlLoading: boolean
 }) => {
@@ -376,6 +405,14 @@ const getSummaryCopy = ({
     return {
       label: 'JQL loading',
       description: 'Preparing the milestone JQL fields for editing.',
+    }
+  }
+
+  if (isExecutingJql) {
+    return {
+      label: 'JQL running',
+      description:
+        'Query execution can take a bit. Current dashboard results remain visible while loading.',
     }
   }
 

@@ -1,14 +1,19 @@
 export type BurnupPoint = {
   sprintId: number
   sprint: string
+  sprintNumber: number
   completed: number
   scope: number
+  ideal: number
 }
 
 export type BurndownPoint = {
   sprintId: number
   sprint: string
-  remaining: number
+  sprintNumber: number
+  resolved: number
+  total: number
+  ideal: number
 }
 
 export type VelocityPoint = {
