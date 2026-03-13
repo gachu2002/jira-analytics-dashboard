@@ -372,7 +372,7 @@ const JqlControls = ({
         <Button
           className="flex-1"
           disabled={isApplyDisabled}
-          onClick={onApply}
+          onClick={() => onApply()}
           size="sm"
           type="button"
         >
