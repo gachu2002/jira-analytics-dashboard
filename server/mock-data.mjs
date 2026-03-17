@@ -631,7 +631,7 @@ export const milestoneJqlById = {
   3002: 'project = MCS AND labels in (session, auth) AND assignee in (quang.bui, thao.tran) AND startdate >= 2026-04-20 AND enddate <= 2026-05-08',
 }
 
-const toCustomResponse = (milestoneId, sprints) => {
+const toCustomSummary = (milestoneId, sprints) => {
   const milestone = Object.values(milestonesByProject)
     .flat()
     .find((item) => item.id === milestoneId)
@@ -647,20 +647,19 @@ const toCustomResponse = (milestoneId, sprints) => {
     total_ticket: milestone?.total_ticket ?? 0,
     resolved_bug: milestone?.resolved_bug ?? 0,
     total_bug: milestone?.total_bug ?? 0,
-    sprints: sprints.map(
-      ({ id, created_at, active, milestone: _, ...rest }) => rest,
-    ),
   }
 }
 
-const createCustomResponse = ({
+const toCustomSprints = (sprints) =>
+  sprints.map(({ id, created_at, active, milestone: _, ...rest }) => rest)
+
+const createCustomSummary = ({
   start_date,
   end_date,
   closed_ticket,
   total_ticket,
   resolved_bug,
   total_bug,
-  sprints,
 }) => ({
   start_date,
   end_date,
@@ -668,50 +667,54 @@ const createCustomResponse = ({
   total_ticket,
   resolved_bug,
   total_bug,
-  sprints: sprints.map(
-    ({ id, created_at, active, milestone: _, ...rest }) => rest,
-  ),
 })
 
 export const customJqlResponses = [
   {
     match: /project\s*=\s*MCS.*payments/i,
-    response: toCustomResponse(3001, sprintsByMilestone[3001]),
+    summary: toCustomSummary(3001, sprintsByMilestone[3001]),
+    sprints: toCustomSprints(sprintsByMilestone[3001]),
   },
   {
     match: /project\s*=\s*MCS.*session/i,
-    response: toCustomResponse(3002, sprintsByMilestone[3002]),
+    summary: toCustomSummary(3002, sprintsByMilestone[3002]),
+    sprints: toCustomSprints(sprintsByMilestone[3002]),
   },
   {
     match: /project\s*=\s*STREAM.*cdn/i,
-    response: toCustomResponse(2002, sprintsByMilestone[2002]),
+    summary: toCustomSummary(2002, sprintsByMilestone[2002]),
+    sprints: toCustomSprints(sprintsByMilestone[2002]),
   },
   {
     match: /component\s+in\s*\(player,\s*launcher\)/i,
-    response: toCustomResponse(1003, sprintsByMilestone[1003]),
+    summary: toCustomSummary(1003, sprintsByMilestone[1003]),
+    sprints: toCustomSprints(sprintsByMilestone[1003]),
   },
   {
     match: /project\s*=\s*(?:"Q EVENT 26"|Q\s+EVENT\s+26)/i,
-    response: toCustomResponse(2001, sprintsByMilestone[2001]),
+    summary: toCustomSummary(2001, sprintsByMilestone[2001]),
+    sprints: toCustomSprints(sprintsByMilestone[2001]),
   },
   {
     match: /labels\s+in\s*\(fpt\.flutter\.home\)/i,
-    response: toCustomResponse(1002, sprintsByMilestone[1002]),
+    summary: toCustomSummary(1002, sprintsByMilestone[1002]),
+    sprints: toCustomSprints(sprintsByMilestone[1002]),
   },
   {
     match: /project\s*=\s*TVPLAT/i,
-    response: toCustomResponse(1001, sprintsByMilestone[1001]),
+    summary: toCustomSummary(1001, sprintsByMilestone[1001]),
+    sprints: toCustomSprints(sprintsByMilestone[1001]),
   },
   {
     match: /labels\s+in\s*\(unknown|empty\)/i,
-    response: createCustomResponse({
+    summary: createCustomSummary({
       start_date: '2026-04-01',
       end_date: '2026-04-01',
       closed_ticket: 5,
       total_ticket: 12,
       resolved_bug: 0,
       total_bug: 4,
-      sprints: [],
     }),
+    sprints: [],
   },
 ]

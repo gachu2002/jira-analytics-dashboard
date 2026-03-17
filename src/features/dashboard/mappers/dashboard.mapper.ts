@@ -1,7 +1,7 @@
 import type {
   BurnupPoint,
   BurndownPoint,
-  CustomJqlResponseDto,
+  CustomJqlSummaryDto,
   DashboardData,
   MilestoneDto,
   ReopenRatePoint,
@@ -12,7 +12,7 @@ import { getSprintLabel, sortSprints } from '@/features/dashboard/utils/sprint'
 
 type MapDashboardArgs = {
   summary: Pick<
-    MilestoneDto | CustomJqlResponseDto,
+    MilestoneDto | CustomJqlSummaryDto,
     'start_date' | 'end_date' | 'resolved_bug' | 'total_bug'
   >
   sprints: SprintMetricsDto[]

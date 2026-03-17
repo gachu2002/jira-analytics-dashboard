@@ -150,7 +150,7 @@ const server = createServer(async (req, res) => {
     return
   }
 
-  if (method === 'GET' && pathname === '/api/sprints/jql/customize/') {
+  if (method === 'GET' && pathname === '/api/milestones/jql/customize/') {
     const jql = (url.searchParams.get('jql') ?? '').trim()
     const matchedResponse = customJqlResponses.find((item) =>
       item.match.test(jql),
@@ -159,16 +159,28 @@ const server = createServer(async (req, res) => {
     sendJson(
       res,
       200,
-      matchedResponse?.response ?? {
+      matchedResponse?.summary ?? {
         start_date: '2026-03-12',
         end_date: '2026-03-12',
         closed_ticket: 0,
         total_ticket: 0,
         resolved_bug: 0,
         total_bug: 0,
-        sprints: [],
       },
     )
+    return
+  }
+
+  if (
+    method === 'GET' &&
+    pathname === '/api/milestones/jql/customize/sprints/'
+  ) {
+    const jql = (url.searchParams.get('jql') ?? '').trim()
+    const matchedResponse = customJqlResponses.find((item) =>
+      item.match.test(jql),
+    )
+
+    sendJson(res, 200, matchedResponse?.sprints ?? [])
     return
   }
 

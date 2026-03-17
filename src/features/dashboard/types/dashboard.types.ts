@@ -129,12 +129,16 @@ export type MilestoneJqlDto = {
   jql: string
 }
 
-export type CustomJqlResponseDto = {
+export type CustomJqlSummaryDto = {
   start_date: string
   end_date: string
   closed_ticket: number
   total_ticket: number
   resolved_bug: number
   total_bug: number
+}
+
+export type CustomJqlDashboardDto = {
+  summary: CustomJqlSummaryDto
   sprints: SprintMetricsDto[]
 }

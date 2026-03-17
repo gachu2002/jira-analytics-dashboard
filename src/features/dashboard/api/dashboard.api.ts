@@ -39,7 +39,7 @@ export const useDashboardQuery = () => {
       }
 
       return mapDashboardData({
-        summary: customJqlQuery.data,
+        summary: customJqlQuery.data.summary,
         sprints: customJqlQuery.data.sprints,
       })
     }
