@@ -669,6 +669,56 @@ const createCustomSummary = ({
   total_bug,
 })
 
+const baseBugStatistics = [
+  ['FPT.BUG.LACK_TEST', 4],
+  ['FPT.BUG.NO_TEST_CASE_COVERAGE', 24],
+  ['FPT.BUG.SPEC_VIOLATION', 28],
+  ['FPT.BUG.SIDE_EFFECT', 3],
+  ['FPT.BUG.NO_REQUIREMENT', 20],
+  ['FPT.BUG.NOT_BUG', 37],
+  ['FPT.BUG.CANNOT_REPRODUCE', 19],
+  ['FPT.BUG.DEFER', 6],
+  ['FPT.BUG.WITHDRAWN', 27],
+  ['FPT.BUG.DUPLICATE', 43],
+  ['FPT.BUG.THIRD_PARTY', 34],
+  ['FPT.BUG.KNOWN_ISSUE', 14],
+  ['FPT.BUG.IN_DEVELOPMENT', 42],
+  ['FPT.BUG.NO_DEVICE', 15],
+  ['FPT.BUG.NO_DEVELOPMENT', 10],
+]
+
+const scaleBugStatistics = (multiplier, offset = 0) =>
+  baseBugStatistics.map(([bug_category, count], index) => [
+    bug_category,
+    Math.max(Math.round(count * multiplier + ((index % 3) - 1) * offset), 1),
+  ])
+
+const createBugStatistics = (milestoneId, values) =>
+  values.map(([bug_category, number_of_bugs], index) => ({
+    id: milestoneId * 100 + index + 1,
+    bug_category,
+    number_of_bugs,
+    created_at: `2026-03-${String((index % 9) + 10).padStart(2, '0')}T17:56:22.661Z`,
+    active: index === 0,
+    milestone: milestoneId,
+  }))
+
+const toCustomBugStatistics = (statistics) =>
+  statistics.map(({ bug_category, number_of_bugs }) => ({
+    bug_category,
+    number_of_bugs,
+  }))
+
+export const bugStatisticsByMilestone = {
+  1001: createBugStatistics(1001, scaleBugStatistics(0.72, 1)),
+  1002: createBugStatistics(1002, scaleBugStatistics(0.58, 1)),
+  1003: createBugStatistics(1003, scaleBugStatistics(1, 0)),
+  2001: createBugStatistics(2001, scaleBugStatistics(0.81, 2)),
+  2002: createBugStatistics(2002, scaleBugStatistics(0.67, 1)),
+  3001: createBugStatistics(3001, scaleBugStatistics(0.42, 1)),
+  3002: createBugStatistics(3002, scaleBugStatistics(0.53, 1)),
+}
+
 export const customJqlResponses = [
   {
     match: /project\s+(?:=|in\s*\([^)]*MCS[^)]*\)).*payments/i,
@@ -717,5 +767,41 @@ export const customJqlResponses = [
       total_bug: 4,
     }),
     sprints: [],
+  },
+]
+
+export const customJqlBugStatisticsResponses = [
+  {
+    match: /project\s+(?:=|in\s*\([^)]*MCS[^)]*\)).*payments/i,
+    statistics: toCustomBugStatistics(bugStatisticsByMilestone[3001]),
+  },
+  {
+    match: /project\s+(?:=|in\s*\([^)]*MCS[^)]*\)).*session/i,
+    statistics: toCustomBugStatistics(bugStatisticsByMilestone[3002]),
+  },
+  {
+    match: /project\s+(?:=|in\s*\([^)]*STREAM[^)]*\)).*cdn/i,
+    statistics: toCustomBugStatistics(bugStatisticsByMilestone[2002]),
+  },
+  {
+    match: /component\s+in\s*\(player,\s*launcher\)/i,
+    statistics: toCustomBugStatistics(bugStatisticsByMilestone[1003]),
+  },
+  {
+    match:
+      /project\s+(?:=\s*(?:"Q EVENT 26"|Q\s+EVENT\s+26)|in\s*\([^)]*(?:"Q EVENT 26"|Q\s+EVENT\s+26)[^)]*\))/i,
+    statistics: toCustomBugStatistics(bugStatisticsByMilestone[2001]),
+  },
+  {
+    match: /labels\s+in\s*\(fpt\.flutter\.home\)/i,
+    statistics: toCustomBugStatistics(bugStatisticsByMilestone[1002]),
+  },
+  {
+    match: /project\s+(?:=\s*TVPLAT|in\s*\([^)]*TVPLAT[^)]*\))/i,
+    statistics: toCustomBugStatistics(bugStatisticsByMilestone[1001]),
+  },
+  {
+    match: /labels\s+in\s*\(unknown|empty\)/i,
+    statistics: [],
   },
 ]

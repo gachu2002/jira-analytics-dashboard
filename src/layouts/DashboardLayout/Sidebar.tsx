@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  ChartPie,
   Gauge,
   LayoutDashboard,
   LogOut,
@@ -23,6 +24,7 @@ const navItems = [
   { label: 'Overview', to: ROUTES.overview, icon: LayoutDashboard },
   { label: 'Milestone', to: ROUTES.milestone, icon: Milestone },
   { label: 'Bug Fix', to: ROUTES.bugTracking, icon: AlertTriangle },
+  { label: 'Bug Analysis', to: ROUTES.bugAnalysis, icon: ChartPie },
   { label: 'Bug Fix Velocity', to: ROUTES.velocity, icon: Gauge },
   { label: 'Reopened Rate', to: ROUTES.reopenRate, icon: TrendingUp },
 ]
@@ -38,6 +40,12 @@ export const Sidebar = ({ compact = false }: SidebarProps) => {
     void queryClient.invalidateQueries({ queryKey: ['milestones'] })
     void queryClient.invalidateQueries({ queryKey: ['milestone-jql'] })
     void queryClient.invalidateQueries({ queryKey: ['custom-jql-dashboard'] })
+    void queryClient.invalidateQueries({
+      queryKey: ['milestone-bug-statistics'],
+    })
+    void queryClient.invalidateQueries({
+      queryKey: ['custom-jql-bug-statistics'],
+    })
   }
 
   const handleLogout = () => {

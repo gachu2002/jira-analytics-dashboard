@@ -10,7 +10,7 @@ type KpiCardProps = {
   value: string
   animatedValue?: number
   formatter?: (value: number) => string
-  subtext: string
+  subtext?: string
   delta?: MetricDeltaChipProps
   progress?: {
     value: number
@@ -56,11 +56,13 @@ export const KpiCard = ({
               }}
             />
           </div>
-          <p className="text-text-secondary mt-1.5 text-[11px]">{subtext}</p>
+          {subtext ? (
+            <p className="text-text-secondary mt-1.5 text-[11px]">{subtext}</p>
+          ) : null}
         </div>
-      ) : (
+      ) : subtext ? (
         <p className="text-text-muted mt-2 text-[11px]">{subtext}</p>
-      )}
+      ) : null}
     </article>
   )
 }

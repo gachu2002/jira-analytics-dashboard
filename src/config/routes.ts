@@ -5,6 +5,7 @@ export const ROUTES = {
   overview: '/overview',
   milestone: '/milestone',
   bugTracking: '/bug-tracking',
+  bugAnalysis: '/bug-analysis',
   velocity: '/velocity',
   reopenRate: '/reopen-rate',
   settings: '/settings',

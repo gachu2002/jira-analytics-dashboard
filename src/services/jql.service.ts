@@ -1,4 +1,5 @@
 import type {
+  CustomJqlBugStatisticDto,
   CustomJqlDashboardDto,
   CustomJqlSummaryDto,
   SprintMetricsDto,
@@ -36,5 +37,15 @@ export const jqlService = {
       summary,
       sprints,
     }
+  },
+  getCustomJqlBugStatistics: async (jql: string) => {
+    const response = await http.get<CustomJqlBugStatisticDto[]>(
+      '/api/milestones/jql/customize/bug-statistics/',
+      {
+        params: { jql },
+      },
+    )
+
+    return response.data
   },
 }

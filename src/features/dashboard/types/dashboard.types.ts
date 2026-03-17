@@ -34,6 +34,12 @@ export type ReopenRatePoint = {
   reopened: number
 }
 
+export type BugStatisticPoint = {
+  category: string
+  count: number
+  share: number
+}
+
 export type DashboardData = {
   meta: {
     currentSprint: string
@@ -127,6 +133,20 @@ export type MilestoneSprintDto = SprintMetricsDto & {
 
 export type MilestoneJqlDto = {
   jql: string
+}
+
+export type MilestoneBugStatisticDto = {
+  id: number
+  bug_category: string
+  number_of_bugs: number
+  created_at: string
+  active: boolean
+  milestone: number
+}
+
+export type CustomJqlBugStatisticDto = {
+  bug_category: string
+  number_of_bugs: number
 }
 
 export type CustomJqlSummaryDto = {

@@ -1,6 +1,8 @@
 import { createServer } from 'node:http'
 
 import {
+  bugStatisticsByMilestone,
+  customJqlBugStatisticsResponses,
   customJqlResponses,
   milestoneJqlById,
   milestonesByProject,
@@ -150,6 +152,15 @@ const server = createServer(async (req, res) => {
     return
   }
 
+  const milestoneBugStatisticsMatch = pathname.match(
+    /^\/api\/milestones\/(\d+)\/bug-statistics\/$/,
+  )
+  if (method === 'GET' && milestoneBugStatisticsMatch) {
+    const milestoneId = Number(milestoneBugStatisticsMatch[1])
+    sendJson(res, 200, bugStatisticsByMilestone[milestoneId] ?? [])
+    return
+  }
+
   if (method === 'GET' && pathname === '/api/milestones/jql/customize/') {
     const jql = (url.searchParams.get('jql') ?? '').trim()
     const matchedResponse = customJqlResponses.find((item) =>
@@ -181,6 +192,19 @@ const server = createServer(async (req, res) => {
     )
 
     sendJson(res, 200, matchedResponse?.sprints ?? [])
+    return
+  }
+
+  if (
+    method === 'GET' &&
+    pathname === '/api/milestones/jql/customize/bug-statistics/'
+  ) {
+    const jql = (url.searchParams.get('jql') ?? '').trim()
+    const matchedResponse = customJqlBugStatisticsResponses.find((item) =>
+      item.match.test(jql),
+    )
+
+    sendJson(res, 200, matchedResponse?.statistics ?? [])
     return
   }
 

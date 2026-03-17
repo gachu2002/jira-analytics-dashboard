@@ -39,6 +39,11 @@ export const VelocityPage = () => {
   }
 
   const current = getActiveSprint(data.velocity, selectedSprint)
+  const totalNewBugs = data.velocity.reduce((sum, row) => sum + row.newBugs, 0)
+  const totalResolvedBugs = data.velocity.reduce(
+    (sum, row) => sum + row.resolvedBugs,
+    0,
+  )
 
   return (
     <div className="space-y-4">
@@ -53,16 +58,14 @@ export const VelocityPage = () => {
 
       <section className="grid grid-cols-1 gap-3 min-[1024px]:grid-cols-2 min-[1440px]:grid-cols-4">
         <KpiCard
-          label="New Bugs"
-          value={current.newBugs.toString()}
-          animatedValue={current.newBugs}
-          subtext={`${current.sprint} newly reported bugs`}
+          label="Total New Bugs"
+          value={totalNewBugs.toString()}
+          animatedValue={totalNewBugs}
         />
         <KpiCard
-          label="Resolved Bugs"
-          value={current.resolvedBugs.toString()}
-          animatedValue={current.resolvedBugs}
-          subtext={`${current.sprint} resolved bug count`}
+          label="Total Resolved Bugs"
+          value={totalResolvedBugs.toString()}
+          animatedValue={totalResolvedBugs}
         />
         <KpiCard
           label="Rate"

@@ -39,6 +39,11 @@ const BugTrackingPage = lazy(() =>
     default: module.BugTrackingPage,
   })),
 )
+const BugAnalysisPage = lazy(() =>
+  import('@/pages/bug-analysis/BugAnalysisPage').then((module) => ({
+    default: module.BugAnalysisPage,
+  })),
+)
 const VelocityPage = lazy(() =>
   import('@/pages/velocity/VelocityPage').then((module) => ({
     default: module.VelocityPage,
@@ -122,6 +127,10 @@ const router = createBrowserRouter([
           {
             path: ROUTES.bugTracking,
             element: withSuspense(<BugTrackingPage />, 2),
+          },
+          {
+            path: ROUTES.bugAnalysis,
+            element: withSuspense(<BugAnalysisPage />, 2),
           },
           {
             path: ROUTES.velocity,

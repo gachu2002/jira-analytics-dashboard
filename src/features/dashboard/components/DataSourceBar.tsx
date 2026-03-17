@@ -240,7 +240,7 @@ export const DataSourceBar = () => {
               <ModeButton
                 active={isJqlMode}
                 icon={<Sparkles size={14} strokeWidth={1.6} />}
-                label="JQL"
+                label="Realtime"
                 onClick={activateJqlMode}
               />
             </div>
@@ -547,7 +547,7 @@ const getSummaryCopy = ({
   }
 
   return {
-    label: appliedJql ? 'JQL active' : 'JQL draft',
+    label: appliedJql ? 'Realtime data' : 'JQL draft',
     description: appliedJql ? '' : 'Build a Jira query, then run it.',
   }
 }
