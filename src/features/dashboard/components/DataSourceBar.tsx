@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ChevronDown,
   Database,
@@ -38,6 +38,7 @@ const textareaClassName =
   'border-border bg-background text-text-primary placeholder:text-text-muted focus-visible:border-primary focus-visible:ring-primary/25 min-h-[96px] w-full rounded-[4px] border px-3 py-2 text-sm leading-6 outline-none transition'
 
 export const DataSourceBar = () => {
+  const queryClient = useQueryClient()
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const {
@@ -49,6 +50,7 @@ export const DataSourceBar = () => {
   const {
     milestones,
     projects,
+    selectedMilestone,
     selectedMilestoneId,
     selectedProjectId,
     selectedSprint,
@@ -145,25 +147,68 @@ export const DataSourceBar = () => {
     isJqlMode,
     isMilestoneJqlLoading: milestoneJqlQuery.isLoading,
   })
+  const selectedProject =
+    projects.find((project) => project.id === selectedProjectId) ?? null
+  const selectedRecordSprintLabel =
+    sprints.find((sprint) => sprint.sprint.id === selectedSprint)?.sprint
+      .name ?? null
+  const selectedJqlSprintLabel =
+    dashboardData?.burnup.find((point) => point.sprintId === selectedSprint)
+      ?.sprint ?? null
+  const collapsedContext = isJqlMode
+    ? [selectedJqlSprintLabel, appliedJql || draftJql]
+        .filter(Boolean)
+        .join(' / ') || 'Build a JQL query to drive the dashboard.'
+    : [
+        selectedProject?.name,
+        selectedMilestone?.name,
+        selectedRecordSprintLabel,
+      ]
+        .filter(Boolean)
+        .join(' / ')
+
+  const handleApplyJql = () => {
+    const normalizedDraftJql = draftJql.trim().replace(/\s+/g, ' ')
+
+    applyCustomJql()
+
+    if (normalizedDraftJql && normalizedDraftJql === appliedJql) {
+      void queryClient.invalidateQueries({
+        queryKey: ['custom-jql-dashboard', normalizedDraftJql],
+        exact: true,
+      })
+    }
+  }
 
   return (
     <section className="relative">
       <div className="border-border/80 bg-surface-elevated/96 border-b shadow-[0_8px_22px_rgba(15,23,42,0.12)] backdrop-blur-xl">
         <div className="px-6 py-4">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="flex min-w-0 items-center gap-2">
               <span
                 className={`status-chip ${isJqlMode ? 'status-chip-warning' : 'status-chip-info'}`}
               >
                 {summary.label}
               </span>
-              <p className="text-text-muted truncate text-[11px]">
-                {summary.description}
+              {summary.description ? (
+                <p className="text-text-muted truncate text-[11px]">
+                  {summary.description}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <p
+                className="text-text-primary mx-auto max-w-[520px] truncate text-center text-[12px] font-bold tracking-[0.015em]"
+                title={collapsedContext}
+              >
+                <span className="block truncate">{collapsedContext}</span>
               </p>
             </div>
 
             <button
-              className="text-text-muted hover:text-text-primary inline-flex items-center gap-2 text-[10px] tracking-[0.08em] uppercase transition-colors"
+              className="text-text-primary hover:text-primary inline-flex items-center gap-2 text-[10px] font-semibold tracking-[0.08em] uppercase transition-colors"
               onClick={() => setExpanded((current) => !current)}
               type="button"
             >
@@ -210,7 +255,7 @@ export const DataSourceBar = () => {
                 isJqlDraftMode={isJqlDraftMode}
                 jqlModeEntryBehavior={jqlModeEntryBehavior}
                 jqlFields={jqlFields}
-                onApply={applyCustomJql}
+                onApply={handleApplyJql}
                 onDraftChange={setDraftJql}
                 onFieldChange={updateJqlField}
                 onModeEntryBehaviorChange={setJqlModeEntryBehavior}
@@ -475,8 +520,7 @@ const getSummaryCopy = ({
   if (!isJqlMode) {
     return {
       label: 'Record active',
-      description:
-        'Project, milestone, and sprint records drive the dashboard.',
+      description: '',
     }
   }
 
@@ -490,8 +534,7 @@ const getSummaryCopy = ({
   if (isExecutingJql) {
     return {
       label: 'JQL running',
-      description:
-        'Query execution can take a bit. Current dashboard results remain visible while loading.',
+      description: '',
     }
   }
 
@@ -505,9 +548,7 @@ const getSummaryCopy = ({
 
   return {
     label: appliedJql ? 'JQL active' : 'JQL draft',
-    description: appliedJql
-      ? 'Live Jira query drives all dashboard pages.'
-      : 'Build a Jira query, then run it.',
+    description: appliedJql ? '' : 'Build a Jira query, then run it.',
   }
 }
 
