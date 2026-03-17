@@ -622,13 +622,13 @@ export const sprintsByMilestone = {
 }
 
 export const milestoneJqlById = {
-  1001: 'project = TVPLAT AND labels in (fpt.flutter.factorywin) AND assignee in (manh.tranduc, hai.lehuu, tuan.ledinh, hoang.phamduc) AND startdate >= 2026-01-19 AND enddate <= 2026-03-13',
-  1002: 'project = TVPLAT AND labels in (fpt.flutter.home) AND assignee in (phu.nguyenhoc, linh.nguyengia) AND startdate >= 2026-03-16 AND enddate <= 2026-03-27',
-  1003: 'project = TVPLAT AND labels in (regression, release-blocker) AND component in (player, launcher) AND startdate >= 2026-03-30 AND enddate <= 2026-04-24',
-  2001: 'project = "Q EVENT 26" AND labels in (fpt.flutter.home) AND assignee in (phu.nguyenhoc, linh.nguyengia) AND startdate >= 2026-01-19 AND enddate <= 2026-03-13',
-  2002: 'project = STREAM AND labels in (cdn, playback) AND priority in (Highest, High) AND startdate >= 2026-03-16 AND enddate <= 2026-04-03',
-  3001: 'project = MCS AND labels in (payments, escalation) AND created >= 2026-04-06 AND created <= 2026-04-17',
-  3002: 'project = MCS AND labels in (session, auth) AND assignee in (quang.bui, thao.tran) AND startdate >= 2026-04-20 AND enddate <= 2026-05-08',
+  1001: 'project in (TVPLAT) AND labels in (fpt.flutter.factorywin) AND assignee in (manh.tranduc, hai.lehuu, tuan.ledinh, hoang.phamduc) AND startdate >= 2026-01-19 AND enddate <= 2026-03-13',
+  1002: 'project in (TVPLAT) AND labels in (fpt.flutter.home) AND assignee in (phu.nguyenhoc, linh.nguyengia) AND startdate >= 2026-03-16 AND enddate <= 2026-03-27',
+  1003: 'project in (TVPLAT, STREAM) AND labels in (regression, release-blocker) AND component in (player, launcher) AND startdate >= 2026-03-30 AND enddate <= 2026-04-24',
+  2001: 'project in ("Q EVENT 26") AND labels in (fpt.flutter.home) AND assignee in (phu.nguyenhoc, linh.nguyengia) AND startdate >= 2026-01-19 AND enddate <= 2026-03-13',
+  2002: 'project in (STREAM) AND labels in (cdn, playback) AND priority in (Highest, High) AND startdate >= 2026-03-16 AND enddate <= 2026-04-03',
+  3001: 'project in (MCS) AND labels in (payments, escalation) AND created >= 2026-04-06 AND created <= 2026-04-17',
+  3002: 'project in (MCS, TVPLAT) AND labels in (session, auth) AND assignee in (quang.bui, thao.tran) AND startdate >= 2026-04-20 AND enddate <= 2026-05-08',
 }
 
 const toCustomSummary = (milestoneId, sprints) => {
@@ -671,17 +671,17 @@ const createCustomSummary = ({
 
 export const customJqlResponses = [
   {
-    match: /project\s*=\s*MCS.*payments/i,
+    match: /project\s+(?:=|in\s*\([^)]*MCS[^)]*\)).*payments/i,
     summary: toCustomSummary(3001, sprintsByMilestone[3001]),
     sprints: toCustomSprints(sprintsByMilestone[3001]),
   },
   {
-    match: /project\s*=\s*MCS.*session/i,
+    match: /project\s+(?:=|in\s*\([^)]*MCS[^)]*\)).*session/i,
     summary: toCustomSummary(3002, sprintsByMilestone[3002]),
     sprints: toCustomSprints(sprintsByMilestone[3002]),
   },
   {
-    match: /project\s*=\s*STREAM.*cdn/i,
+    match: /project\s+(?:=|in\s*\([^)]*STREAM[^)]*\)).*cdn/i,
     summary: toCustomSummary(2002, sprintsByMilestone[2002]),
     sprints: toCustomSprints(sprintsByMilestone[2002]),
   },
@@ -691,7 +691,8 @@ export const customJqlResponses = [
     sprints: toCustomSprints(sprintsByMilestone[1003]),
   },
   {
-    match: /project\s*=\s*(?:"Q EVENT 26"|Q\s+EVENT\s+26)/i,
+    match:
+      /project\s+(?:=\s*(?:"Q EVENT 26"|Q\s+EVENT\s+26)|in\s*\([^)]*(?:"Q EVENT 26"|Q\s+EVENT\s+26)[^)]*\))/i,
     summary: toCustomSummary(2001, sprintsByMilestone[2001]),
     sprints: toCustomSprints(sprintsByMilestone[2001]),
   },
@@ -701,7 +702,7 @@ export const customJqlResponses = [
     sprints: toCustomSprints(sprintsByMilestone[1002]),
   },
   {
-    match: /project\s*=\s*TVPLAT/i,
+    match: /project\s+(?:=\s*TVPLAT|in\s*\([^)]*TVPLAT[^)]*\))/i,
     summary: toCustomSummary(1001, sprintsByMilestone[1001]),
     sprints: toCustomSprints(sprintsByMilestone[1001]),
   },

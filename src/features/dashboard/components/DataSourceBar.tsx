@@ -325,11 +325,11 @@ const JqlControls = ({
     </div>
 
     <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_160px_160px_auto]">
-      <FieldBlock label="Project key">
+      <FieldBlock label="Project keys">
         <input
           className={inputClassName}
           onChange={(event) => onFieldChange('projectKey', event.target.value)}
-          placeholder="TVPLAT"
+          placeholder='TVPLAT, STREAM, "Q EVENT 26"'
           type="text"
           value={jqlFields.projectKey}
         />
@@ -452,7 +452,7 @@ const JqlControls = ({
       <textarea
         className={textareaClassName}
         onChange={(event) => onDraftChange(event.target.value)}
-        placeholder="project = TVPLAT AND labels in (fpt.flutter.factorywin) AND assignee in (manh.tranduc, hai.lehuu) AND startdate >= 2026-01-19 AND enddate <= 2026-01-30"
+        placeholder='project in (TVPLAT, STREAM, "Q EVENT 26") AND labels in (fpt.flutter.factorywin) AND assignee in (manh.tranduc, hai.lehuu) AND startdate >= 2026-01-19 AND enddate <= 2026-01-30'
         value={draftJql}
       />
     ) : null}

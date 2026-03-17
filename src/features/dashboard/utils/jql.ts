@@ -20,6 +20,19 @@ const splitClauseValues = (value: string) =>
     .map((item) => item.trim())
     .filter(Boolean)
 
+const stripWrappingQuotes = (value: string) => {
+  const trimmed = value.trim()
+
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1)
+  }
+
+  return trimmed
+}
+
 const formatProjectKey = (projectKey: string) =>
   projectKey.includes(' ') ? `"${projectKey}"` : projectKey
 
@@ -27,9 +40,12 @@ export const normalizeJql = (value: string) => value.replace(/\s+/g, ' ').trim()
 
 export const buildJqlFromFields = (fields: JqlFormFields) => {
   const clauses: string[] = []
+  const projectKeys = splitClauseValues(fields.projectKey).map(
+    stripWrappingQuotes,
+  )
 
-  if (fields.projectKey.trim()) {
-    clauses.push(`project = ${formatProjectKey(fields.projectKey.trim())}`)
+  if (projectKeys.length > 0) {
+    clauses.push(`project in (${projectKeys.map(formatProjectKey).join(', ')})`)
   }
 
   const labels = splitClauseValues(fields.labels)
@@ -58,16 +74,22 @@ const getMatchValue = (match: RegExpMatchArray | null, index = 1) =>
 
 export const parseJqlToFields = (jql: string): JqlFormFields => {
   const normalizedJql = normalizeJql(jql)
+  const projectInValue = getMatchValue(
+    normalizedJql.match(/project\s+in\s*\(([^)]+)\)/i),
+  )
+  const projectEqualsValue =
+    getMatchValue(
+      normalizedJql.match(/project\s*=\s*(?:"([^"]+)"|([^\s]+))/i),
+    ) ||
+    getMatchValue(
+      normalizedJql.match(/project\s*=\s*(?:"([^"]+)"|([^\s]+))/i),
+      2,
+    )
 
   return {
-    projectKey:
-      getMatchValue(
-        normalizedJql.match(/project\s*=\s*(?:"([^"]+)"|([^\s]+))/i),
-      ) ||
-      getMatchValue(
-        normalizedJql.match(/project\s*=\s*(?:"([^"]+)"|([^\s]+))/i),
-        2,
-      ),
+    projectKey: projectInValue
+      ? splitClauseValues(projectInValue).map(stripWrappingQuotes).join(', ')
+      : projectEqualsValue,
     labels: getMatchValue(normalizedJql.match(/labels\s+in\s*\(([^)]+)\)/i)),
     assignees: getMatchValue(
       normalizedJql.match(/assignee\s+in\s*\(([^)]+)\)/i),
