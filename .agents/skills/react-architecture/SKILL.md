@@ -20,6 +20,8 @@ Use this skill when implementing or refactoring React + TypeScript code in this 
 - Keep transport details in `src/services/*` and shared client setup in `src/lib/*`.
 - Export feature public APIs from `src/features/<feature>/index.ts`; avoid cross-feature deep imports.
 - Use `src/components/common` for app-level reusable components; keep `src/components/ui` for shadcn-oriented primitives.
+- If a component pattern is used in 2 or more places, extract it instead of duplicating it.
+- Prefer the narrowest reusable home first: feature-local shared component before promoting to app-level common/shared.
 
 ## State and data ownership
 
@@ -43,6 +45,7 @@ Use this skill when implementing or refactoring React + TypeScript code in this 
 - Use explicit props and avoid hidden coupling to unrelated global stores.
 - Prefer composition over multiplying boolean flags for divergent render paths.
 - Extract blocks when JSX becomes difficult to scan.
+- Extract repeated UI once it appears in 2 or more places, especially for cards, form rows, table controls, section shells, and status displays.
 - Use semantic elements for headings, tables, and landmarks.
 
 ## Performance expectations

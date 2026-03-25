@@ -1,9 +1,21 @@
-import { useMutation } from '@tanstack/react-query'
+import { http } from '@/lib/http'
 
-import type { LoginPayload } from '@/features/auth/types/auth.types'
-import { authService } from '@/services/auth.service'
+import type {
+  LoginRequest,
+  RefreshAccessRequest,
+  RefreshAccessResponse,
+  TokenPair,
+} from '@/features/auth/types/auth.types'
 
-export const useLoginMutation = () =>
-  useMutation({
-    mutationFn: (payload: LoginPayload) => authService.login(payload),
-  })
+export async function loginWithPassword(payload: LoginRequest) {
+  const response = await http.post<TokenPair>('/api/token/', payload)
+  return response.data
+}
+
+export async function refreshAccessToken(payload: RefreshAccessRequest) {
+  const response = await http.post<RefreshAccessResponse>(
+    '/api/token/refresh/',
+    payload,
+  )
+  return response.data
+}

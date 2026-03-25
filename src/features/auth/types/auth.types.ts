@@ -1,14 +1,23 @@
-export type AuthUser = {
-  id: string
-  username: string
-}
-
-export type LoginPayload = {
+export type LoginRequest = {
   username: string
   password: string
 }
 
-export type AuthTokens = {
-  refresh: string
+export type TokenPair = {
   access: string
+  refresh: string
+}
+
+export type RefreshAccessRequest = {
+  refresh: string
+}
+
+export type RefreshAccessResponse = {
+  access: string
+}
+
+export type AuthSession = {
+  username: string
+  accessToken: string
+  refreshToken: string
 }

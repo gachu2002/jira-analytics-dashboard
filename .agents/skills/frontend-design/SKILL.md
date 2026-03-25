@@ -1,59 +1,126 @@
 ---
 name: frontend-design
-description: Use only for substantial dashboard UI work (new/changed layouts, KPI cards, charts, tables, filters), not routine logic or backend tasks.
+description: Theme, polish, and visual system guidance for distinctive but production-ready UI.
+user-invocable: false
 ---
 
 # Frontend Design
 
-Use this skill for UI work in dashboard pages, charts, KPI cards, tables, filters, and layout systems.
+Use this skill for visual system work: theme direction, tokens, typography, polish, component finish, motion restraint, and overall design refinement.
 
-## Outcome
+## Scope
 
-- Build production-grade UI that is both distinctive and highly scannable.
-- Preserve data readability, semantic color usage, and responsive behavior.
-- Avoid generic aesthetics and one-off styling decisions.
+Use for:
 
-## Visual direction
+- color systems and theme tokens
+- typography choices and hierarchy
+- component polish and visual consistency
+- login/auth surface styling
+- preview/lab surfaces
+- final visual refinement of dashboards and timelines
 
-- Start by choosing an intentional design direction, then execute it consistently.
-- Keep the product language analytical and decision-first for this repository.
-- Favor clarity and hierarchy over ornamental effects.
+Do not use this skill alone to decide authenticated workspace structure. For authenticated product pages, pair or defer to `enterprise-workspace-ui`.
 
-## Token and styling rules
+## Repo-specific posture
 
-- Prefer existing variables in `src/styles/index.css` before introducing new tokens.
-- Use semantic accents consistently: action (`--accent-blue`), success (`--accent-green`), warning (`--accent-amber`), risk (`--accent-red`).
-- Keep spacing and radii disciplined; avoid ad-hoc values unless reusable.
+This repo is not a marketing site and not a Dribbble showcase.
 
-## Typography and density
+When designing for this repository:
 
-- Keep body copy in sans-serif; use monospaced styling for metrics and numeric tables.
-- Preserve tabular numerals for changing numbers to prevent jitter.
-- Keep KPI values high contrast with short, muted supporting text.
+- Prefer Atlassian-adjacent enterprise clarity.
+- Favor cool neutrals, disciplined blue emphasis, and semantic status color.
+- Preserve strong contrast in light theme.
+- Keep visual systems restrained enough for dense analytics and review meetings.
 
-## Layout hierarchy
+## Default references
 
-- Structure pages in order: context header, active filters, KPI strip, primary charts, supporting details.
-- Maintain consistent shell geometry and gutter behavior across pages.
-- Keep panel proportions stable so cross-page comparisons remain easy.
+Use these references heavily for authenticated product pages:
 
-## Chart and table standards
+- Jira work management / timeline surfaces
+- Outlook Web pane structure
+- ChatGPT app-shell layout density
 
-- Keep chart legend, tooltip, and axis treatment consistent across cards.
-- Use restrained motion for chart reveals; no animation that obscures values.
-- Right-align numeric columns and show explicit units for counts, percentages, and points.
+Use these references lightly for expressive surfaces:
 
-## Responsiveness and interaction
+- login page
+- preview route
 
-- Stack complex visualizations before shrinking below legibility.
-- Prevent horizontal clipping for tables and filter chips.
-- Keep interactions immediate and subtle (roughly 100-200ms).
-- Preserve visible keyboard focus on all interactive controls.
+## Core principles
 
-## Design QA checklist
+### 1. Theme before page styling
 
-- Are tokenized colors and spacing used consistently?
-- Is hierarchy obvious at first glance (context -> KPI -> trend -> detail)?
-- Are chart colors semantically consistent with other screens?
-- Is readability preserved at small and medium breakpoints?
-- Do hover/focus/motion effects improve comprehension instead of adding noise?
+- Define colors and semantics in the global theme file first.
+- Promote reusable treatments into tokens or component variants.
+- Avoid one-off raw values in JSX when a pattern could recur.
+
+### 2. Strong hierarchy, low ornament
+
+- Prefer crisp separators over stacked shadows.
+- Prefer background shifts over atmospheric effects.
+- Prefer compact type hierarchy over oversized headlines.
+- Use expressive visuals sparingly and intentionally.
+
+### 3. Semantic color only
+
+- Blue = primary emphasis
+- Teal/green = healthy/resolved/safe
+- Amber = warning/review/watch
+- Red/coral = risk/blocker/failure
+- Neutral/slate = supporting states
+
+Color should clarify state, not decorate empty space.
+
+### 4. Typography
+
+- Use a serious, readable body font.
+- Use a restrained display face only where it improves hierarchy.
+- Keep authenticated pages more operational than editorial.
+- Avoid giant display typography on work surfaces.
+
+### 5. Motion
+
+- Use motion sparingly.
+- Prefer route/shell polish, reveal, and selection feedback.
+- Avoid constant bar/list animation in dense timelines.
+- Never let animation reduce scanability.
+
+## Anti-patterns for this repo
+
+Avoid these unless the user explicitly requests them:
+
+- oversized hero sections on authenticated pages
+- centered max-width app canvases
+- stacked oversized cards around the whole page
+- glassmorphism-heavy work surfaces
+- decorative glow competing with data
+- purple-on-white default AI styling
+- promotional copy as layout filler
+
+## Expected output by surface
+
+### Login
+
+- Can be more polished and composed than authenticated pages
+- Must still remain restrained and literal
+- One clear focal form; minimal copy
+
+### Preview route
+
+- Can be a visual lab
+- May show richer system examples
+- Must not dictate looser patterns for production pages
+
+### Authenticated pages
+
+- Flat, structural, dense, operational
+- Theme work should support utility first
+- Visual polish must not reduce information density
+
+## Done criteria
+
+The design is correct when:
+
+- the page feels product-native rather than AI-generated
+- layout supports the task before decoration
+- the light theme stays high-contrast and boardroom-safe
+- visual tokens feel coherent across login, preview, and work surfaces

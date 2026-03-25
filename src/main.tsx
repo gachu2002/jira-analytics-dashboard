@@ -1,15 +1,25 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'sonner'
 
 import App from '@/App'
-import { initializeTheme } from '@/stores/ui.store'
+import { queryClient } from '@/lib/query-client'
 import '@/styles/globals.css'
 import '@/styles/index.css'
 
-initializeTheme()
-
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <QueryClientProvider client={queryClient}>
+      <App />
+      <Toaster
+        closeButton
+        position="top-right"
+        richColors
+        toastOptions={{
+          className: 'ops-toast',
+        }}
+      />
+    </QueryClientProvider>
   </StrictMode>,
 )
