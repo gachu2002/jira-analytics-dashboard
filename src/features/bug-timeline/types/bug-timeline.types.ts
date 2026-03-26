@@ -18,7 +18,30 @@ export type BugTrackerPackage = {
   end_date: string
   resolved_bug: number
   total_bug: number
+  issues: BugTrackerIssue[]
   bug_tracker_project: number
+}
+
+export type BugTrackerIssue = {
+  url: string
+  key: string
+  summary: string
+  assignee: string
+  status: string
+}
+
+export type BugTrackerBugCategory = {
+  id: number
+  name: string
+}
+
+export type PackageBugStatistic = {
+  id: number
+  bug_category: BugTrackerBugCategory
+  number_of_bugs: number
+  created_at: string
+  active: boolean
+  package: number
 }
 
 export type BugTrackerPackagePayload = {
@@ -29,6 +52,7 @@ export type BugTrackerPackagePayload = {
   jql: string
   start_date: string
   end_date: string
+  bug_tracker_project: number
 }
 
 export type TimelineZoomLevel = 'month' | 'quarter' | 'half'

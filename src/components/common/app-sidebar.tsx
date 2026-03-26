@@ -17,16 +17,8 @@ import { cn } from '@/lib/utils'
 import { useThemeStore } from '@/stores/theme-store'
 
 const navigationItems = [
-  {
-    label: 'Milestones',
-    to: '/milestones',
-    icon: Flag,
-  },
-  {
-    label: 'Bugs',
-    to: '/bugs',
-    icon: Bug,
-  },
+  { label: 'Milestones', to: '/milestones', icon: Flag },
+  { label: 'Bugs', to: '/bugs', icon: Bug },
 ]
 
 type AppSidebarProps = {
@@ -41,44 +33,36 @@ export function AppSidebar({ isCollapsed, onToggleCollapse }: AppSidebarProps) {
 
   return (
     <aside
-      className="ops-sidebar flex h-full w-full flex-col py-3"
+      className="ops-sidebar flex h-dvh w-full flex-col"
       data-collapsed={isCollapsed}
     >
-      <div
-        className={cn(
-          'ops-sidebar-header px-3 pt-2 pb-3',
-          isCollapsed && 'px-2',
-        )}
-      >
+      <div className={cn('px-3 pt-3 pb-2', isCollapsed && 'px-2')}>
         <div
           className={cn(
-            'flex items-center gap-3',
-            isCollapsed ? 'flex-col items-center' : 'justify-between',
+            'flex items-center',
+            isCollapsed ? 'justify-center' : 'justify-between gap-3',
           )}
         >
-          <div className="flex min-w-0 items-center gap-3 overflow-hidden">
-            <div className="ops-sidebar-brand flex size-9 shrink-0 items-center justify-center rounded-md text-[var(--primary)]">
-              <LayoutGrid className="size-4" />
+          {!isCollapsed ? (
+            <div className="flex min-w-0 items-center gap-3 overflow-hidden">
+              <div className="ops-sidebar-brand flex size-9 shrink-0 items-center justify-center rounded-lg text-[var(--primary)]">
+                <LayoutGrid className="size-4" />
+              </div>
+              <div className="max-w-[9rem] min-w-0 overflow-hidden opacity-100 transition-[max-width,opacity] duration-200 ease-out">
+                <p className="truncate text-sm font-semibold tracking-[-0.02em]">
+                  Delivery
+                </p>
+                <p className="mt-0.5 truncate text-xs text-[var(--muted-foreground)]">
+                  Workspace
+                </p>
+              </div>
             </div>
-            <div
-              className={cn(
-                'ops-sidebar-copy min-w-0 overflow-hidden transition-[max-width,opacity,transform] duration-200 ease-out',
-                isCollapsed
-                  ? 'max-w-0 -translate-x-1 opacity-0'
-                  : 'max-w-[9rem] translate-x-0 opacity-100',
-              )}
-            >
-              <p className="ops-kicker whitespace-nowrap">Workspace</p>
-              <p className="mt-1 truncate text-sm font-semibold tracking-[-0.02em] whitespace-nowrap">
-                Delivery
-              </p>
-            </div>
-          </div>
+          ) : null}
 
           <Button
             className={cn(
               'ops-sidebar-utility shrink-0 rounded-md px-0',
-              isCollapsed ? 'size-10' : 'size-8',
+              isCollapsed ? 'mx-auto size-10' : 'size-8',
             )}
             size="sm"
             variant="ghost"
@@ -93,51 +77,55 @@ export function AppSidebar({ isCollapsed, onToggleCollapse }: AppSidebarProps) {
         </div>
       </div>
 
-      <Separator className="mx-3 mt-1" />
+      <div className={cn('px-3', isCollapsed && 'px-2')}>
+        <Separator className="mx-0" />
+      </div>
 
       <nav
-        className={cn('flex flex-col gap-1 px-2 pt-3', isCollapsed && 'px-1.5')}
+        className={cn(
+          'min-h-0 flex-1 overflow-auto px-2 py-3',
+          isCollapsed && 'px-2',
+        )}
       >
-        {navigationItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              cn(
-                buttonVariants({ variant: 'ghost', size: 'lg' }),
-                isCollapsed
-                  ? 'h-10 justify-center rounded-md px-0'
-                  : 'h-10 justify-start rounded-md px-3',
-                isActive
-                  ? 'ops-sidebar-link ops-sidebar-link-active text-foreground'
-                  : 'ops-sidebar-link',
-              )
-            }
-          >
-            <item.icon className="size-4 shrink-0" />
-            <span
-              className={cn(
-                'truncate text-sm font-medium whitespace-nowrap transition-[max-width,opacity,transform] duration-200 ease-out',
-                isCollapsed
-                  ? 'max-w-0 -translate-x-1 opacity-0'
-                  : 'max-w-[8rem] translate-x-0 opacity-100',
-              )}
+        <div className="flex flex-col gap-1">
+          {navigationItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                cn(
+                  buttonVariants({ variant: 'ghost', size: 'lg' }),
+                  'ops-sidebar-link relative gap-3 overflow-hidden',
+                  isCollapsed
+                    ? 'mx-auto size-10 justify-center rounded-lg px-0'
+                    : 'h-10 justify-start rounded-lg px-3',
+                  isActive
+                    ? 'ops-sidebar-link-active text-foreground'
+                    : 'text-[var(--muted-foreground)]',
+                )
+              }
             >
-              {item.label}
-            </span>
-          </NavLink>
-        ))}
+              <span className="ops-sidebar-link-indicator" aria-hidden="true" />
+              <item.icon className="size-4 shrink-0" />
+              {!isCollapsed ? (
+                <span className="min-w-0 truncate text-sm font-medium whitespace-nowrap">
+                  {item.label}
+                </span>
+              ) : null}
+            </NavLink>
+          ))}
+        </div>
       </nav>
 
-      <div className={cn('mt-auto px-3 pt-6', isCollapsed && 'px-1.5')}>
+      <div className={cn('mt-auto px-3 py-3', isCollapsed && 'px-2')}>
         <Separator className="mx-0" />
-        <div className="flex flex-col gap-2 pt-4">
+        <div className="flex flex-col gap-1 pt-3">
           <Button
             className={cn(
-              'ops-sidebar-utility',
+              'ops-sidebar-utility gap-3',
               isCollapsed
-                ? 'size-10 justify-center rounded-md px-0'
-                : 'h-10 justify-start rounded-md',
+                ? 'mx-auto size-10 justify-center rounded-lg px-0'
+                : 'h-10 justify-start rounded-lg px-3',
             )}
             variant="ghost"
             onClick={toggleTheme}
@@ -147,39 +135,29 @@ export function AppSidebar({ isCollapsed, onToggleCollapse }: AppSidebarProps) {
             ) : (
               <SunMedium className="size-4 shrink-0" />
             )}
-            <span
-              className={cn(
-                'whitespace-nowrap transition-[max-width,opacity,transform] duration-200 ease-out',
-                isCollapsed
-                  ? 'max-w-0 -translate-x-1 opacity-0'
-                  : 'max-w-[6rem] translate-x-0 opacity-100',
-              )}
-            >
-              {theme === 'dark' ? 'Dark' : 'Light'}
-            </span>
+            {!isCollapsed ? (
+              <span className="text-sm font-medium whitespace-nowrap">
+                {theme === 'dark' ? 'Dark mode' : 'Light mode'}
+              </span>
+            ) : null}
           </Button>
 
           <Button
             className={cn(
-              'ops-sidebar-utility',
+              'ops-sidebar-utility gap-3',
               isCollapsed
-                ? 'size-10 justify-center rounded-md px-0'
-                : 'h-10 justify-start rounded-md',
+                ? 'mx-auto size-10 justify-center rounded-lg px-0'
+                : 'h-10 justify-start rounded-lg px-3',
             )}
             variant="ghost"
             onClick={clearSession}
           >
             <LogOut className="size-4 shrink-0" />
-            <span
-              className={cn(
-                'whitespace-nowrap transition-[max-width,opacity,transform] duration-200 ease-out',
-                isCollapsed
-                  ? 'max-w-0 -translate-x-1 opacity-0'
-                  : 'max-w-[6rem] translate-x-0 opacity-100',
-              )}
-            >
-              Sign out
-            </span>
+            {!isCollapsed ? (
+              <span className="text-sm font-medium whitespace-nowrap">
+                Sign out
+              </span>
+            ) : null}
           </Button>
         </div>
       </div>

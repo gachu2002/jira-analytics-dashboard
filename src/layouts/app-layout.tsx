@@ -17,17 +17,17 @@ export function AppLayout() {
   return (
     <main className="ops-shell bg-background text-foreground">
       <div
-        className="ops-workspace-layout min-h-screen w-full"
+        className="ops-workspace-layout h-dvh w-full overflow-hidden"
         data-sidebar-collapsed={isSidebarCollapsed}
       >
-        <div className="hidden lg:block">
+        <div className="hidden h-dvh lg:block">
           <AppSidebar
             isCollapsed={isSidebarCollapsed}
             onToggleCollapse={() => setIsSidebarCollapsed((value) => !value)}
           />
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <div className="ops-topbar lg:hidden">
             <div className="flex items-center justify-between gap-3 px-4 py-3">
               <div className="min-w-0">
@@ -60,7 +60,7 @@ export function AppLayout() {
             </div>
           </div>
 
-          <div className="ops-workspace-main min-w-0 flex-1">
+          <div className="ops-workspace-main min-h-0 min-w-0 flex-1 overflow-auto">
             <Outlet />
           </div>
         </div>

@@ -23,6 +23,9 @@ export function useBugTimelineMutations() {
   const invalidatePackages = (projectId: number) =>
     Promise.all([
       queryClient.invalidateQueries({
+        queryKey: bugTimelineQueryKeys.packages(),
+      }),
+      queryClient.invalidateQueries({
         queryKey: bugTimelineQueryKeys.packages(projectId),
       }),
       invalidateProjects(),
@@ -59,6 +62,9 @@ export function useBugTimelineMutations() {
     onSuccess: async (_, projectId) => {
       await Promise.all([
         invalidateProjects(),
+        queryClient.invalidateQueries({
+          queryKey: bugTimelineQueryKeys.packages(),
+        }),
         queryClient.removeQueries({
           queryKey: bugTimelineQueryKeys.packages(projectId),
         }),
@@ -67,57 +73,39 @@ export function useBugTimelineMutations() {
   })
 
   const createPackage = useMutation({
-    mutationFn: ({
-      projectId,
-      payload,
-    }: {
-      projectId: number
-      payload: BugTrackerPackagePayload
-    }) => createProjectPackage(projectId, payload),
+    mutationFn: ({ payload }: { payload: BugTrackerPackagePayload }) =>
+      createProjectPackage(payload),
     onSuccess: async (_, variables) => {
-      await invalidatePackages(variables.projectId)
+      await invalidatePackages(variables.payload.bug_tracker_project)
     },
   })
 
   const updatePackage = useMutation({
     mutationFn: ({
-      projectId,
       packageId,
       payload,
     }: {
-      projectId: number
       packageId: number
       payload: Partial<BugTrackerPackagePayload>
-    }) => updateProjectPackage(projectId, packageId, payload),
-    onSuccess: async (_, variables) => {
+    }) => updateProjectPackage(packageId, payload),
+    onSuccess: async (updatedPackage, variables) => {
       await Promise.all([
-        invalidatePackages(variables.projectId),
+        invalidatePackages(updatedPackage.bug_tracker_project),
         queryClient.invalidateQueries({
-          queryKey: bugTimelineQueryKeys.package(
-            variables.projectId,
-            variables.packageId,
-          ),
+          queryKey: bugTimelineQueryKeys.package(variables.packageId),
         }),
       ])
     },
   })
 
   const removePackage = useMutation({
-    mutationFn: ({
-      projectId,
-      packageId,
-    }: {
-      projectId: number
-      packageId: number
-    }) => deleteProjectPackage(projectId, packageId),
+    mutationFn: ({ packageId }: { projectId: number; packageId: number }) =>
+      deleteProjectPackage(packageId),
     onSuccess: async (_, variables) => {
       await Promise.all([
         invalidatePackages(variables.projectId),
         queryClient.removeQueries({
-          queryKey: bugTimelineQueryKeys.package(
-            variables.projectId,
-            variables.packageId,
-          ),
+          queryKey: bugTimelineQueryKeys.package(variables.packageId),
         }),
       ])
     },

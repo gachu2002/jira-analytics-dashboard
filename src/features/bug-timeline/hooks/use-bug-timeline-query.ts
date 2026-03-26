@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 
 import {
-  useBugTrackerPackagesQueries,
+  useBugTrackerPackagesQuery,
   useBugTrackerProjectsQuery,
 } from '@/features/bug-timeline/api/bug-timeline.queries'
 import { buildBugTimelineViewModel } from '@/features/bug-timeline/model/bug-timeline-view-model'
@@ -11,13 +11,12 @@ export function useBugTimelineQuery() {
   const zoom = useBugTimelineUiStore((state) => state.zoom)
   const search = useBugTimelineUiStore((state) => state.search)
   const projectsQuery = useBugTrackerProjectsQuery()
-  const projectIds = projectsQuery.data?.map((project) => project.id) ?? []
-  const packagesQuery = useBugTrackerPackagesQueries(projectIds)
+  const packagesQuery = useBugTrackerPackagesQuery()
 
   const viewModel = useMemo(() => {
     return buildBugTimelineViewModel(
       projectsQuery.data ?? [],
-      packagesQuery.data,
+      packagesQuery.data ?? [],
       zoom,
       search,
     )
@@ -25,7 +24,7 @@ export function useBugTimelineQuery() {
 
   return {
     projects: projectsQuery.data ?? [],
-    packages: packagesQuery.data,
+    packages: packagesQuery.data ?? [],
     viewModel,
     isPending: projectsQuery.isPending || packagesQuery.isPending,
     isError: projectsQuery.isError || packagesQuery.isError,

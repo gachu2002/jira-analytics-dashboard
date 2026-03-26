@@ -7,6 +7,48 @@ const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173'
 let projectIdCounter = 4
 let packageIdCounter = 12
 
+const bugCategories = [
+  'FPT.BUG.LACK_TEST',
+  'FPT.BUG.NO_TEST_CASE_COVERAGE',
+  'FPT.BUG.SPEC_VIOLATION',
+  'FPT.BUG.SIDE_EFFECT',
+  'FPT.BUG.NO_REQUIREMENT',
+  'FPT.BUG.NOT_BUG',
+  'FPT.BUG.CANNOT_REPRODUCE',
+  'FPT.BUG.DEFER',
+  'FPT.BUG.WITHDRAWN',
+  'FPT.BUG.DUPLICATE',
+  'FPT.BUG.THIRD_PARTY',
+  'FPT.BUG.KNOWN_ISSUE',
+  'FPT.BUG.IN_DEVELOPMENT',
+  'FPT.BUG.NO_DEVICE',
+  'FPT.BUG.NO_DEVELOPMENT',
+]
+
+function buildIssue(key, summary, assignee, status) {
+  return {
+    url: `http://jira.lge.com/issue/browse/${key}`,
+    key,
+    summary,
+    assignee,
+    status,
+  }
+}
+
+function buildBugStatistics(packageId, counts) {
+  return bugCategories.map((name, index) => ({
+    id: packageId * 100 + index + 1,
+    bug_category: {
+      id: 91 + index,
+      name,
+    },
+    number_of_bugs: counts[index] ?? 0,
+    created_at: '2026-03-24T16:18:17.806995+09:00',
+    active: true,
+    package: packageId,
+  }))
+}
+
 const projects = [
   { id: 1, name: 'Atlas Cloud' },
   { id: 2, name: 'Console Platform' },
@@ -25,6 +67,26 @@ const packages = [
     end_date: '2026-04-03',
     resolved_bug: 18,
     total_bug: 24,
+    issues: [
+      buildIssue(
+        'ATL-104',
+        'Session refresh fails after long idle state.',
+        'Mai',
+        'Closed',
+      ),
+      buildIssue(
+        'ATL-111',
+        'MFA prompt overlaps settings drawer.',
+        'Ben',
+        'Resolved',
+      ),
+      buildIssue(
+        'ATL-118',
+        'Password reset email token expires too early.',
+        'Mai',
+        'Closed',
+      ),
+    ],
     bug_tracker_project: 1,
   },
   {
@@ -38,6 +100,26 @@ const packages = [
     end_date: '2026-05-04',
     resolved_bug: 11,
     total_bug: 26,
+    issues: [
+      buildIssue(
+        'ATL-132',
+        'Search query stalls on repeated filter changes.',
+        'Linh',
+        'Open',
+      ),
+      buildIssue(
+        'ATL-136',
+        'Query cache mismatch after project switch.',
+        'Huy',
+        'In Progress',
+      ),
+      buildIssue(
+        'ATL-141',
+        'Stale count shown in bug grid summary.',
+        'Linh',
+        'Closed',
+      ),
+    ],
     bug_tracker_project: 1,
   },
   {
@@ -51,6 +133,20 @@ const packages = [
     end_date: '2026-04-18',
     resolved_bug: 8,
     total_bug: 9,
+    issues: [
+      buildIssue(
+        'CON-21',
+        'Audit trail omits impersonation action.',
+        'Quang',
+        'Closed',
+      ),
+      buildIssue(
+        'CON-31',
+        'Compliance export misses timezone details.',
+        'Amy',
+        'Resolved',
+      ),
+    ],
     bug_tracker_project: 2,
   },
   {
@@ -64,6 +160,26 @@ const packages = [
     end_date: '2026-05-22',
     resolved_bug: 14,
     total_bug: 20,
+    issues: [
+      buildIssue(
+        'CON-55',
+        'Slow dashboard load on large account scope.',
+        'Khanh',
+        'In Progress',
+      ),
+      buildIssue(
+        'CON-61',
+        'Duplicate query request on tab restore.',
+        'Zoe',
+        'Closed',
+      ),
+      buildIssue(
+        'CON-74',
+        'Widget totals drift after live refresh.',
+        'Khanh',
+        'Open',
+      ),
+    ],
     bug_tracker_project: 2,
   },
   {
@@ -77,6 +193,20 @@ const packages = [
     end_date: '2026-03-29',
     resolved_bug: 7,
     total_bug: 18,
+    issues: [
+      buildIssue(
+        'MOB-13',
+        'Push token invalid after OS upgrade.',
+        'Trang',
+        'Closed',
+      ),
+      buildIssue(
+        'MOB-18',
+        'Android notifications delayed in background.',
+        'Omar',
+        'Resolved',
+      ),
+    ],
     bug_tracker_project: 3,
   },
   {
@@ -90,9 +220,38 @@ const packages = [
     end_date: '2026-05-11',
     resolved_bug: 16,
     total_bug: 17,
+    issues: [
+      buildIssue(
+        'MOB-42',
+        'Crash dashboard groups iOS stack traces incorrectly.',
+        'Trang',
+        'Closed',
+      ),
+      buildIssue(
+        'MOB-44',
+        'Release alert does not include build number.',
+        'Deepa',
+        'Closed',
+      ),
+      buildIssue(
+        'MOB-45',
+        'Crash bucket label mismatches store release.',
+        'Trang',
+        'Open',
+      ),
+    ],
     bug_tracker_project: 3,
   },
 ]
+
+const packageBugStatistics = {
+  1: buildBugStatistics(1, [4, 2, 5, 3, 1, 0, 1, 1, 0, 2, 1, 1, 2, 0, 1]),
+  2: buildBugStatistics(2, [3, 1, 4, 5, 2, 1, 0, 2, 0, 1, 2, 1, 3, 0, 1]),
+  3: buildBugStatistics(3, [1, 0, 2, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1]),
+  4: buildBugStatistics(4, [2, 1, 3, 4, 1, 1, 0, 1, 0, 1, 2, 1, 2, 0, 1]),
+  5: buildBugStatistics(5, [2, 0, 3, 2, 1, 0, 1, 1, 0, 0, 1, 1, 2, 2, 2]),
+  6: buildBugStatistics(6, [1, 0, 2, 1, 0, 0, 0, 0, 0, 1, 1, 1, 3, 0, 1]),
+}
 
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
@@ -132,21 +291,16 @@ function readJsonBody(request) {
   })
 }
 
-function getPath(requestUrl) {
-  return new URL(requestUrl, `http://localhost:${port}`).pathname
+function getRequestUrl(requestUrl) {
+  return new URL(requestUrl, `http://localhost:${port}`)
 }
 
 function getProject(projectId) {
   return projects.find((project) => project.id === projectId) ?? null
 }
 
-function getPackage(projectId, currentPackageId) {
-  return (
-    packages.find(
-      (item) =>
-        item.bug_tracker_project === projectId && item.id === currentPackageId,
-    ) ?? null
-  )
+function getPackage(currentPackageId) {
+  return packages.find((item) => item.id === currentPackageId) ?? null
 }
 
 function validateName(value) {
@@ -157,8 +311,15 @@ function validatePackagePayload(payload) {
   const name = validateName(payload.name)
   const startDate = String(payload.start_date || '').trim()
   const endDate = String(payload.end_date || '').trim()
+  const projectId = Number(payload.bug_tracker_project)
 
-  if (!name || !startDate || !endDate) {
+  if (
+    !name ||
+    !startDate ||
+    !endDate ||
+    !Number.isInteger(projectId) ||
+    projectId < 1
+  ) {
     return null
   }
 
@@ -170,6 +331,7 @@ function validatePackagePayload(payload) {
     jql: String(payload.jql || '').trim(),
     start_date: startDate,
     end_date: endDate,
+    bug_tracker_project: projectId,
   }
 }
 
@@ -179,7 +341,8 @@ const server = createServer(async (request, response) => {
     return
   }
 
-  const path = getPath(request.url)
+  const requestUrl = getRequestUrl(request.url)
+  const path = requestUrl.pathname
 
   if (request.method === 'OPTIONS') {
     response.writeHead(204, {
@@ -304,6 +467,7 @@ const server = createServer(async (request, response) => {
 
       for (let index = packages.length - 1; index >= 0; index -= 1) {
         if (packages[index].bug_tracker_project === projectId) {
+          delete packageBugStatistics[packages[index].id]
           packages.splice(index, 1)
         }
       }
@@ -313,67 +477,92 @@ const server = createServer(async (request, response) => {
     }
   }
 
-  const packagesMatch = path.match(
-    /^\/api\/bug-tracker\/projects\/(\d+)\/packages\/$/,
-  )
+  if (path === '/api/bug-tracker/packages/' && request.method === 'GET') {
+    const projectIdParam = requestUrl.searchParams.get('bug_tracker_project')
+    const projectId = projectIdParam ? Number(projectIdParam) : null
 
-  if (packagesMatch) {
-    const projectId = Number(packagesMatch[1])
-    const project = getProject(projectId)
-
-    if (!project) {
-      sendJson(response, 404, { detail: 'Project not found.' })
+    if (projectIdParam && (!Number.isInteger(projectId) || projectId < 1)) {
+      sendJson(response, 400, {
+        detail: 'bug_tracker_project must be a positive integer.',
+      })
       return
     }
 
-    if (request.method === 'GET') {
-      sendJson(
-        response,
-        200,
-        packages.filter((item) => item.bug_tracker_project === projectId),
-      )
-      return
-    }
+    sendJson(
+      response,
+      200,
+      projectId === null
+        ? packages
+        : packages.filter((item) => item.bug_tracker_project === projectId),
+    )
+    return
+  }
 
-    if (request.method === 'POST') {
-      try {
-        const payload = await readJsonBody(request)
-        const nextPackage = validatePackagePayload(payload)
+  if (path === '/api/bug-tracker/packages/' && request.method === 'POST') {
+    try {
+      const payload = await readJsonBody(request)
+      const nextPackage = validatePackagePayload(payload)
 
-        if (!nextPackage) {
-          sendJson(response, 400, { detail: 'Package payload is incomplete.' })
-          return
-        }
-
-        const packageRecord = {
-          id: packageIdCounter++,
-          ...nextPackage,
-          resolved_bug: 0,
-          total_bug: 0,
-          bug_tracker_project: projectId,
-        }
-
-        packages.push(packageRecord)
-        sendJson(response, 201, packageRecord)
-        return
-      } catch {
-        sendJson(response, 400, { detail: 'Request body must be valid JSON.' })
+      if (!nextPackage) {
+        sendJson(response, 400, { detail: 'Package payload is incomplete.' })
         return
       }
+
+      if (!getProject(nextPackage.bug_tracker_project)) {
+        sendJson(response, 404, { detail: 'Project not found.' })
+        return
+      }
+
+      const packageRecord = {
+        id: packageIdCounter++,
+        ...nextPackage,
+        resolved_bug: 0,
+        total_bug: 0,
+        issues: [],
+      }
+
+      packages.push(packageRecord)
+      packageBugStatistics[packageRecord.id] = buildBugStatistics(
+        packageRecord.id,
+        [],
+      )
+      sendJson(response, 201, packageRecord)
+      return
+    } catch {
+      sendJson(response, 400, { detail: 'Request body must be valid JSON.' })
+      return
     }
   }
 
-  const packageMatch = path.match(
-    /^\/api\/bug-tracker\/projects\/(\d+)\/packages\/(\d+)\/$/,
+  const packageStatisticsMatch = path.match(
+    /^\/api\/bug-tracker\/packages\/(\d+)\/bug-statistics\/$/,
   )
 
-  if (packageMatch) {
-    const projectId = Number(packageMatch[1])
-    const currentPackageId = Number(packageMatch[2])
-    const project = getProject(projectId)
-    const packageRecord = getPackage(projectId, currentPackageId)
+  if (packageStatisticsMatch && request.method === 'GET') {
+    const currentPackageId = Number(packageStatisticsMatch[1])
+    const packageRecord = getPackage(currentPackageId)
 
-    if (!project || !packageRecord) {
+    if (!packageRecord) {
+      sendJson(response, 404, { detail: 'Package not found.' })
+      return
+    }
+
+    sendJson(
+      response,
+      200,
+      packageBugStatistics[currentPackageId] ??
+        buildBugStatistics(currentPackageId, []),
+    )
+    return
+  }
+
+  const packageMatch = path.match(/^\/api\/bug-tracker\/packages\/(\d+)\/$/)
+
+  if (packageMatch) {
+    const currentPackageId = Number(packageMatch[1])
+    const packageRecord = getPackage(currentPackageId)
+
+    if (!packageRecord) {
       sendJson(response, 404, { detail: 'Package not found.' })
       return
     }
@@ -396,6 +585,11 @@ const server = createServer(async (request, response) => {
           return
         }
 
+        if (!getProject(nextPackage.bug_tracker_project)) {
+          sendJson(response, 404, { detail: 'Project not found.' })
+          return
+        }
+
         Object.assign(packageRecord, nextPackage)
         sendJson(response, 200, packageRecord)
         return
@@ -410,6 +604,7 @@ const server = createServer(async (request, response) => {
         (item) => item.id === currentPackageId,
       )
       packages.splice(packageIndex, 1)
+      delete packageBugStatistics[currentPackageId]
       sendJson(response, 204, null)
       return
     }

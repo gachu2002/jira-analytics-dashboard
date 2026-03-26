@@ -5,6 +5,7 @@ import type {
   BugTrackerPackagePayload,
   BugTrackerProject,
   BugTrackerProjectPayload,
+  PackageBugStatistic,
 } from '@/features/bug-timeline/types/bug-timeline.types'
 
 export async function getBugTrackerProjects() {
@@ -48,46 +49,56 @@ export async function deleteBugTrackerProject(projectId: number) {
 
 export async function getProjectPackages(projectId: number) {
   const response = await http.get<BugTrackerPackage[]>(
-    `/api/bug-tracker/projects/${projectId}/packages/`,
+    '/api/bug-tracker/packages/',
+    {
+      params: {
+        bug_tracker_project: projectId,
+      },
+    },
   )
   return response.data
 }
 
-export async function createProjectPackage(
-  projectId: number,
-  payload: BugTrackerPackagePayload,
-) {
+export async function getAllProjectPackages() {
+  const response = await http.get<BugTrackerPackage[]>(
+    '/api/bug-tracker/packages/',
+  )
+  return response.data
+}
+
+export async function createProjectPackage(payload: BugTrackerPackagePayload) {
   const response = await http.post<BugTrackerPackage>(
-    `/api/bug-tracker/projects/${projectId}/packages/`,
+    '/api/bug-tracker/packages/',
     payload,
   )
   return response.data
 }
 
-export async function getProjectPackage(projectId: number, packageId: number) {
+export async function getProjectPackage(packageId: number) {
   const response = await http.get<BugTrackerPackage>(
-    `/api/bug-tracker/projects/${projectId}/packages/${packageId}/`,
+    `/api/bug-tracker/packages/${packageId}/`,
+  )
+  return response.data
+}
+
+export async function getPackageBugStatistics(packageId: number) {
+  const response = await http.get<PackageBugStatistic[]>(
+    `/api/bug-tracker/packages/${packageId}/bug-statistics/`,
   )
   return response.data
 }
 
 export async function updateProjectPackage(
-  projectId: number,
   packageId: number,
   payload: Partial<BugTrackerPackagePayload>,
 ) {
   const response = await http.patch<BugTrackerPackage>(
-    `/api/bug-tracker/projects/${projectId}/packages/${packageId}/`,
+    `/api/bug-tracker/packages/${packageId}/`,
     payload,
   )
   return response.data
 }
 
-export async function deleteProjectPackage(
-  projectId: number,
-  packageId: number,
-) {
-  await http.delete(
-    `/api/bug-tracker/projects/${projectId}/packages/${packageId}/`,
-  )
+export async function deleteProjectPackage(packageId: number) {
+  await http.delete(`/api/bug-tracker/packages/${packageId}/`)
 }

@@ -103,6 +103,10 @@
   --workspace-header: rgba(248, 250, 252, 0.98);
   --workspace-inspector: #f4f7fb;
   --workspace-selected: rgba(12, 102, 228, 0.1);
+  --sidebar-rail: #e8edf4;
+  --sidebar-border-strong: rgba(9, 30, 66, 0.14);
+  --sidebar-hover: rgba(9, 30, 66, 0.045);
+  --sidebar-active: rgba(12, 102, 228, 0.1);
   --timeline-bar-healthy: #1f845a;
   --timeline-bar-watch: #b65c02;
   --timeline-bar-risk: #c9372c;
@@ -178,6 +182,10 @@
   --workspace-header: rgba(19, 28, 38, 0.98);
   --workspace-inspector: #101821;
   --workspace-selected: rgba(87, 157, 255, 0.16);
+  --sidebar-rail: #101821;
+  --sidebar-border-strong: rgba(223, 231, 243, 0.1);
+  --sidebar-hover: rgba(223, 231, 243, 0.05);
+  --sidebar-active: rgba(87, 157, 255, 0.16);
   --timeline-bar-healthy: #3f9c7f;
   --timeline-bar-watch: #d18a39;
   --timeline-bar-risk: #de675e;
@@ -354,11 +362,15 @@
   }
 
   .ops-sidebar {
-    border-right: 1px solid color-mix(in srgb, var(--border) 96%, transparent);
-    background: var(--workspace-rail);
-    min-height: 100vh;
+    position: sticky;
+    top: 0;
+    border-right: 1px solid var(--sidebar-border-strong);
+    background: var(--sidebar-rail);
     overflow: hidden;
-    transition: width 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition:
+      width 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      background-color 180ms ease,
+      border-color 180ms ease;
   }
 
   .ops-sidebar-header {
@@ -375,35 +387,61 @@
     background: transparent;
     color: var(--muted-foreground);
     box-shadow: none;
+    transition:
+      background-color 140ms ease,
+      border-color 140ms ease,
+      color 140ms ease;
   }
 
   .ops-sidebar-link-active {
     border-color: color-mix(in srgb, var(--primary) 18%, transparent);
-    background: var(--gantt-sidebar-active);
-    box-shadow:
-      inset 3px 0 0 var(--primary),
-      inset 0 0 0 1px color-mix(in srgb, var(--primary) 8%, transparent);
+    background: var(--sidebar-active);
+    box-shadow: inset 0 0 0 1px
+      color-mix(in srgb, var(--primary) 10%, transparent);
   }
 
   .ops-sidebar-link:hover {
-    background: color-mix(in srgb, var(--gantt-row-hover) 100%, transparent);
+    background: var(--sidebar-hover);
     color: var(--foreground);
+  }
+
+  .ops-sidebar-link-indicator {
+    position: absolute;
+    left: 0.2rem;
+    top: 0.45rem;
+    bottom: 0.45rem;
+    width: 0.14rem;
+    border-radius: 999px;
+    background: transparent;
+    transition: background-color 150ms ease;
+  }
+
+  .ops-sidebar-link-active .ops-sidebar-link-indicator {
+    background: var(--primary);
+  }
+
+  .ops-sidebar[data-collapsed='true'] .ops-sidebar-link-indicator {
+    display: none;
+  }
+
+  .ops-sidebar[data-collapsed='true'] .ops-sidebar-brand {
+    display: none;
   }
 
   .ops-workspace-layout {
     display: grid;
-    grid-template-columns: 15rem minmax(0, 1fr);
+    grid-template-columns: 14rem minmax(0, 1fr);
     background: var(--workspace-bg);
-    transition: grid-template-columns 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: grid-template-columns 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
   .ops-workspace-layout[data-sidebar-collapsed='true'] {
-    grid-template-columns: 4.25rem minmax(0, 1fr);
+    grid-template-columns: 4.5rem minmax(0, 1fr);
   }
 
   .ops-workspace-main {
     background: var(--workspace-bg);
-    min-height: 100vh;
+    min-height: 0;
   }
 
   .ops-workspace-screen {
@@ -457,9 +495,9 @@
 
   .ops-timeline-bar {
     overflow: hidden;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.18),
-      0 1px 2px rgba(9, 30, 66, 0.2);
+    border-color: color-mix(in srgb, black 8%, transparent);
+    box-shadow: 0 1px 2px rgba(9, 30, 66, 0.12);
+    z-index: 2;
   }
 
   .ops-details-pane {
@@ -501,22 +539,22 @@
   }
 
   .ops-side-drawer-backdrop {
-    background: rgba(15, 23, 42, 0.12);
-    backdrop-filter: blur(3px);
+    background: rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(2px);
   }
 
   .ops-side-drawer-panel {
     border-left: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
-    background: color-mix(in srgb, var(--workspace-pane) 99%, transparent);
-    box-shadow: -18px 0 40px rgba(9, 30, 66, 0.12);
+    background: var(--workspace-pane);
+    box-shadow: -14px 0 32px rgba(9, 30, 66, 0.1);
     animation: ops-drawer-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
   .ops-row-menu {
     position: absolute;
     border: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
-    background: color-mix(in srgb, var(--workspace-pane) 98%, transparent);
-    box-shadow: 0 10px 28px rgba(9, 30, 66, 0.14);
+    background: var(--workspace-pane);
+    box-shadow: 0 8px 20px rgba(9, 30, 66, 0.12);
     z-index: 60;
     isolation: isolate;
   }
@@ -527,7 +565,7 @@
   }
 
   .ops-row-menu-item:hover {
-    background: color-mix(in srgb, var(--workspace-selected) 86%, transparent);
+    background: color-mix(in srgb, var(--workspace-selected) 72%, transparent);
   }
 
   .ops-toast {
@@ -551,21 +589,19 @@
       transparent
     );
     box-shadow: inset 0 -1px 0
-      color-mix(in srgb, var(--border) 70%, transparent);
+      color-mix(in srgb, var(--border) 78%, transparent);
   }
 
   .ops-gantt-project-band {
     background: color-mix(
       in srgb,
-      var(--workspace-pane-muted) 88%,
+      var(--workspace-pane-muted) 92%,
       transparent
     );
   }
 
   .ops-gantt-package {
     background: var(--workspace-pane);
-    box-shadow: inset 18px 0 0
-      color-mix(in srgb, var(--workspace-pane-muted) 58%, transparent);
   }
 
   .ops-gantt-package-band {
@@ -575,11 +611,22 @@
   .ops-project-section {
     position: relative;
     overflow: visible;
-    border-top: 2px solid color-mix(in srgb, var(--border) 98%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+    background: var(--workspace-pane);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 55%, transparent);
+  }
+
+  .ops-project-section + .ops-project-section {
+    margin-top: 0.75rem;
   }
 
   .ops-project-section:first-child {
-    border-top: 0;
+    margin-top: 0;
+  }
+
+  .ops-project-packages {
+    border-top: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
   }
 
   .ops-gantt-grid-frame {
@@ -590,6 +637,10 @@
   .ops-gantt-row {
     position: relative;
     overflow: visible;
+  }
+
+  .ops-gantt-today-layer {
+    z-index: 16;
   }
 
   .ops-gantt-column {
@@ -720,25 +771,39 @@
   }
 
   .ops-gantt-sidebar {
-    background: var(--gantt-sidebar-bg);
+    background: color-mix(
+      in srgb,
+      var(--workspace-pane-muted) 94%,
+      transparent
+    );
   }
 
   .ops-gantt-row:hover {
-    background: var(--gantt-row-hover);
+    background: color-mix(
+      in srgb,
+      var(--workspace-pane-muted) 60%,
+      transparent
+    );
   }
 
   .ops-sidebar-brand {
-    border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
-    background: color-mix(in srgb, var(--workspace-pane) 72%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+    background: color-mix(in srgb, var(--workspace-pane) 80%, transparent);
   }
 
   .ops-sidebar-utility {
     border: 1px solid transparent;
+    background: transparent;
     color: var(--muted-foreground);
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease;
   }
 
   .ops-sidebar-utility:hover {
-    background: color-mix(in srgb, var(--workspace-pane) 80%, transparent);
+    background: var(--sidebar-hover);
+    border-color: color-mix(in srgb, var(--border) 92%, transparent);
     color: var(--foreground);
   }
 
@@ -747,14 +812,24 @@
   }
 
   .ops-bug-toolbar {
-    display: flex;
-    min-height: 3.25rem;
-    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 18;
+    display: grid;
     gap: 0.75rem;
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
+    padding-top: 0.875rem;
+    padding-bottom: 0.875rem;
     border-bottom: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-    background: color-mix(in srgb, var(--workspace-header) 96%, transparent);
+    background: color-mix(in srgb, var(--workspace-bg) 94%, transparent);
+    backdrop-filter: blur(10px);
+  }
+
+  .ops-bug-toolbar-top {
+    display: flex;
+    width: 100%;
+    align-items: start;
+    gap: 0.75rem;
+    justify-content: space-between;
   }
 
   .ops-bug-toolbar-row {
@@ -763,6 +838,67 @@
     align-items: end;
     gap: 0.75rem;
     justify-content: flex-start;
+  }
+
+  .ops-bug-inline-meta {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem 0.625rem;
+    color: var(--muted-foreground);
+  }
+
+  .ops-bug-inline-meta > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .ops-bug-inline-meta > span:not(:first-child)::before {
+    content: '';
+    width: 0.1875rem;
+    height: 0.1875rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
+  }
+
+  .ops-bug-surface {
+    background: var(--workspace-pane);
+  }
+
+  .ops-project-header-row {
+    top: 5.5rem;
+  }
+
+  .ops-package-rail {
+    position: relative;
+    display: block;
+    padding-left: 2.35rem;
+    padding-right: 0.625rem;
+  }
+
+  .ops-package-rail-line {
+    position: absolute;
+    left: 0.95rem;
+    top: 0.1rem;
+    bottom: 0.1rem;
+    width: 1px;
+    background: color-mix(in srgb, var(--border) 82%, transparent);
+  }
+
+  .ops-package-rail-line::after {
+    content: '';
+    position: absolute;
+    top: 0.85rem;
+    left: 0;
+    width: 1rem;
+    height: 1px;
+    background: color-mix(in srgb, var(--border) 82%, transparent);
+  }
+
+  .ops-package-rail-content {
+    min-width: 0;
+    padding-left: 0.25rem;
   }
 
   .ops-bug-filter-shell {
@@ -785,7 +921,7 @@
 
   .ops-bug-filter-input {
     border-color: color-mix(in srgb, var(--border) 96%, transparent);
-    background: var(--workspace-pane);
+    background: color-mix(in srgb, var(--workspace-pane) 98%, transparent);
   }
 
   .ops-bug-select,
@@ -827,17 +963,25 @@
     background: var(--workspace-pane);
   }
 
+  .ops-gantt-body {
+    isolation: isolate;
+  }
+
   .ops-bug-sidebar-cell {
     position: sticky;
     left: 0;
-    z-index: 12;
+    z-index: 18;
     background: var(--workspace-pane);
   }
 
   .ops-gantt-sidebar {
     display: flex;
     align-items: center;
-    background: var(--gantt-sidebar-bg);
+    background: color-mix(
+      in srgb,
+      var(--workspace-pane-muted) 94%,
+      transparent
+    );
   }
 
   .ops-bug-toolbar-label {
@@ -896,12 +1040,50 @@
   }
 
   .ops-bug-view-field {
-    border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
     background: color-mix(
       in srgb,
-      var(--workspace-pane-muted) 92%,
+      var(--workspace-pane-muted) 96%,
       transparent
     );
+  }
+
+  .ops-bug-chart-shell,
+  .ops-bug-table-shell {
+    border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--workspace-pane-muted) 98%,
+      transparent
+    );
+  }
+
+  .ops-bug-chart-legend-item {
+    border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
+    background: color-mix(in srgb, var(--workspace-pane) 94%, transparent);
+  }
+
+  .ops-bug-chart-tooltip {
+    max-width: 18rem;
+    border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+    background: var(--workspace-pane);
+  }
+
+  .ops-bug-table-head {
+    background: color-mix(
+      in srgb,
+      var(--workspace-pane-muted) 98%,
+      transparent
+    );
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  }
+
+  .ops-bug-table-row {
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+  }
+
+  .ops-bug-table-row:last-child {
+    border-bottom: 0;
   }
 
   .ops-bug-tag {
@@ -922,8 +1104,13 @@
   }
 
   .ops-bug-selected {
-    background: color-mix(in srgb, var(--primary) 14%, var(--workspace-pane));
-    box-shadow: inset 3px 0 0 var(--primary);
+    background: color-mix(in srgb, var(--primary) 10%, var(--workspace-pane));
+    box-shadow: inset 2px 0 0 var(--primary);
+  }
+
+  .ops-project-summary-bar {
+    border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
   }
 
   .ops-bug-sidebar-cell {
@@ -967,10 +1154,10 @@
     justify-content: flex-start;
     background: color-mix(
       in srgb,
-      var(--workspace-pane-muted) 95%,
+      var(--workspace-pane-muted) 96%,
       transparent
     );
-    border-left: 1px solid var(--gantt-grid-major);
+    border-left: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
     height: 2.25rem;
     white-space: nowrap;
     overflow: hidden;
@@ -986,7 +1173,7 @@
 
   .ops-gantt-week-cell {
     height: 3.25rem;
-    background: var(--workspace-header);
+    background: color-mix(in srgb, var(--workspace-pane) 98%, transparent);
   }
 
   .ops-gantt-month-cell p {
@@ -997,6 +1184,7 @@
   }
 
   @media (max-width: 1024px) {
+    .ops-bug-toolbar-top,
     .ops-bug-toolbar-row {
       flex-wrap: wrap;
       align-items: stretch;

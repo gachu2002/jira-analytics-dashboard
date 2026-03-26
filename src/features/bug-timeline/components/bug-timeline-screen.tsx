@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import {
   Bug,
   ChevronDown,
@@ -17,6 +18,7 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { usePackageBugStatisticsQuery } from '@/features/bug-timeline/api/bug-timeline.queries'
 import { useBugTimelineQuery } from '@/features/bug-timeline/hooks/use-bug-timeline-query'
 import { useBugTimelineMutations } from '@/features/bug-timeline/hooks/use-bug-timeline-mutations'
 import {
@@ -33,6 +35,7 @@ import type {
   BugTimelineViewModel,
   BugTrackerPackage,
   BugTrackerProject,
+  PackageBugStatistic,
   TimelinePackageBar,
   TimelineProjectGroup,
 } from '@/features/bug-timeline/types/bug-timeline.types'
@@ -40,6 +43,23 @@ import { cn } from '@/lib/utils'
 
 const labelColumnWidth = '20rem'
 const weekColumnWidthRem = 7.5
+const BUG_CATEGORY_COLORS = [
+  '#0c66e4',
+  '#22a06b',
+  '#f5a524',
+  '#e56910',
+  '#c9372c',
+  '#8f7ee7',
+  '#4b8bff',
+  '#579dff',
+  '#6b778c',
+  '#36b37e',
+  '#ff8b00',
+  '#ff5630',
+  '#6554c0',
+  '#00a3bf',
+  '#8777d9',
+]
 
 type MonthGroup = {
   key: string
@@ -220,6 +240,42 @@ export function BugTimelineScreen() {
           <>
             <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
               <div className="ops-bug-toolbar px-4 lg:px-5">
+                <div className="ops-bug-toolbar-top">
+                  <div className="min-w-0">
+                    <p className="ops-kicker">Bug timeline</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <h1 className="text-base font-semibold tracking-[-0.02em]">
+                        Packages
+                      </h1>
+                      <div className="ops-bug-inline-meta">
+                        <span>{viewModel.totals.projects} projects</span>
+                        <span>{viewModel.totals.packages} packages</span>
+                        <span>
+                          {viewModel.totals.resolved}/{viewModel.totals.bugs}{' '}
+                          resolved
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="ml-auto flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        handleCreatePackage(selectedProjectId ?? undefined)
+                      }
+                    >
+                      <Plus className="size-4" />
+                      New package
+                    </Button>
+                    <Button size="sm" onClick={handleCreateProject}>
+                      <Plus className="size-4" />
+                      New project
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="ops-bug-toolbar-row">
                   <div className="w-full max-w-[18rem] min-w-[12rem]">
                     <span className="ops-bug-toolbar-label">Search</span>
@@ -244,27 +300,10 @@ export function BugTimelineScreen() {
                     value={effectiveToDate}
                     onChange={setToDate}
                   />
-
-                  <div className="ml-auto flex items-end gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        handleCreatePackage(selectedProjectId ?? undefined)
-                      }
-                    >
-                      <Plus className="size-4" />
-                      New package
-                    </Button>
-                    <Button size="sm" onClick={handleCreateProject}>
-                      <Plus className="size-4" />
-                      New project
-                    </Button>
-                  </div>
                 </div>
               </div>
 
-              <div className="min-h-0 min-w-0 flex-1 overflow-auto border-t border-[color:var(--border)]/80">
+              <div className="ops-bug-surface min-h-0 min-w-0 flex-1 overflow-auto border-t border-[color:var(--border)]/80">
                 <div
                   className="ops-bug-grid min-h-full"
                   style={{
@@ -328,27 +367,36 @@ export function BugTimelineScreen() {
                   </div>
 
                   <div className="min-h-[calc(100vh-7.5rem)]">
-                    {filteredViewModel.projects.map((project) => (
-                      <ProjectSection
-                        key={project.id}
-                        columns={filteredViewModel.weekColumns.length}
-                        isCollapsed={collapsedProjectIds.includes(project.id)}
-                        actionMenuId={openActionMenu}
-                        onAddPackage={handleCreatePackage}
-                        onCloseMenu={() => setOpenActionMenu(null)}
-                        onDeletePackage={(target) => setDeleteTarget(target)}
-                        onDeleteProject={(target) => setDeleteTarget(target)}
-                        onEditPackage={openEditPackage}
-                        onEditProject={openEditProject}
-                        onViewProject={openProjectView}
-                        onSelectPackage={handleSelectPackage}
-                        onOpenMenu={setOpenActionMenu}
-                        onToggle={() => toggleProject(project.id)}
-                        project={project}
-                        selectedEntity={selectedEntity}
-                        todayOffset={todayOffset}
-                      />
-                    ))}
+                    <div className="ops-gantt-body relative">
+                      {todayOffset !== null ? (
+                        <div
+                          className="ops-gantt-today-layer pointer-events-none absolute inset-y-0"
+                          style={{ left: labelColumnWidth, right: 0 }}
+                        >
+                          <TodayMarker offset={todayOffset} />
+                        </div>
+                      ) : null}
+                      {filteredViewModel.projects.map((project) => (
+                        <ProjectSection
+                          key={project.id}
+                          columns={filteredViewModel.weekColumns.length}
+                          isCollapsed={collapsedProjectIds.includes(project.id)}
+                          actionMenuId={openActionMenu}
+                          onAddPackage={handleCreatePackage}
+                          onCloseMenu={() => setOpenActionMenu(null)}
+                          onDeletePackage={(target) => setDeleteTarget(target)}
+                          onDeleteProject={(target) => setDeleteTarget(target)}
+                          onEditPackage={openEditPackage}
+                          onEditProject={openEditProject}
+                          onViewProject={openProjectView}
+                          onSelectPackage={handleSelectPackage}
+                          onOpenMenu={setOpenActionMenu}
+                          onToggle={() => toggleProject(project.id)}
+                          project={project}
+                          selectedEntity={selectedEntity}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -386,7 +434,6 @@ export function BugTimelineScreen() {
               onSubmitCreatePackage={async (values: PackageFormValues) => {
                 try {
                   const created = await createPackage.mutateAsync({
-                    projectId: values.projectId,
                     payload: toPackagePayload(values),
                   })
                   handleSelectPackage(created.bug_tracker_project, created.id)
@@ -408,7 +455,6 @@ export function BugTimelineScreen() {
                 if (!selectedEntity || selectedEntity.type !== 'package') return
                 try {
                   await updatePackage.mutateAsync({
-                    projectId: selectedEntity.projectId,
                     packageId: selectedEntity.packageId,
                     payload: toPackagePayload(values),
                   })
@@ -470,7 +516,6 @@ function ProjectSection({
   onToggle,
   project,
   selectedEntity,
-  todayOffset,
 }: {
   columns: number
   actionMenuId: string | null
@@ -487,18 +532,18 @@ function ProjectSection({
   onToggle: () => void
   project: TimelineProjectGroup
   selectedEntity: BugTimelineSelectedEntity | null
-  todayOffset: number | null
 }) {
   const projectHealth = getHealthFromProgress(
     project.resolvedBug,
     project.totalBug,
   )
+  const projectWindow = getProjectWindow(project.packages)
 
   return (
     <section className="ops-project-section bg-[var(--workspace-pane)]">
       <div
         className={cn(
-          'grid border-b border-[color:var(--border)]',
+          'ops-project-header-row sticky z-10 grid border-b border-[color:var(--border)]',
           actionMenuId === `project-${project.id}` && 'z-30',
         )}
         style={{ gridTemplateColumns: `${labelColumnWidth} minmax(0, 1fr)` }}
@@ -510,13 +555,24 @@ function ProjectSection({
               className="min-w-0 flex-1 text-left"
               onClick={onToggle}
             >
-              <p className="truncate text-sm font-semibold tracking-[-0.02em]">
-                {project.name}
-              </p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <span className="ops-bug-project-count">
-                  {project.packageCount} packages
-                </span>
+              <div className="flex items-center gap-2">
+                <ChevronDown
+                  className={cn(
+                    'text-muted-foreground size-4 shrink-0 transition-transform',
+                    isCollapsed && '-rotate-90',
+                  )}
+                />
+                <p className="truncate text-sm font-semibold tracking-[-0.02em]">
+                  {project.name}
+                </p>
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2 pl-6">
+                <div className="ops-bug-inline-meta text-[11px]">
+                  <span>{project.packageCount} packages</span>
+                  <span>
+                    {project.resolvedBug}/{project.totalBug} resolved
+                  </span>
+                </div>
                 <StatusPill compact health={projectHealth} />
               </div>
             </button>
@@ -554,26 +610,27 @@ function ProjectSection({
                   },
                 ]}
               />
-              <RowActionButton label="Collapse project" onClick={onToggle}>
-                <ChevronDown
-                  className={cn(
-                    'size-4 transition-transform',
-                    isCollapsed && '-rotate-90',
-                  )}
-                />
-              </RowActionButton>
             </div>
           </div>
         </div>
 
         <div className="ops-gantt-project-band ops-gantt-grid-frame relative min-h-[3rem] py-2.5">
-          {todayOffset !== null ? <TodayMarker offset={todayOffset} /> : null}
           <TimelineGrid columns={columns} />
+          {projectWindow ? (
+            <div
+              className="ops-project-summary-bar absolute top-1/2 h-2.5 -translate-y-1/2 rounded-full"
+              style={{
+                left: `${projectWindow.leftPercent}%`,
+                width: `${projectWindow.widthPercent}%`,
+                background: getProjectBandColor(projectHealth),
+              }}
+            />
+          ) : null}
         </div>
       </div>
 
       {!isCollapsed ? (
-        <div className="bg-[var(--workspace-pane)]">
+        <div className="ops-project-packages bg-[var(--workspace-pane)]">
           {project.packages.map((item) => (
             <PackageRow
               key={item.id}
@@ -581,7 +638,6 @@ function ProjectSection({
               columns={columns}
               item={item}
               onCloseMenu={onCloseMenu}
-              projectName={project.name}
               selected={
                 selectedEntity?.type === 'package' &&
                 selectedEntity.packageId === item.id
@@ -590,7 +646,6 @@ function ProjectSection({
               onEditPackage={onEditPackage}
               onOpenMenu={onOpenMenu}
               onSelect={() => onSelectPackage(item.projectId, item.id)}
-              todayOffset={todayOffset}
             />
           ))}
         </div>
@@ -608,9 +663,7 @@ function PackageRow({
   onEditPackage,
   onOpenMenu,
   onSelect,
-  projectName,
   selected,
-  todayOffset,
 }: {
   columns: number
   actionMenuId: string | null
@@ -620,14 +673,12 @@ function PackageRow({
   onEditPackage: (projectId: number, packageId: number) => void
   onOpenMenu: (id: string | null) => void
   onSelect: () => void
-  projectName: string
   selected: boolean
-  todayOffset: number | null
 }) {
   return (
     <div
       className={cn(
-        'ops-gantt-row grid border-b border-[color:var(--border)]/70 last:border-b-0',
+        'ops-gantt-row grid border-b border-[color:var(--border)]/70',
         actionMenuId === `package-${item.id}` && 'z-30',
       )}
       style={{ gridTemplateColumns: `${labelColumnWidth} minmax(0, 1fr)` }}
@@ -642,24 +693,30 @@ function PackageRow({
           <button
             type="button"
             onClick={onSelect}
-            className="min-w-0 flex-1 text-left"
+            className="ops-package-rail min-w-0 flex-1 text-left"
           >
-            <p className="truncate text-sm font-medium tracking-[-0.015em]">
-              {item.name}
-            </p>
-            <p className="text-muted-foreground mt-1 truncate text-[11px]">
-              {projectName}
-            </p>
-            <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-[color:var(--muted-foreground)]">
-              <span>
-                {formatDateLabel(item.startDate)} -{' '}
-                {formatDateLabel(item.endDate)}
-              </span>
-              <span>{item.keys.length} keys</span>
-              <span>{item.members.length} members</span>
-              <span>
-                {item.resolvedBug}/{item.totalBug} resolved
-              </span>
+            <span className="ops-package-rail-line" aria-hidden="true" />
+            <div className="ops-package-rail-content">
+              <p className="truncate text-sm font-medium tracking-[-0.015em]">
+                {item.name}
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[color:var(--muted-foreground)]">
+                <div className="ops-bug-inline-meta min-w-0">
+                  <span>
+                    {formatDateLabel(item.startDate)} -{' '}
+                    {formatDateLabel(item.endDate)}
+                  </span>
+                </div>
+                <div className="ops-bug-inline-meta min-w-0">
+                  <span>{item.keys.length} keys</span>
+                </div>
+                <div className="ops-bug-inline-meta min-w-0">
+                  <span>{item.members.length} members</span>
+                  <span>
+                    {item.resolvedBug}/{item.totalBug} resolved
+                  </span>
+                </div>
+              </div>
             </div>
           </button>
           <div className="flex shrink-0 items-start gap-1">
@@ -697,13 +754,12 @@ function PackageRow({
       </div>
 
       <div className="ops-gantt-package-band ops-gantt-grid-frame relative min-h-[4rem] overflow-hidden py-2.5">
-        {todayOffset !== null ? <TodayMarker offset={todayOffset} /> : null}
         <TimelineGrid columns={columns} />
         <button
           type="button"
           onClick={onSelect}
           className={cnSelected(
-            'ops-timeline-bar absolute top-2.5 flex h-9 min-w-[4.5rem] items-center rounded-md border border-black/10 px-3 text-left text-white transition-[filter,box-shadow] hover:brightness-[0.98]',
+            'ops-timeline-bar absolute top-2.5 flex h-10 min-w-[5rem] items-center rounded-lg border px-3 text-left text-white transition-[box-shadow,filter] hover:brightness-[0.99]',
             selected,
           )}
           style={{
@@ -722,7 +778,7 @@ function PackageRow({
           <div className="relative z-10 flex w-full items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold">{item.name}</div>
-              <div className="mt-0.5 truncate text-[10px] font-semibold text-white/92">
+              <div className="mt-0.5 truncate text-[10px] font-semibold text-white/88">
                 {item.resolvedBug}/{item.totalBug} resolved ·{' '}
                 {Math.round(item.progress * 100)}%
               </div>
@@ -807,12 +863,28 @@ function CrudDrawer({
 
   if (!isOpen) return null
 
+  const isPackageView =
+    inspectorMode === 'view-package' && Boolean(selectedPackage)
+
   return (
     <div className="ops-side-drawer-backdrop fixed inset-0 z-40 flex justify-end">
-      <div className="ops-side-drawer-panel flex h-full w-full max-w-[28rem] flex-col">
+      <div
+        className={cn(
+          'ops-side-drawer-panel flex h-full w-full flex-col',
+          isPackageView
+            ? 'max-w-[min(72rem,calc(100vw-2rem))]'
+            : 'max-w-[28rem]',
+        )}
+      >
         <div className="flex items-start justify-between border-b border-[color:var(--border)] px-4 py-4">
           <div>
-            <p className="ops-inspector-label">Edit</p>
+            <p className="ops-inspector-label">
+              {inspectorMode.startsWith('create')
+                ? 'Create'
+                : inspectorMode.startsWith('edit')
+                  ? 'Edit'
+                  : 'Details'}
+            </p>
             <p className="mt-1 text-base font-semibold tracking-[-0.02em]">
               {getInspectorTitle(inspectorMode, project, selectedPackage)}
             </p>
@@ -951,58 +1023,346 @@ function PackageDetailPanel({
   projectName: string
 }) {
   const openBugCount = packageBar.totalBug - packageBar.resolvedBug
+  const statisticsQuery = usePackageBugStatisticsQuery(packageItem.id, true)
 
   return (
     <div className="p-4">
-      <div className="grid gap-4">
-        <Field label="Project">
-          <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
-            {projectName || '-'}
-          </div>
-        </Field>
-        <Field label="Name">
-          <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
-            {packageItem.name}
-          </div>
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Start">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.88fr)] xl:items-start">
+        <div className="grid gap-5">
+          <section className="grid gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold tracking-[-0.02em]">
+                Bug categories
+              </h3>
+              {statisticsQuery.isSuccess ? (
+                <span className="text-xs text-[var(--muted-foreground)]">
+                  {statisticsQuery.data.reduce(
+                    (sum, item) => sum + item.number_of_bugs,
+                    0,
+                  )}{' '}
+                  bugs
+                </span>
+              ) : null}
+            </div>
+            <PackageBugStatisticsSection
+              isError={statisticsQuery.isError}
+              isPending={statisticsQuery.isPending}
+              statistics={statisticsQuery.data ?? []}
+            />
+          </section>
+
+          <section className="grid gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold tracking-[-0.02em]">
+                Issues
+              </h3>
+              <span className="text-xs text-[var(--muted-foreground)]">
+                {packageItem.issues.length} items
+              </span>
+            </div>
+            <PackageIssuesTable issues={packageItem.issues} />
+          </section>
+        </div>
+
+        <div className="grid gap-4 xl:sticky xl:top-0">
+          <Field label="Project">
             <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
-              {packageItem.start_date}
+              {projectName || '-'}
             </div>
           </Field>
-          <Field label="End">
+          <Field label="Name">
             <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
-              {packageItem.end_date}
+              {packageItem.name}
+            </div>
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Start">
+              <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
+                {packageItem.start_date}
+              </div>
+            </Field>
+            <Field label="End">
+              <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
+                {packageItem.end_date}
+              </div>
+            </Field>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <MetricBlock label="Resolved" value={`${packageBar.resolvedBug}`} />
+            <MetricBlock label="Open" value={`${openBugCount}`} />
+            <MetricBlock
+              label="Issues"
+              value={`${packageItem.issues.length}`}
+            />
+          </div>
+          <Field label="Keys">
+            <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm">
+              {packageItem.keys || '-'}
+            </div>
+          </Field>
+          <Field label="Labels">
+            <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm">
+              {packageItem.labels || '-'}
+            </div>
+          </Field>
+          <Field label="Members">
+            <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm">
+              {packageItem.members || '-'}
+            </div>
+          </Field>
+          <Field label="JQL">
+            <div className="ops-bug-view-field min-h-[7rem] rounded-md px-3 py-3 text-sm break-all">
+              {packageItem.jql || '-'}
             </div>
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <MetricBlock label="Resolved" value={`${packageBar.resolvedBug}`} />
-          <MetricBlock label="Open" value={`${openBugCount}`} />
-        </div>
-        <Field label="Keys">
-          <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm">
-            {packageItem.keys || '-'}
-          </div>
-        </Field>
-        <Field label="Labels">
-          <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm">
-            {packageItem.labels || '-'}
-          </div>
-        </Field>
-        <Field label="Members">
-          <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm">
-            {packageItem.members || '-'}
-          </div>
-        </Field>
-        <Field label="JQL">
-          <div className="ops-bug-view-field min-h-[7rem] rounded-md px-3 py-3 text-sm break-all">
-            {packageItem.jql || '-'}
-          </div>
-        </Field>
       </div>
     </div>
+  )
+}
+
+function PackageBugStatisticsSection({
+  isError,
+  isPending,
+  statistics,
+}: {
+  isError: boolean
+  isPending: boolean
+  statistics: PackageBugStatistic[]
+}) {
+  if (isPending) {
+    return (
+      <div className="ops-bug-chart-shell rounded-md px-4 py-10 text-sm text-[var(--muted-foreground)]">
+        Loading statistics.
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="ops-bug-chart-shell rounded-md px-4 py-10 text-sm text-[var(--status-danger)]">
+        Failed to load statistics.
+      </div>
+    )
+  }
+
+  const total = statistics.reduce((sum, item) => sum + item.number_of_bugs, 0)
+  const rawChartData = statistics.map((item, index) => ({
+    id: item.id,
+    label: formatBugCategoryLabel(item.bug_category.name),
+    value: item.number_of_bugs,
+    color: BUG_CATEGORY_COLORS[index % BUG_CATEGORY_COLORS.length],
+  }))
+  const sortedChartData = [...rawChartData].sort((left, right) => {
+    if (right.value !== left.value) return right.value - left.value
+    return left.label.localeCompare(right.label)
+  })
+  const topCategories = sortedChartData.slice(0, 5)
+  const remainingCategories = sortedChartData.slice(5)
+  const otherValue = remainingCategories.reduce(
+    (sum, item) => sum + item.value,
+    0,
+  )
+  const chartData =
+    remainingCategories.length > 0
+      ? [
+          ...topCategories,
+          {
+            id: -1,
+            label: 'Other',
+            value: otherValue,
+            color: '#6b778c',
+            breakdown: remainingCategories,
+          },
+        ]
+      : topCategories
+  const emptyChartData = [
+    {
+      id: -2,
+      label: 'No bugs',
+      value: 1,
+      color: 'color-mix(in srgb, var(--border) 70%, transparent)',
+    },
+  ]
+  const visibleChartData = total > 0 ? chartData : emptyChartData
+
+  return (
+    <div className="ops-bug-chart-shell grid gap-4 rounded-md p-3">
+      <div className="flex flex-wrap items-start gap-4">
+        <div className="h-52 w-full max-w-[13rem] shrink-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={visibleChartData}
+                dataKey="value"
+                innerRadius={48}
+                outerRadius={72}
+                paddingAngle={chartData.length > 1 ? 2 : 0}
+                stroke="none"
+              >
+                {visibleChartData.map((entry) => (
+                  <Cell key={entry.label} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                content={<PackageBugStatisticsTooltip total={total} />}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="grid min-w-0 flex-1 content-start gap-2 self-start">
+          {chartData.map((item) => (
+            <div
+              key={item.id}
+              className="ops-bug-chart-legend-item flex items-center justify-between gap-3 rounded-md px-3 py-2"
+              title={
+                item.label === 'Other' && 'breakdown' in item
+                  ? item.breakdown
+                      .map((entry) => `${entry.label}: ${entry.value}`)
+                      .join('\n')
+                  : undefined
+              }
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <span
+                  className="size-2.5 shrink-0 rounded-full"
+                  style={{ background: item.color }}
+                />
+                <span className="truncate text-sm">{item.label}</span>
+              </div>
+              <div className="text-right text-xs text-[var(--muted-foreground)]">
+                <div className="font-medium text-[var(--foreground)]">
+                  {item.value}
+                </div>
+                <div>
+                  {total > 0
+                    ? `${Math.round((item.value / total) * 100)}%`
+                    : '0%'}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PackageBugStatisticsTooltip({
+  active,
+  payload,
+  total = 0,
+}: {
+  active?: boolean
+  payload?: Array<{
+    payload: {
+      label: string
+      value: number
+      breakdown?: Array<{ label: string; value: number }>
+    }
+  }>
+  total?: number
+}) {
+  if (!active || !payload?.length) return null
+
+  const item = payload[0]?.payload
+  if (!item) return null
+
+  return (
+    <div className="ops-bug-chart-tooltip rounded-md px-3 py-2 text-xs shadow-sm">
+      <div className="font-medium text-[var(--foreground)]">{item.label}</div>
+      <div className="mt-1 text-[var(--muted-foreground)]">
+        {item.value} bugs
+        {total > 0 ? ` (${Math.round((item.value / total) * 100)}%)` : ''}
+      </div>
+      {item.label === 'Other' && item.breakdown?.length ? (
+        <div className="mt-2 grid gap-1 border-t border-[color:var(--border)]/80 pt-2 text-[var(--muted-foreground)]">
+          {item.breakdown.map((entry) => (
+            <div
+              key={entry.label}
+              className="flex items-center justify-between gap-3"
+            >
+              <span className="truncate">{entry.label}</span>
+              <span>{entry.value}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function PackageIssuesTable({
+  issues,
+}: {
+  issues: BugTrackerPackage['issues']
+}) {
+  if (!issues.length) {
+    return (
+      <div className="ops-bug-table-shell rounded-md px-4 py-10 text-sm text-[var(--muted-foreground)]">
+        No issues.
+      </div>
+    )
+  }
+
+  return (
+    <div className="ops-bug-table-shell overflow-hidden rounded-md">
+      <div className="max-h-[22rem] overflow-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead className="ops-bug-table-head sticky top-0 z-[1]">
+            <tr>
+              <th className="px-3 py-2 text-left font-medium">Key</th>
+              <th className="px-3 py-2 text-left font-medium">Summary</th>
+              <th className="px-3 py-2 text-left font-medium">Assignee</th>
+              <th className="px-3 py-2 text-left font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {issues.map((issue) => (
+              <tr key={issue.key} className="ops-bug-table-row align-top">
+                <td className="px-3 py-2.5">
+                  <a
+                    className="font-medium text-[var(--primary)] hover:underline"
+                    href={issue.url}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    {issue.key}
+                  </a>
+                </td>
+                <td className="px-3 py-2.5">
+                  <div className="line-clamp-2 min-w-0 text-[var(--foreground)]">
+                    {issue.summary}
+                  </div>
+                </td>
+                <td className="px-3 py-2.5 text-[var(--muted-foreground)]">
+                  {issue.assignee || '-'}
+                </td>
+                <td className="px-3 py-2.5">
+                  <IssueStatusBadge status={issue.status} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function IssueStatusBadge({ status }: { status: string }) {
+  const tone = getIssueStatusTone(status)
+  return (
+    <span
+      className="inline-flex items-center rounded-md px-2 py-1 text-[11px] font-medium"
+      style={{
+        background: `color-mix(in srgb, ${tone} 14%, transparent)`,
+        color: tone,
+      }}
+    >
+      {status}
+    </span>
   )
 }
 
@@ -1467,6 +1827,7 @@ function toPackagePayload(values: PackageFormValues) {
     jql: values.jql.trim(),
     start_date: values.start_date,
     end_date: values.end_date,
+    bug_tracker_project: values.projectId,
   }
 }
 
@@ -1502,7 +1863,12 @@ function getBarColor(health: TimelinePackageBar['health']) {
 
 function getBarTrackColor(health: TimelinePackageBar['health']) {
   const color = getBarColor(health)
-  return `color-mix(in srgb, ${color} 42%, white)`
+  return `color-mix(in srgb, ${color} 32%, var(--workspace-pane))`
+}
+
+function getProjectBandColor(health: TimelinePackageBar['health']) {
+  const color = getBarColor(health)
+  return `color-mix(in srgb, ${color} 22%, transparent)`
 }
 
 function getHealthFromProgress(resolvedBug: number, totalBug: number) {
@@ -1538,8 +1904,41 @@ function formatWeekShortLabel(start: Date, end: Date) {
   return `${start.getDate()}-${addDays(end, -1).getDate()}`
 }
 
+function formatBugCategoryLabel(value: string) {
+  return value.replace(/^FPT\.BUG\./, '').replaceAll('_', ' ')
+}
+
+function getIssueStatusTone(status: string) {
+  const normalized = status.toLowerCase()
+  if (normalized === 'closed' || normalized === 'resolved') {
+    return 'var(--status-success)'
+  }
+  if (
+    normalized === 'in progress' ||
+    normalized === 'open' ||
+    normalized === 'fixready'
+  ) {
+    return 'var(--status-warning)'
+  }
+  return 'var(--status-danger)'
+}
+
 function cnSelected(base: string, selected: boolean) {
   return `${base} ${selected ? 'ops-bug-selected' : ''}`
+}
+
+function getProjectWindow(packages: TimelinePackageBar[]) {
+  if (!packages.length) return null
+
+  const leftPercent = Math.min(...packages.map((item) => item.leftPercent))
+  const rightPercent = Math.max(
+    ...packages.map((item) => item.leftPercent + item.widthPercent),
+  )
+
+  return {
+    leftPercent,
+    widthPercent: Math.max(rightPercent - leftPercent, 6),
+  }
 }
 
 function toInputDate(value: Date) {
