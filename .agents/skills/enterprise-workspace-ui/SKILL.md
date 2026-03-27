@@ -21,6 +21,13 @@ Enforce pane-based, enterprise-grade work surfaces that feel closer to Jira, Out
 - dense review surfaces
 - pages with persistent controls and data grids
 
+## When not to load
+
+- Do not load for login-only or preview-only styling; use `frontend-design`.
+- Do not load only to change copy or labels; use `minimal-product-copy`.
+- Do not load for feature boundaries, route structure, or state ownership; use `react-architecture`.
+- Do not load alone for timeline-specific interaction and time-axis behavior; pair with `timeline-gantt-ux`.
+
 ## Layout references
 
 Heavily reference:
@@ -64,6 +71,8 @@ These references imply:
 - Prefer one strong workspace surface over nested cards.
 - Use dividers, sticky headers, and background bands to organize content.
 - Use shadows sparingly and lightly.
+- Avoid card-in-card-in-card layouts on authenticated pages unless the nested structure is functionally necessary.
+- Prefer sectioning, separators, and surface contrast before introducing another container layer.
 
 ### 5. Density matters
 
@@ -73,6 +82,8 @@ These references imply:
 
 ## Styling rules
 
+- `frontend-design` owns theme polish, typography finish, and visual refinement.
+- This skill owns structure, density, pane behavior, and toolbar placement.
 - Small-to-moderate radii on authenticated pages.
 - Strong dividers and subtle panel contrast.
 - Minimal atmospheric backgrounds.
@@ -86,6 +97,7 @@ Do not create these on authenticated pages:
 - centered max-width app canvas
 - large hero headers above the work surface
 - dashboard-summary card grids before the actual task surface
+- card-in-card-in-card workspace layouts without clear information hierarchy
 - floating sidebar cards
 - decorative gradients competing with data
 - stacked rounded containers wrapping each section

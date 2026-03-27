@@ -44,6 +44,22 @@ export type PackageBugStatistic = {
   package: number
 }
 
+export type PackageSprintStatistic = {
+  id: number
+  resolved_bug: number
+  total_bug: number
+  new_bug: number
+  resolved_bug_velocity: number
+  target_bug_velocity: number
+  target_reopened_rate: number
+  resolved_bug_reopened: number
+  reopened_bug: number
+  created_at: string
+  active: boolean
+  package: number
+  sprint: number
+}
+
 export type BugTrackerPackagePayload = {
   name: string
   keys: string

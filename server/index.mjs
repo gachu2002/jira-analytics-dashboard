@@ -49,6 +49,24 @@ function buildBugStatistics(packageId, counts) {
   }))
 }
 
+function buildSprintStatistics(packageId, sprints) {
+  return sprints.map((item, index) => ({
+    id: packageId * 1000 + index + 1,
+    resolved_bug: item.resolved_bug,
+    total_bug: item.total_bug,
+    new_bug: item.new_bug,
+    resolved_bug_velocity: item.resolved_bug_velocity,
+    target_bug_velocity: item.target_bug_velocity,
+    target_reopened_rate: item.target_reopened_rate,
+    resolved_bug_reopened: item.resolved_bug_reopened,
+    reopened_bug: item.reopened_bug,
+    created_at: item.created_at,
+    active: item.active ?? false,
+    package: packageId,
+    sprint: item.sprint ?? index + 1,
+  }))
+}
+
 const projects = [
   { id: 1, name: 'Atlas Cloud' },
   { id: 2, name: 'Console Platform' },
@@ -251,6 +269,231 @@ const packageBugStatistics = {
   4: buildBugStatistics(4, [2, 1, 3, 4, 1, 1, 0, 1, 0, 1, 2, 1, 2, 0, 1]),
   5: buildBugStatistics(5, [2, 0, 3, 2, 1, 0, 1, 1, 0, 0, 1, 1, 2, 2, 2]),
   6: buildBugStatistics(6, [1, 0, 2, 1, 0, 0, 0, 0, 0, 1, 1, 1, 3, 0, 1]),
+}
+
+const packageSprintStatistics = {
+  1: buildSprintStatistics(1, [
+    {
+      sprint: 31,
+      resolved_bug: 4,
+      total_bug: 18,
+      new_bug: 7,
+      resolved_bug_velocity: 4,
+      target_bug_velocity: 5,
+      target_reopened_rate: 0.08,
+      resolved_bug_reopened: 1,
+      reopened_bug: 1,
+      created_at: '2026-02-12T09:00:00.000Z',
+    },
+    {
+      sprint: 32,
+      resolved_bug: 5,
+      total_bug: 20,
+      new_bug: 7,
+      resolved_bug_velocity: 5,
+      target_bug_velocity: 5,
+      target_reopened_rate: 0.08,
+      resolved_bug_reopened: 1,
+      reopened_bug: 2,
+      created_at: '2026-02-26T09:00:00.000Z',
+    },
+    {
+      sprint: 33,
+      resolved_bug: 4,
+      total_bug: 23,
+      new_bug: 8,
+      resolved_bug_velocity: 4,
+      target_bug_velocity: 5,
+      target_reopened_rate: 0.08,
+      resolved_bug_reopened: 2,
+      reopened_bug: 3,
+      created_at: '2026-03-12T09:00:00.000Z',
+    },
+    {
+      sprint: 34,
+      resolved_bug: 5,
+      total_bug: 24,
+      new_bug: 6,
+      resolved_bug_velocity: 5,
+      target_bug_velocity: 5,
+      target_reopened_rate: 0.08,
+      resolved_bug_reopened: 1,
+      reopened_bug: 2,
+      created_at: '2026-03-27T09:00:00.000Z',
+      active: true,
+    },
+  ]),
+  2: buildSprintStatistics(2, [
+    {
+      sprint: 35,
+      resolved_bug: 2,
+      total_bug: 16,
+      new_bug: 5,
+      resolved_bug_velocity: 2,
+      target_bug_velocity: 4,
+      target_reopened_rate: 0.12,
+      resolved_bug_reopened: 1,
+      reopened_bug: 1,
+      created_at: '2026-03-20T09:00:00.000Z',
+    },
+    {
+      sprint: 36,
+      resolved_bug: 3,
+      total_bug: 19,
+      new_bug: 6,
+      resolved_bug_velocity: 3,
+      target_bug_velocity: 4,
+      target_reopened_rate: 0.12,
+      resolved_bug_reopened: 1,
+      reopened_bug: 2,
+      created_at: '2026-04-03T09:00:00.000Z',
+    },
+    {
+      sprint: 37,
+      resolved_bug: 4,
+      total_bug: 21,
+      new_bug: 5,
+      resolved_bug_velocity: 4,
+      target_bug_velocity: 4,
+      target_reopened_rate: 0.12,
+      resolved_bug_reopened: 2,
+      reopened_bug: 3,
+      created_at: '2026-04-17T09:00:00.000Z',
+      active: true,
+    },
+  ]),
+  3: buildSprintStatistics(3, [
+    {
+      sprint: 31,
+      resolved_bug: 3,
+      total_bug: 5,
+      new_bug: 2,
+      resolved_bug_velocity: 3,
+      target_bug_velocity: 3,
+      target_reopened_rate: 0.05,
+      resolved_bug_reopened: 0,
+      reopened_bug: 0,
+      created_at: '2026-03-05T09:00:00.000Z',
+    },
+    {
+      sprint: 32,
+      resolved_bug: 2,
+      total_bug: 4,
+      new_bug: 1,
+      resolved_bug_velocity: 2,
+      target_bug_velocity: 3,
+      target_reopened_rate: 0.05,
+      resolved_bug_reopened: 0,
+      reopened_bug: 0,
+      created_at: '2026-03-19T09:00:00.000Z',
+      active: true,
+    },
+  ]),
+  4: buildSprintStatistics(4, [
+    {
+      sprint: 36,
+      resolved_bug: 4,
+      total_bug: 14,
+      new_bug: 6,
+      resolved_bug_velocity: 4,
+      target_bug_velocity: 5,
+      target_reopened_rate: 0.1,
+      resolved_bug_reopened: 1,
+      reopened_bug: 1,
+      created_at: '2026-04-10T09:00:00.000Z',
+    },
+    {
+      sprint: 37,
+      resolved_bug: 5,
+      total_bug: 15,
+      new_bug: 6,
+      resolved_bug_velocity: 5,
+      target_bug_velocity: 5,
+      target_reopened_rate: 0.1,
+      resolved_bug_reopened: 1,
+      reopened_bug: 2,
+      created_at: '2026-04-24T09:00:00.000Z',
+    },
+    {
+      sprint: 38,
+      resolved_bug: 5,
+      total_bug: 16,
+      new_bug: 6,
+      resolved_bug_velocity: 5,
+      target_bug_velocity: 5,
+      target_reopened_rate: 0.1,
+      resolved_bug_reopened: 1,
+      reopened_bug: 1,
+      created_at: '2026-05-08T09:00:00.000Z',
+      active: true,
+    },
+  ]),
+  5: buildSprintStatistics(5, [
+    {
+      sprint: 29,
+      resolved_bug: 2,
+      total_bug: 9,
+      new_bug: 4,
+      resolved_bug_velocity: 2,
+      target_bug_velocity: 3,
+      target_reopened_rate: 0.09,
+      resolved_bug_reopened: 1,
+      reopened_bug: 1,
+      created_at: '2026-03-01T09:00:00.000Z',
+    },
+    {
+      sprint: 30,
+      resolved_bug: 3,
+      total_bug: 11,
+      new_bug: 5,
+      resolved_bug_velocity: 3,
+      target_bug_velocity: 3,
+      target_reopened_rate: 0.09,
+      resolved_bug_reopened: 0,
+      reopened_bug: 1,
+      created_at: '2026-03-15T09:00:00.000Z',
+      active: true,
+    },
+  ]),
+  6: buildSprintStatistics(6, [
+    {
+      sprint: 35,
+      resolved_bug: 5,
+      total_bug: 8,
+      new_bug: 4,
+      resolved_bug_velocity: 5,
+      target_bug_velocity: 4,
+      target_reopened_rate: 0.06,
+      resolved_bug_reopened: 0,
+      reopened_bug: 0,
+      created_at: '2026-04-02T09:00:00.000Z',
+    },
+    {
+      sprint: 36,
+      resolved_bug: 6,
+      total_bug: 9,
+      new_bug: 4,
+      resolved_bug_velocity: 6,
+      target_bug_velocity: 4,
+      target_reopened_rate: 0.06,
+      resolved_bug_reopened: 1,
+      reopened_bug: 1,
+      created_at: '2026-04-16T09:00:00.000Z',
+    },
+    {
+      sprint: 37,
+      resolved_bug: 5,
+      total_bug: 10,
+      new_bug: 6,
+      resolved_bug_velocity: 5,
+      target_bug_velocity: 4,
+      target_reopened_rate: 0.06,
+      resolved_bug_reopened: 1,
+      reopened_bug: 1,
+      created_at: '2026-04-30T09:00:00.000Z',
+      active: true,
+    },
+  ]),
 }
 
 function sendJson(response, statusCode, payload) {
@@ -468,6 +711,7 @@ const server = createServer(async (request, response) => {
       for (let index = packages.length - 1; index >= 0; index -= 1) {
         if (packages[index].bug_tracker_project === projectId) {
           delete packageBugStatistics[packages[index].id]
+          delete packageSprintStatistics[packages[index].id]
           packages.splice(index, 1)
         }
       }
@@ -526,6 +770,10 @@ const server = createServer(async (request, response) => {
         packageRecord.id,
         [],
       )
+      packageSprintStatistics[packageRecord.id] = buildSprintStatistics(
+        packageRecord.id,
+        [],
+      )
       sendJson(response, 201, packageRecord)
       return
     } catch {
@@ -553,6 +801,23 @@ const server = createServer(async (request, response) => {
       packageBugStatistics[currentPackageId] ??
         buildBugStatistics(currentPackageId, []),
     )
+    return
+  }
+
+  const packageSprintStatisticsMatch = path.match(
+    /^\/api\/bug-tracker\/packages\/(\d+)\/sprint-statistics\/$/,
+  )
+
+  if (packageSprintStatisticsMatch && request.method === 'GET') {
+    const currentPackageId = Number(packageSprintStatisticsMatch[1])
+    const packageRecord = getPackage(currentPackageId)
+
+    if (!packageRecord) {
+      sendJson(response, 404, { detail: 'Package not found.' })
+      return
+    }
+
+    sendJson(response, 200, packageSprintStatistics[currentPackageId] ?? [])
     return
   }
 
@@ -605,6 +870,7 @@ const server = createServer(async (request, response) => {
       )
       packages.splice(packageIndex, 1)
       delete packageBugStatistics[currentPackageId]
+      delete packageSprintStatistics[currentPackageId]
       sendJson(response, 204, null)
       return
     }

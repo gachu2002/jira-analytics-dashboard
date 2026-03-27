@@ -5,6 +5,7 @@ import {
   getBugTrackerProjects,
   getBugTrackerProject,
   getPackageBugStatistics,
+  getPackageSprintStatistics,
   getProjectPackage,
 } from '@/features/bug-timeline/api/bug-timeline.api'
 
@@ -21,6 +22,12 @@ export const bugTimelineQueryKeys = {
     [...bugTimelineQueryKeys.all, 'package', packageId] as const,
   packageBugStatistics: (packageId: number) =>
     [...bugTimelineQueryKeys.all, 'package-bug-statistics', packageId] as const,
+  packageSprintStatistics: (packageId: number) =>
+    [
+      ...bugTimelineQueryKeys.all,
+      'package-sprint-statistics',
+      packageId,
+    ] as const,
 }
 
 export function useBugTrackerProjectsQuery() {
@@ -60,6 +67,17 @@ export function usePackageBugStatisticsQuery(
   return useQuery({
     queryKey: bugTimelineQueryKeys.packageBugStatistics(packageId),
     queryFn: () => getPackageBugStatistics(packageId),
+    enabled,
+  })
+}
+
+export function usePackageSprintStatisticsQuery(
+  packageId: number,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: bugTimelineQueryKeys.packageSprintStatistics(packageId),
+    queryFn: () => getPackageSprintStatistics(packageId),
     enabled,
   })
 }

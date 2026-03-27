@@ -32,35 +32,39 @@ The JSON above contains the project config and installed components. Use `npx sh
 - **Favor reusable composition over duplication.** If the same UI pattern appears in 2 or more places, extract it into a shared reusable component instead of repeating the markup.
 - **Define theme styling centrally first.** Colors, semantic tokens, and reusable styling primitives should be defined in the project's Tailwind/global style file before being consumed in components.
 - **Avoid hardcoded presentation values in component code.** Prefer semantic tokens and shared variants over one-off color utilities and repeated ad-hoc class combinations.
+- **Do not default to nested `Card` composition.** A `Card` inside another `Card` should have a clear information-architecture reason, not just visual layering.
+
+## When not to load
+
+- Do not load just because the repo contains shadcn components.
+- Do not load for page layout, workspace structure, or design direction by itself; use `enterprise-workspace-ui` and/or `frontend-design`.
+- Do not load for copy changes, routing, state ownership, or API/view-model work.
+- Load this skill when the task depends on shadcn primitives, registries, CLI workflows, or reusable component composition.
 
 ## Critical Rules
 
 ### Styling & Tailwind -> `rules/styling.md`
 
-- **`className` for layout, not styling.** Never override component colors or typography.
+- **Prefer semantic tokens and variants before one-off styling.**
 - **No `space-x-*` or `space-y-*`.** Use `flex` with `gap-*`.
 - **Use `size-*` when width and height are equal.** `size-10` not `w-10 h-10`.
 - **Use `truncate` shorthand.** Not `overflow-hidden text-ellipsis whitespace-nowrap`.
 - **No manual `dark:` color overrides.** Use semantic tokens.
 - **Use `cn()` for conditional classes.** Don't write manual template literal ternaries.
-- **No manual `z-index` on overlay components.** Dialog, Sheet, Popover, etc. handle their own stacking.
+- **Avoid overlay z-index overrides unless the component stack actually requires it.**
 
 ### Forms & Inputs -> `rules/forms.md`
 
-- **Forms use `FieldGroup` + `Field`.** Never use raw layout divs for form structure.
-- **`InputGroup` uses `InputGroupInput`/`InputGroupTextarea`.** Never raw `Input`/`Textarea` inside `InputGroup`.
-- **Buttons inside inputs use `InputGroup` + `InputGroupAddon`.**
-- **Option sets (2-7 choices) use `ToggleGroup`.** Don't loop `Button` with manual active state.
-- **`FieldSet` + `FieldLegend` for grouped checkboxes/radios.**
-- **Field validation uses `data-invalid` + `aria-invalid`.**
+- Prefer established shadcn form composition when the repo already has the needed primitives.
+- Use accessible validation states and labels.
+- Prefer reusable field/group patterns once the same form structure repeats.
 
 ### Component Structure -> `rules/composition.md`
 
-- **Items always inside their Group.**
 - **Use `asChild` (radix) or `render` (base) for custom triggers.** Check the `base` field from `npx shadcn@latest info`.
 - **Dialog, Sheet, and Drawer always need a Title.**
 - **Use full Card composition.** `CardHeader`/`CardTitle`/`CardDescription`/`CardContent`/`CardFooter`.
-- **Button has no `isPending`/`isLoading`.** Compose with `Spinner` + `data-icon` + `disabled`.
+- **Avoid recursive card stacking unless the nested card carries distinct scope or function.**
 - **`TabsTrigger` must be inside `TabsList`.**
 - **`Avatar` always needs `AvatarFallback`.**
 
@@ -77,9 +81,8 @@ The JSON above contains the project config and installed components. Use `npx sh
 
 ### Icons -> `rules/icons.md`
 
-- **Icons in `Button` use `data-icon`.**
-- **No sizing classes on icons inside components.**
-- **Pass icons as objects, not string keys.**
+- Keep icon usage consistent with installed primitives and existing repo patterns.
+- Prefer semantic placement and restrained sizing over decorative icon treatment.
 
 ### CLI
 
@@ -141,13 +144,14 @@ The JSON above contains the project config and installed components. Use `npx sh
 1. Get project context with `npx shadcn@latest info --json`.
 2. Check installed components before adding new ones.
 3. Search registries with `npx shadcn@latest search` before writing custom markup.
-4. If a pattern is used in 2 or more places, extract a reusable component in the appropriate shared location.
-5. Define any new colors or semantic tokens in the global Tailwind/theme file before using them in component code.
-6. Fetch docs first with `npx shadcn@latest docs <component>`.
-7. Install or update with `npx shadcn@latest add`.
-8. Review added files and fix imports or composition issues.
-9. Never guess the registry when the user asks for a block or component.
-10. For preset switching, ask whether to reinstall, merge, or skip.
+4. If existing installed primitives are enough, compose them before adding new ones.
+5. If a pattern is used in 2 or more places, extract a reusable component in the appropriate shared location.
+6. Define any new colors or semantic tokens in the global Tailwind/theme file before using them in component code.
+7. Fetch docs first with `npx shadcn@latest docs <component>`.
+8. Install or update with `npx shadcn@latest add`.
+9. Review added files and adapt them to repo conventions.
+10. Never guess the registry when the user asks for a block or component.
+11. For preset switching, ask whether to reinstall, merge, or skip.
 
 ## Updating Components
 

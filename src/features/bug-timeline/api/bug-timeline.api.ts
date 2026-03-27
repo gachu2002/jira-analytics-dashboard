@@ -6,6 +6,7 @@ import type {
   BugTrackerProject,
   BugTrackerProjectPayload,
   PackageBugStatistic,
+  PackageSprintStatistic,
 } from '@/features/bug-timeline/types/bug-timeline.types'
 
 export async function getBugTrackerProjects() {
@@ -84,6 +85,13 @@ export async function getProjectPackage(packageId: number) {
 export async function getPackageBugStatistics(packageId: number) {
   const response = await http.get<PackageBugStatistic[]>(
     `/api/bug-tracker/packages/${packageId}/bug-statistics/`,
+  )
+  return response.data
+}
+
+export async function getPackageSprintStatistics(packageId: number) {
+  const response = await http.get<PackageSprintStatistic[]>(
+    `/api/bug-tracker/packages/${packageId}/sprint-statistics/`,
   )
   return response.data
 }

@@ -13,11 +13,17 @@ Use this skill when implementing or refactoring React + TypeScript code in this 
 - Page and route composition in `src/pages/*` and `src/routes/*`.
 - API integration, data flow, and state boundaries.
 
+## When not to load
+
+- Do not load for cosmetic-only edits, theming, spacing, or visual polish; use `frontend-design`.
+- Do not load for copy-only changes; use `minimal-product-copy`.
+- Do not load for shadcn component lookup/add/update work unless structure is also changing; use `shadcn`.
+
 ## Architecture boundaries
 
 - Keep `src/pages` thin: route parameters and composition only.
 - Place feature logic in `src/features/<feature>` (`api`, `components`, `hooks`, `schemas`, `types`, optional stores).
-- Keep transport details in `src/services/*` and shared client setup in `src/lib/*`.
+- Keep feature-local transport in `src/features/<feature>/api/*` and shared client setup in `src/lib/*`.
 - Export feature public APIs from `src/features/<feature>/index.ts`; avoid cross-feature deep imports.
 - Use `src/components/common` for app-level reusable components; keep `src/components/ui` for shadcn-oriented primitives.
 - If a component pattern is used in 2 or more places, extract it instead of duplicating it.
@@ -42,11 +48,14 @@ Use this skill when implementing or refactoring React + TypeScript code in this 
 ## Component rules
 
 - Keep components role-focused: layout, card, chart, table, control.
+- Keep changed code minimal, clean, clear, and maintainable.
 - Use explicit props and avoid hidden coupling to unrelated global stores.
 - Prefer composition over multiplying boolean flags for divergent render paths.
 - Extract blocks when JSX becomes difficult to scan.
 - Extract repeated UI once it appears in 2 or more places, especially for cards, form rows, table controls, section shells, and status displays.
 - Use semantic elements for headings, tables, and landmarks.
+- Avoid abstraction without reuse, a clear boundary, or a measurable simplification.
+- Avoid presentation-only wrapper layers that make the tree harder to read or maintain.
 
 ## Performance expectations
 

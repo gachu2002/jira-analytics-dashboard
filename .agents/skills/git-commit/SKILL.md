@@ -8,11 +8,18 @@ disable-model-invocation: true
 
 Use this skill when the user asks to create a commit.
 
+## When not to load
+
+- Do not load unless the user explicitly asked for a commit.
+- Do not load during implementation or verification work that is still in progress.
+- Do not load to decide whether changes are correct; use `frontend-quality-gates` first for non-trivial frontend work.
+
 ## Context checks
 
 - Review current status and diff.
 - Ensure changes are intentionally scoped for one commit.
 - Confirm frontend quality gates already passed for non-trivial code changes.
+- Confirm unrelated local changes stay out of the commit.
 
 ## Commit workflow
 
@@ -26,3 +33,4 @@ Use this skill when the user asks to create a commit.
 - Never include secrets or credential files.
 - Do not rewrite history unless explicitly requested.
 - Keep unrelated modifications out of the commit.
+- Prefer one clean commit over premature partial commits.

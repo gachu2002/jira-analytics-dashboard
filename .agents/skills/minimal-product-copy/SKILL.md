@@ -7,6 +7,12 @@ description: Use for restrained UI copy with minimal wording and no invented pro
 
 Use this skill when writing or revising user-facing product text in this repository.
 
+## When not to load
+
+- Do not load for visual design, layout treatment, or component polish; use `frontend-design`.
+- Do not load for app shell, sidebar, or dense workspace layout decisions; use `enterprise-workspace-ui`.
+- Do not load for structural React refactors or data-flow changes; use `react-architecture`.
+
 ## Goals
 
 - Keep wording minimal.

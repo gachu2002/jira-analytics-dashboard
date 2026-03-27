@@ -22,6 +22,12 @@ Enforce dense, stable, scan-heavy time-based interfaces for milestone and bug re
 - timeline filters close to results
 - bar styling and temporal density
 
+## When not to load
+
+- Do not load for general app shell or sidebar layout without a timeline surface; use `enterprise-workspace-ui`.
+- Do not load for pure theme/token polish without timeline behavior changes; use `frontend-design`.
+- Do not load for data-flow or feature-boundary refactors; use `react-architecture`.
+
 ## Core rules
 
 ### 1. Time axis must be stable
