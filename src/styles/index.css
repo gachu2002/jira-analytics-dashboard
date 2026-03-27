@@ -67,12 +67,23 @@
   --timeline-stripe: rgba(9, 30, 66, 0.06);
   --gridline-strong: rgba(9, 30, 66, 0.12);
   --gantt-header-bg: rgba(250, 251, 252, 0.98);
-  --gantt-sidebar-bg: #f6f8fb;
+  --gantt-sidebar-bg: #f3f6fb;
   --gantt-row-hover: rgba(9, 30, 66, 0.034);
-  --gantt-grid-major: rgba(9, 30, 66, 0.14);
-  --gantt-grid-minor: rgba(9, 30, 66, 0.08);
+  --gantt-grid-major: rgba(9, 30, 66, 0.18);
+  --gantt-grid-minor: rgba(9, 30, 66, 0.085);
   --gantt-selected: rgba(12, 102, 228, 0.13);
   --gantt-sidebar-active: rgba(12, 102, 228, 0.1);
+  --gantt-project-surface: #eaf2ff;
+  --gantt-package-surface: #fbfdff;
+  --gantt-grid-surface: #fbfdff;
+  --gantt-strong-divider: rgba(9, 30, 66, 0.34);
+  --gantt-section-divider: rgba(9, 30, 66, 0.16);
+  --gantt-project-emphasis: rgba(12, 102, 228, 0.12);
+  --gantt-toolbar-bg: #e6ebf3;
+  --gantt-toolbar-panel: #eef2f7;
+  --gantt-header-total-h: 5.5rem;
+  --gantt-project-row-h: 4.5rem;
+  --gantt-package-row-h: 3.75rem;
   --canvas-line: rgba(9, 30, 66, 0.05);
   --hero-beam: rgba(12, 102, 228, 0.08);
   --hero-beam-strong: rgba(54, 123, 255, 0.1);
@@ -148,10 +159,21 @@
   --gantt-header-bg: rgba(23, 33, 45, 0.96);
   --gantt-sidebar-bg: #101720;
   --gantt-row-hover: rgba(232, 238, 248, 0.05);
-  --gantt-grid-major: rgba(232, 238, 248, 0.14);
+  --gantt-grid-major: rgba(232, 238, 248, 0.18);
   --gantt-grid-minor: rgba(232, 238, 248, 0.08);
   --gantt-selected: rgba(87, 157, 255, 0.2);
   --gantt-sidebar-active: rgba(87, 157, 255, 0.16);
+  --gantt-project-surface: #16263a;
+  --gantt-package-surface: #16212d;
+  --gantt-grid-surface: #17212d;
+  --gantt-strong-divider: rgba(232, 238, 248, 0.34);
+  --gantt-section-divider: rgba(232, 238, 248, 0.16);
+  --gantt-project-emphasis: rgba(87, 157, 255, 0.16);
+  --gantt-toolbar-bg: #111923;
+  --gantt-toolbar-panel: #17212d;
+  --gantt-header-total-h: 5.5rem;
+  --gantt-project-row-h: 4.5rem;
+  --gantt-package-row-h: 3.75rem;
   --canvas-line: rgba(232, 238, 248, 0.05);
   --hero-beam: rgba(87, 157, 255, 0.1);
   --hero-beam-strong: rgba(87, 157, 255, 0.12);
@@ -496,7 +518,9 @@
   .ops-timeline-bar {
     overflow: hidden;
     border-color: color-mix(in srgb, black 8%, transparent);
-    box-shadow: 0 1px 2px rgba(9, 30, 66, 0.12);
+    box-shadow:
+      0 1px 2px rgba(9, 30, 66, 0.08),
+      0 4px 10px rgba(9, 30, 66, 0.08);
     z-index: 2;
   }
 
@@ -583,41 +607,42 @@
   }
 
   .ops-gantt-project {
-    background: color-mix(
-      in srgb,
-      var(--workspace-pane-muted) 96%,
-      transparent
-    );
-    box-shadow: inset 0 -1px 0
-      color-mix(in srgb, var(--border) 78%, transparent);
+    min-height: var(--gantt-project-row-h);
+    background: var(--gantt-project-surface);
+    box-shadow: inset 3px 0 0 var(--primary);
   }
 
   .ops-gantt-project-band {
-    background: color-mix(
-      in srgb,
-      var(--workspace-pane-muted) 92%,
-      transparent
-    );
+    min-height: var(--gantt-project-row-h);
+    background: var(--gantt-project-surface);
+  }
+
+  .ops-gantt-project.ops-bug-sidebar-cell {
+    background: var(--gantt-project-surface);
   }
 
   .ops-gantt-package {
-    background: var(--workspace-pane);
+    min-height: var(--gantt-package-row-h);
+    background: var(--gantt-package-surface);
+  }
+
+  .ops-gantt-package.ops-bug-sidebar-cell {
+    background: var(--gantt-package-surface);
   }
 
   .ops-gantt-package-band {
-    background: var(--workspace-pane);
+    min-height: var(--gantt-package-row-h);
+    background: var(--gantt-package-surface);
   }
 
   .ops-project-section {
     position: relative;
     overflow: visible;
-    border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
     background: var(--workspace-pane);
-    box-shadow: inset 0 1px 0 color-mix(in srgb, white 55%, transparent);
   }
 
   .ops-project-section + .ops-project-section {
-    margin-top: 0.75rem;
+    margin-top: 0;
   }
 
   .ops-project-section:first-child {
@@ -625,12 +650,10 @@
   }
 
   .ops-project-packages {
-    border-top: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
-    border-bottom: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+    border-top: 1px solid color-mix(in srgb, var(--border) 56%, transparent);
   }
 
   .ops-gantt-grid-frame {
-    border-left: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
     overflow: visible;
   }
 
@@ -758,32 +781,28 @@
   }
 
   .ops-gantt-shell {
-    background: var(--workspace-pane);
+    background: var(--workspace-bg);
   }
 
   .ops-gantt-toolbar {
-    border-bottom: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-    background: var(--workspace-header);
+    border-bottom: 1px solid var(--gantt-strong-divider);
+    background: var(--gantt-toolbar-bg);
   }
 
   .ops-gantt-header {
-    background: var(--workspace-header);
+    position: sticky;
+    top: 0;
+    left: 0;
+    background: var(--gantt-header-bg);
   }
 
   .ops-gantt-sidebar {
-    background: color-mix(
-      in srgb,
-      var(--workspace-pane-muted) 94%,
-      transparent
-    );
+    background: var(--gantt-sidebar-bg);
+    box-shadow: inset -1px 0 0 var(--gantt-strong-divider);
   }
 
   .ops-gantt-row:hover {
-    background: color-mix(
-      in srgb,
-      var(--workspace-pane-muted) 60%,
-      transparent
-    );
+    background: color-mix(in srgb, var(--gantt-row-hover) 100%, transparent);
   }
 
   .ops-sidebar-brand {
@@ -816,11 +835,11 @@
     top: 0;
     z-index: 18;
     display: grid;
-    gap: 0.75rem;
-    padding-top: 0.875rem;
-    padding-bottom: 0.875rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-    background: color-mix(in srgb, var(--workspace-bg) 94%, transparent);
+    gap: 0.625rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.625rem;
+    border-bottom: 1px solid var(--gantt-strong-divider);
+    background: var(--gantt-toolbar-bg);
     backdrop-filter: blur(10px);
   }
 
@@ -830,6 +849,7 @@
     align-items: start;
     gap: 0.75rem;
     justify-content: space-between;
+    padding: 0.15rem 0 0;
   }
 
   .ops-bug-toolbar-row {
@@ -838,6 +858,14 @@
     align-items: end;
     gap: 0.75rem;
     justify-content: flex-start;
+    border-top: 1px solid color-mix(in srgb, var(--border) 64%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--workspace-pane-muted) 84%,
+      var(--gantt-toolbar-bg)
+    );
+    border-radius: 0.8rem;
+    padding: 0.625rem 0.85rem 0.75rem;
   }
 
   .ops-bug-inline-meta {
@@ -863,25 +891,28 @@
   }
 
   .ops-bug-surface {
-    background: var(--workspace-pane);
+    position: relative;
+    background: var(--gantt-grid-surface);
+    overscroll-behavior: contain;
+    min-height: 0;
   }
 
   .ops-project-header-row {
-    top: 5.5rem;
+    top: var(--gantt-header-total-h, 5.5rem);
   }
 
   .ops-package-rail {
     position: relative;
     display: block;
-    padding-left: 2.35rem;
-    padding-right: 0.625rem;
+    padding-left: 1.7rem;
+    padding-right: 0.5rem;
   }
 
   .ops-package-rail-line {
     position: absolute;
-    left: 0.95rem;
-    top: 0.1rem;
-    bottom: 0.1rem;
+    left: 0.7rem;
+    top: 0.2rem;
+    bottom: 0.2rem;
     width: 1px;
     background: color-mix(in srgb, var(--border) 82%, transparent);
   }
@@ -889,16 +920,16 @@
   .ops-package-rail-line::after {
     content: '';
     position: absolute;
-    top: 0.85rem;
+    top: 0.65rem;
     left: 0;
-    width: 1rem;
+    width: 0.75rem;
     height: 1px;
     background: color-mix(in srgb, var(--border) 82%, transparent);
   }
 
   .ops-package-rail-content {
     min-width: 0;
-    padding-left: 0.25rem;
+    padding-left: 0.15rem;
   }
 
   .ops-bug-filter-shell {
@@ -960,28 +991,36 @@
   }
 
   .ops-bug-grid {
-    background: var(--workspace-pane);
+    background: var(--gantt-grid-surface);
+    min-height: 100%;
   }
 
   .ops-gantt-body {
     isolation: isolate;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--gantt-grid-surface) 98%, transparent) 0%,
+      color-mix(
+          in srgb,
+          var(--workspace-pane-muted) 20%,
+          var(--gantt-grid-surface)
+        )
+        100%
+    );
   }
 
   .ops-bug-sidebar-cell {
     position: sticky;
     left: 0;
     z-index: 18;
-    background: var(--workspace-pane);
+    background: var(--gantt-package-surface);
+    box-shadow: inset -1px 0 0 var(--gantt-strong-divider);
   }
 
   .ops-gantt-sidebar {
     display: flex;
     align-items: center;
-    background: color-mix(
-      in srgb,
-      var(--workspace-pane-muted) 94%,
-      transparent
-    );
+    background: var(--gantt-sidebar-bg);
   }
 
   .ops-bug-toolbar-label {
@@ -1058,6 +1097,59 @@
     );
   }
 
+  .ops-package-summary-card {
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--workspace-pane) 98%, transparent) 0%,
+      color-mix(in srgb, var(--workspace-pane-muted) 92%, var(--workspace-pane))
+        100%
+    );
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.72),
+      0 10px 24px rgba(9, 30, 66, 0.05);
+  }
+
+  .ops-package-details {
+    border-top: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+    padding-top: 0.85rem;
+  }
+
+  .ops-package-details-summary {
+    display: flex;
+    cursor: pointer;
+    list-style: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: var(--foreground);
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .ops-package-details-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .ops-package-meta-block,
+  .ops-package-query-shell,
+  .ops-package-sprint-card {
+    border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+    background: color-mix(in srgb, var(--workspace-pane) 97%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  }
+
+  .ops-package-meta-chip {
+    border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--workspace-pane-muted) 88%,
+      transparent
+    );
+    color: var(--foreground);
+  }
+
   .ops-bug-chart-legend-item {
     border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
     background: color-mix(in srgb, var(--workspace-pane) 94%, transparent);
@@ -1104,13 +1196,17 @@
   }
 
   .ops-bug-selected {
-    background: color-mix(in srgb, var(--primary) 10%, var(--workspace-pane));
-    box-shadow: inset 2px 0 0 var(--primary);
+    background: color-mix(in srgb, var(--primary) 11%, var(--workspace-pane));
+    box-shadow:
+      inset 2px 0 0 var(--primary),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
   }
 
   .ops-project-summary-bar {
-    border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    border: 1px solid color-mix(in srgb, var(--border) 62%, transparent);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      0 1px 2px rgba(9, 30, 66, 0.08);
   }
 
   .ops-bug-sidebar-cell {
@@ -1154,11 +1250,11 @@
     justify-content: flex-start;
     background: color-mix(
       in srgb,
-      var(--workspace-pane-muted) 96%,
-      transparent
+      var(--gantt-sidebar-bg) 78%,
+      var(--gantt-header-bg)
     );
-    border-left: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-    height: 2.25rem;
+    border-left: 1px solid var(--gantt-grid-major);
+    height: 2.5rem;
     white-space: nowrap;
     overflow: hidden;
   }
@@ -1172,8 +1268,9 @@
   }
 
   .ops-gantt-week-cell {
-    height: 3.25rem;
-    background: color-mix(in srgb, var(--workspace-pane) 98%, transparent);
+    height: 3rem;
+    background: var(--gantt-grid-surface);
+    border-bottom: 1px solid var(--gantt-strong-divider);
   }
 
   .ops-gantt-month-cell p {

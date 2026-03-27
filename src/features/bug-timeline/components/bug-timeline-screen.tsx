@@ -1,5 +1,18 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ComposedChart,
+  Line,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import {
   Bug,
   ChevronDown,
@@ -18,7 +31,10 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { usePackageBugStatisticsQuery } from '@/features/bug-timeline/api/bug-timeline.queries'
+import {
+  usePackageBugStatisticsQuery,
+  usePackageSprintStatisticsQuery,
+} from '@/features/bug-timeline/api/bug-timeline.queries'
 import { useBugTimelineQuery } from '@/features/bug-timeline/hooks/use-bug-timeline-query'
 import { useBugTimelineMutations } from '@/features/bug-timeline/hooks/use-bug-timeline-mutations'
 import {
@@ -36,13 +52,17 @@ import type {
   BugTrackerPackage,
   BugTrackerProject,
   PackageBugStatistic,
+  PackageSprintStatistic,
   TimelinePackageBar,
   TimelineProjectGroup,
 } from '@/features/bug-timeline/types/bug-timeline.types'
 import { cn } from '@/lib/utils'
 
-const labelColumnWidth = '20rem'
+const labelColumnWidth = '18.5rem'
 const weekColumnWidthRem = 7.5
+const monthHeaderHeight = '2.5rem'
+const weekHeaderHeight = '3rem'
+const ganttHeaderHeight = `calc(${monthHeaderHeight} + ${weekHeaderHeight})`
 const BUG_CATEGORY_COLORS = [
   '#0c66e4',
   '#22a06b',
@@ -231,7 +251,7 @@ export function BugTimelineScreen() {
   }
 
   return (
-    <section className="ops-bug-shell ops-workspace-screen flex min-h-[calc(100vh-3rem)] min-w-0 flex-1 flex-col">
+    <section className="ops-bug-shell ops-workspace-screen flex h-full min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {isPending ? <BugTimelineLoadingState /> : null}
         {isError ? <BugTimelineErrorState /> : null}
@@ -308,19 +328,22 @@ export function BugTimelineScreen() {
                   className="ops-bug-grid min-h-full"
                   style={{
                     minWidth: `calc(${labelColumnWidth} + ${timelineMinWidth})`,
+                    ['--gantt-header-total-h' as string]: ganttHeaderHeight,
                   }}
                 >
                   <div
-                    className="ops-gantt-header sticky top-0 z-20 grid border-b border-[color:var(--border)]"
+                    className="ops-gantt-header sticky top-0 z-30 grid border-b border-[color:var(--border)]"
                     style={{
                       gridTemplateColumns: `${labelColumnWidth} minmax(${timelineMinWidth}, 1fr)`,
-                      gridTemplateRows: '2.25rem 3.25rem',
+                      gridTemplateRows: `${monthHeaderHeight} ${weekHeaderHeight}`,
                     }}
                   >
-                    <div className="ops-bug-sidebar-cell ops-gantt-sidebar row-span-2 border-r border-[color:var(--border)] px-4 py-2.5">
-                      <p className="text-xs font-semibold tracking-[-0.02em]">
-                        Project
-                      </p>
+                    <div className="ops-bug-sidebar-cell ops-gantt-sidebar row-span-2 border-r border-[color:var(--border)] px-4 py-3">
+                      <div className="flex h-full items-end">
+                        <p className="text-sm font-semibold tracking-[-0.02em] text-[color:var(--foreground)]">
+                          Project
+                        </p>
+                      </div>
                     </div>
 
                     <div
@@ -366,37 +389,35 @@ export function BugTimelineScreen() {
                     </div>
                   </div>
 
-                  <div className="min-h-[calc(100vh-7.5rem)]">
-                    <div className="ops-gantt-body relative">
-                      {todayOffset !== null ? (
-                        <div
-                          className="ops-gantt-today-layer pointer-events-none absolute inset-y-0"
-                          style={{ left: labelColumnWidth, right: 0 }}
-                        >
-                          <TodayMarker offset={todayOffset} />
-                        </div>
-                      ) : null}
-                      {filteredViewModel.projects.map((project) => (
-                        <ProjectSection
-                          key={project.id}
-                          columns={filteredViewModel.weekColumns.length}
-                          isCollapsed={collapsedProjectIds.includes(project.id)}
-                          actionMenuId={openActionMenu}
-                          onAddPackage={handleCreatePackage}
-                          onCloseMenu={() => setOpenActionMenu(null)}
-                          onDeletePackage={(target) => setDeleteTarget(target)}
-                          onDeleteProject={(target) => setDeleteTarget(target)}
-                          onEditPackage={openEditPackage}
-                          onEditProject={openEditProject}
-                          onViewProject={openProjectView}
-                          onSelectPackage={handleSelectPackage}
-                          onOpenMenu={setOpenActionMenu}
-                          onToggle={() => toggleProject(project.id)}
-                          project={project}
-                          selectedEntity={selectedEntity}
-                        />
-                      ))}
-                    </div>
+                  <div className="ops-gantt-body relative">
+                    {todayOffset !== null ? (
+                      <div
+                        className="ops-gantt-today-layer pointer-events-none absolute inset-y-0"
+                        style={{ left: labelColumnWidth, right: 0 }}
+                      >
+                        <TodayMarker offset={todayOffset} />
+                      </div>
+                    ) : null}
+                    {filteredViewModel.projects.map((project) => (
+                      <ProjectSection
+                        key={project.id}
+                        columns={filteredViewModel.weekColumns.length}
+                        isCollapsed={collapsedProjectIds.includes(project.id)}
+                        actionMenuId={openActionMenu}
+                        onAddPackage={handleCreatePackage}
+                        onCloseMenu={() => setOpenActionMenu(null)}
+                        onDeletePackage={(target) => setDeleteTarget(target)}
+                        onDeleteProject={(target) => setDeleteTarget(target)}
+                        onEditPackage={openEditPackage}
+                        onEditProject={openEditProject}
+                        onViewProject={openProjectView}
+                        onSelectPackage={handleSelectPackage}
+                        onOpenMenu={setOpenActionMenu}
+                        onToggle={() => toggleProject(project.id)}
+                        project={project}
+                        selectedEntity={selectedEntity}
+                      />
+                    ))}
                   </div>
                 </div>
               </div>
@@ -543,12 +564,12 @@ function ProjectSection({
     <section className="ops-project-section bg-[var(--workspace-pane)]">
       <div
         className={cn(
-          'ops-project-header-row sticky z-10 grid border-b border-[color:var(--border)]',
+          'ops-project-header-row sticky z-20 grid border-b border-[color:var(--border)]',
           actionMenuId === `project-${project.id}` && 'z-30',
         )}
         style={{ gridTemplateColumns: `${labelColumnWidth} minmax(0, 1fr)` }}
       >
-        <div className="group/row ops-bug-sidebar-cell ops-gantt-project px-4 py-2.5">
+        <div className="group/row ops-bug-sidebar-cell ops-gantt-project px-4 py-3">
           <div className="flex items-start justify-between gap-3">
             <button
               type="button"
@@ -562,7 +583,7 @@ function ProjectSection({
                     isCollapsed && '-rotate-90',
                   )}
                 />
-                <p className="truncate text-sm font-semibold tracking-[-0.02em]">
+                <p className="truncate text-[15px] font-semibold tracking-[-0.02em] text-[color:var(--foreground)]">
                   {project.name}
                 </p>
               </div>
@@ -614,11 +635,11 @@ function ProjectSection({
           </div>
         </div>
 
-        <div className="ops-gantt-project-band ops-gantt-grid-frame relative min-h-[3rem] py-2.5">
+        <div className="ops-gantt-project-band ops-gantt-grid-frame relative overflow-hidden py-3">
           <TimelineGrid columns={columns} />
           {projectWindow ? (
             <div
-              className="ops-project-summary-bar absolute top-1/2 h-2.5 -translate-y-1/2 rounded-full"
+              className="ops-project-summary-bar absolute top-1/2 h-3 -translate-y-1/2 rounded-full"
               style={{
                 left: `${projectWindow.leftPercent}%`,
                 width: `${projectWindow.widthPercent}%`,
@@ -685,7 +706,7 @@ function PackageRow({
     >
       <div
         className={cn(
-          'group/row ops-bug-sidebar-cell ops-gantt-package px-4 py-2.5 transition-colors',
+          'group/row ops-bug-sidebar-cell ops-gantt-package px-4 py-2 transition-colors',
           selected && 'ops-bug-selected',
         )}
       >
@@ -697,10 +718,10 @@ function PackageRow({
           >
             <span className="ops-package-rail-line" aria-hidden="true" />
             <div className="ops-package-rail-content">
-              <p className="truncate text-sm font-medium tracking-[-0.015em]">
+              <p className="truncate text-[13px] font-medium tracking-[-0.015em] text-[color:var(--foreground)]">
                 {item.name}
               </p>
-              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[color:var(--muted-foreground)]">
+              <div className="mt-1 flex flex-wrap gap-x-2.5 gap-y-1 text-[10px] text-[color:var(--muted-foreground)]">
                 <div className="ops-bug-inline-meta min-w-0">
                   <span>
                     {formatDateLabel(item.startDate)} -{' '}
@@ -720,7 +741,7 @@ function PackageRow({
             </div>
           </button>
           <div className="flex shrink-0 items-start gap-1">
-            <StatusPill health={item.health} />
+            <StatusPill compact health={item.health} />
             <RowMenu
               isOpen={actionMenuId === `package-${item.id}`}
               onClose={onCloseMenu}
@@ -753,13 +774,13 @@ function PackageRow({
         </div>
       </div>
 
-      <div className="ops-gantt-package-band ops-gantt-grid-frame relative min-h-[4rem] overflow-hidden py-2.5">
+      <div className="ops-gantt-package-band ops-gantt-grid-frame relative overflow-hidden py-2">
         <TimelineGrid columns={columns} />
         <button
           type="button"
           onClick={onSelect}
           className={cnSelected(
-            'ops-timeline-bar absolute top-2.5 flex h-10 min-w-[5rem] items-center rounded-lg border px-3 text-left text-white transition-[box-shadow,filter] hover:brightness-[0.99]',
+            'ops-timeline-bar absolute top-1/2 flex h-8 min-w-[4.5rem] -translate-y-1/2 items-center rounded-md border px-2.5 text-left text-white transition-[box-shadow,filter] hover:brightness-[0.99]',
             selected,
           )}
           style={{
@@ -777,8 +798,10 @@ function PackageRow({
           />
           <div className="relative z-10 flex w-full items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="truncate text-sm font-semibold">{item.name}</div>
-              <div className="mt-0.5 truncate text-[10px] font-semibold text-white/88">
+              <div className="truncate text-[12px] leading-none font-semibold">
+                {item.name}
+              </div>
+              <div className="mt-1 truncate text-[10px] font-semibold text-white/82">
                 {item.resolvedBug}/{item.totalBug} resolved ·{' '}
                 {Math.round(item.progress * 100)}%
               </div>
@@ -1024,98 +1047,146 @@ function PackageDetailPanel({
 }) {
   const openBugCount = packageBar.totalBug - packageBar.resolvedBug
   const statisticsQuery = usePackageBugStatisticsQuery(packageItem.id, true)
+  const sprintStatisticsQuery = usePackageSprintStatisticsQuery(
+    packageItem.id,
+    true,
+  )
+  const memberItems = toCompactList(packageItem.members)
+  const labelItems = toCompactList(packageItem.labels)
+  const keyItems = toCompactList(packageItem.keys)
 
   return (
     <div className="p-4">
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.88fr)] xl:items-start">
-        <div className="grid gap-5">
-          <section className="grid gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold tracking-[-0.02em]">
-                Bug categories
+      <div className="grid gap-5">
+        <section className="ops-package-summary-card grid gap-4 rounded-xl p-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0 space-y-2">
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
+                <span>{projectName || 'Project'}</span>
+                <span className="size-1 rounded-full bg-[color:var(--border)]" />
+                <span>{packageItem.start_date}</span>
+                <span>-</span>
+                <span>{packageItem.end_date}</span>
+              </div>
+              <h3 className="text-lg font-semibold tracking-[-0.03em] text-[var(--foreground)]">
+                {packageItem.name}
               </h3>
-              {statisticsQuery.isSuccess ? (
-                <span className="text-xs text-[var(--muted-foreground)]">
-                  {statisticsQuery.data.reduce(
-                    (sum, item) => sum + item.number_of_bugs,
-                    0,
-                  )}{' '}
-                  bugs
-                </span>
-              ) : null}
+              <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted-foreground)]">
+                <span>{memberItems.length} members</span>
+                <span className="size-1 rounded-full bg-[color:var(--border)]" />
+                <span>{labelItems.length} labels</span>
+                <span className="size-1 rounded-full bg-[color:var(--border)]" />
+                <span>{keyItems.length} keys</span>
+              </div>
             </div>
+
+            <div className="grid min-w-[14rem] grid-cols-3 gap-2 self-start">
+              <MetricBlock
+                label="Resolved"
+                value={`${packageBar.resolvedBug}`}
+                compact
+              />
+              <MetricBlock label="Open" value={`${openBugCount}`} compact />
+              <MetricBlock
+                label="Issues"
+                value={`${packageItem.issues.length}`}
+                compact
+              />
+            </div>
+          </div>
+
+          <details className="ops-package-details group">
+            <summary className="ops-package-details-summary">
+              <span>Package details</span>
+              <span className="text-[var(--muted-foreground)] transition-transform group-open:rotate-180">
+                <ChevronDown className="size-4" />
+              </span>
+            </summary>
+            <div className="grid gap-3 pt-3 lg:grid-cols-[1.1fr_1.1fr_0.9fr]">
+              <CompactMetaBlock label="Members" items={memberItems} />
+              <CompactMetaBlock label="Labels" items={labelItems} />
+              <CompactMetaBlock label="Keys" items={keyItems} />
+              <div className="ops-package-query-shell rounded-lg p-3 lg:col-span-3">
+                <div className="text-[11px] font-semibold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
+                  Query
+                </div>
+                <div className="mt-2 text-sm leading-6 break-all text-[var(--foreground)]">
+                  {packageItem.jql || '-'}
+                </div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <section className="grid gap-3">
+          <div className="grid gap-3 xl:grid-cols-2">
             <PackageBugStatisticsSection
               isError={statisticsQuery.isError}
               isPending={statisticsQuery.isPending}
               statistics={statisticsQuery.data ?? []}
             />
-          </section>
-
-          <section className="grid gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold tracking-[-0.02em]">
-                Issues
-              </h3>
-              <span className="text-xs text-[var(--muted-foreground)]">
-                {packageItem.issues.length} items
-              </span>
-            </div>
-            <PackageIssuesTable issues={packageItem.issues} />
-          </section>
-        </div>
-
-        <div className="grid gap-4 xl:sticky xl:top-0">
-          <Field label="Project">
-            <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
-              {projectName || '-'}
-            </div>
-          </Field>
-          <Field label="Name">
-            <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
-              {packageItem.name}
-            </div>
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Start">
-              <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
-                {packageItem.start_date}
-              </div>
-            </Field>
-            <Field label="End">
-              <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
-                {packageItem.end_date}
-              </div>
-            </Field>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <MetricBlock label="Resolved" value={`${packageBar.resolvedBug}`} />
-            <MetricBlock label="Open" value={`${openBugCount}`} />
-            <MetricBlock
-              label="Issues"
-              value={`${packageItem.issues.length}`}
+            <PackageSprintChartsSection
+              isError={sprintStatisticsQuery.isError}
+              isPending={sprintStatisticsQuery.isPending}
+              statistics={sprintStatisticsQuery.data ?? []}
+              chartKeys={['flow']}
             />
           </div>
-          <Field label="Keys">
-            <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm">
-              {packageItem.keys || '-'}
-            </div>
-          </Field>
-          <Field label="Labels">
-            <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm">
-              {packageItem.labels || '-'}
-            </div>
-          </Field>
-          <Field label="Members">
-            <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm">
-              {packageItem.members || '-'}
-            </div>
-          </Field>
-          <Field label="JQL">
-            <div className="ops-bug-view-field min-h-[7rem] rounded-md px-3 py-3 text-sm break-all">
-              {packageItem.jql || '-'}
-            </div>
-          </Field>
-        </div>
+          <div className="grid gap-3 xl:grid-cols-2">
+            <PackageSprintChartsSection
+              isError={sprintStatisticsQuery.isError}
+              isPending={sprintStatisticsQuery.isPending}
+              statistics={sprintStatisticsQuery.data ?? []}
+              chartKeys={['velocity']}
+            />
+            <PackageSprintChartsSection
+              isError={sprintStatisticsQuery.isError}
+              isPending={sprintStatisticsQuery.isPending}
+              statistics={sprintStatisticsQuery.data ?? []}
+              chartKeys={['reopen']}
+            />
+          </div>
+        </section>
+
+        <section className="grid gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold tracking-[-0.02em]">Issues</h3>
+            <span className="text-xs text-[var(--muted-foreground)]">
+              {packageItem.issues.length} items
+            </span>
+          </div>
+          <PackageIssuesTable issues={packageItem.issues} />
+        </section>
+      </div>
+    </div>
+  )
+}
+
+function CompactMetaBlock({
+  items,
+  label,
+}: {
+  items: string[]
+  label: string
+}) {
+  return (
+    <div className="ops-package-meta-block rounded-lg p-3">
+      <div className="text-[11px] font-semibold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
+        {label}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {items.length ? (
+          items.map((item) => (
+            <span
+              key={item}
+              className="ops-package-meta-chip rounded-full px-2.5 py-1 text-xs"
+            >
+              {item}
+            </span>
+          ))
+        ) : (
+          <span className="text-sm text-[var(--muted-foreground)]">-</span>
+        )}
       </div>
     </div>
   )
@@ -1132,7 +1203,7 @@ function PackageBugStatisticsSection({
 }) {
   if (isPending) {
     return (
-      <div className="ops-bug-chart-shell rounded-md px-4 py-10 text-sm text-[var(--muted-foreground)]">
+      <div className="ops-package-sprint-card ops-bug-chart-shell rounded-xl px-4 py-10 text-sm text-[var(--muted-foreground)]">
         Loading statistics.
       </div>
     )
@@ -1140,7 +1211,7 @@ function PackageBugStatisticsSection({
 
   if (isError) {
     return (
-      <div className="ops-bug-chart-shell rounded-md px-4 py-10 text-sm text-[var(--status-danger)]">
+      <div className="ops-package-sprint-card ops-bug-chart-shell rounded-xl px-4 py-10 text-sm text-[var(--status-danger)]">
         Failed to load statistics.
       </div>
     )
@@ -1187,7 +1258,7 @@ function PackageBugStatisticsSection({
   const visibleChartData = total > 0 ? chartData : emptyChartData
 
   return (
-    <div className="ops-bug-chart-shell grid gap-4 rounded-md p-3">
+    <div className="ops-package-sprint-card ops-bug-chart-shell grid h-full gap-4 rounded-xl p-4">
       <div className="flex flex-wrap items-start gap-4">
         <div className="h-52 w-full max-w-[13rem] shrink-0">
           <ResponsiveContainer width="100%" height="100%">
@@ -1291,6 +1362,552 @@ function PackageBugStatisticsTooltip({
       ) : null}
     </div>
   )
+}
+
+function PackageSprintChartsSection({
+  chartKeys,
+  isError,
+  isPending,
+  statistics,
+}: {
+  chartKeys: Array<'flow' | 'velocity' | 'reopen'>
+  isError: boolean
+  isPending: boolean
+  statistics: PackageSprintStatistic[]
+}) {
+  if (isPending) {
+    return (
+      <div className="ops-bug-chart-shell rounded-md px-4 py-10 text-sm text-[var(--muted-foreground)]">
+        Loading sprint statistics.
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="ops-bug-chart-shell rounded-md px-4 py-10 text-sm text-[var(--status-danger)]">
+        Failed to load sprint statistics.
+      </div>
+    )
+  }
+
+  if (!statistics.length) {
+    return (
+      <div className="ops-bug-chart-shell rounded-md px-4 py-10 text-sm text-[var(--muted-foreground)]">
+        No sprint statistics.
+      </div>
+    )
+  }
+
+  const chartData = buildSprintChartData(statistics)
+
+  return (
+    <>
+      {chartKeys.map((key) => {
+        if (key === 'flow') {
+          return <SprintDefectFlowChart key={key} data={chartData} />
+        }
+
+        if (key === 'velocity') {
+          return <SprintVelocityChart key={key} data={chartData} />
+        }
+
+        return <SprintReopenChart key={key} data={chartData} />
+      })}
+    </>
+  )
+}
+
+function SprintDefectFlowChart({ data }: { data: SprintChartDatum[] }) {
+  return (
+    <article className="ops-package-sprint-card ops-bug-chart-shell grid gap-3 rounded-xl p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold tracking-[-0.02em]">
+            Sprint Defect Flow
+          </h4>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+            New vs resolved with backlog trend.
+          </p>
+        </div>
+        <MetricPill
+          label="Current"
+          value={formatMetricValue(data.at(-1)?.totalBug ?? 0)}
+        />
+      </div>
+
+      <div className="h-56 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart
+            data={data}
+            margin={{ top: 8, right: 8, bottom: 0, left: -16 }}
+          >
+            <CartesianGrid
+              vertical={false}
+              stroke="var(--border)"
+              strokeDasharray="3 3"
+            />
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+            />
+            <YAxis
+              width={42}
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+            />
+            <Tooltip
+              content={
+                <SprintChartTooltip
+                  rows={[
+                    { key: 'newBug', label: 'New' },
+                    { key: 'resolvedBug', label: 'Resolved' },
+                    { key: 'totalBug', label: 'Backlog' },
+                  ]}
+                />
+              }
+            />
+            <Bar
+              dataKey="newBug"
+              stackId="flow"
+              fill="#c8d7f0"
+              radius={[8, 8, 0, 0]}
+              maxBarSize={26}
+              name="New"
+            />
+            <Bar
+              dataKey="resolvedBug"
+              stackId="flow"
+              fill="#0c66e4"
+              radius={[8, 8, 0, 0]}
+              maxBarSize={26}
+              name="Resolved"
+            />
+            <Line
+              type="monotone"
+              dataKey="totalBug"
+              stroke="#42526e"
+              strokeWidth={2}
+              dot={{ r: 2 }}
+              activeDot={{ r: 4 }}
+              name="Backlog"
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+      <ChartLegend
+        items={[
+          { color: '#c8d7f0', label: 'New' },
+          { color: '#0c66e4', label: 'Resolved' },
+          { color: '#42526e', label: 'Backlog' },
+        ]}
+        xLabel="Sprint"
+        yLabel="Bugs"
+      />
+    </article>
+  )
+}
+
+function SprintVelocityChart({ data }: { data: SprintChartDatum[] }) {
+  const hasTarget = data.some((item) => item.targetVelocity > 0)
+
+  return (
+    <article className="ops-package-sprint-card ops-bug-chart-shell grid gap-3 rounded-xl p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold tracking-[-0.02em]">
+            Resolution Pace
+          </h4>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+            Resolved velocity against sprint target.
+          </p>
+        </div>
+        <MetricPill
+          label="Peak"
+          value={formatMetricValue(
+            Math.max(...data.map((item) => item.resolvedVelocity), 0),
+          )}
+        />
+      </div>
+
+      <div className="h-56 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={data}
+            margin={{ top: 8, right: 8, bottom: 0, left: -16 }}
+          >
+            <CartesianGrid
+              vertical={false}
+              stroke="var(--border)"
+              strokeDasharray="3 3"
+            />
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+            />
+            <YAxis
+              width={42}
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+            />
+            <Tooltip
+              content={
+                <SprintChartTooltip
+                  rows={[
+                    { key: 'resolvedVelocity', label: 'Velocity' },
+                    ...(hasTarget
+                      ? ([{ key: 'targetVelocity', label: 'Target' }] as const)
+                      : []),
+                  ]}
+                />
+              }
+            />
+            {hasTarget ? (
+              <Line
+                type="monotone"
+                dataKey="targetVelocity"
+                stroke="#f5a623"
+                strokeWidth={1.5}
+                strokeDasharray="5 4"
+                dot={false}
+                activeDot={false}
+                name="Target"
+              />
+            ) : null}
+            <Bar
+              dataKey="resolvedVelocity"
+              fill="#22a06b"
+              radius={[8, 8, 0, 0]}
+              maxBarSize={26}
+              name="Velocity"
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <ChartLegend
+        items={[
+          { color: '#22a06b', label: 'Velocity' },
+          ...(hasTarget
+            ? [{ color: '#f5a623', label: 'Target', dashed: true }]
+            : []),
+        ]}
+        xLabel="Sprint"
+        yLabel="Bugs resolved"
+      />
+    </article>
+  )
+}
+
+function SprintReopenChart({ data }: { data: SprintChartDatum[] }) {
+  const hasTarget = data.some((item) => item.targetReopenedRate > 0)
+
+  return (
+    <article className="ops-package-sprint-card ops-bug-chart-shell grid gap-3 rounded-xl p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold tracking-[-0.02em]">
+            Reopen Pressure
+          </h4>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+            Reopened load with reopen rate trend.
+          </p>
+        </div>
+        <MetricPill
+          label="Latest"
+          value={`${Math.round((data.at(-1)?.reopenedRate ?? 0) * 100)}%`}
+        />
+      </div>
+
+      <div className="h-56 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart
+            data={data}
+            margin={{ top: 8, right: 8, bottom: 0, left: -16 }}
+          >
+            <CartesianGrid
+              vertical={false}
+              stroke="var(--border)"
+              strokeDasharray="3 3"
+            />
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+            />
+            <YAxis
+              yAxisId="count"
+              width={42}
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+            />
+            <YAxis
+              yAxisId="rate"
+              orientation="right"
+              width={36}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(value) => `${Math.round(Number(value) * 100)}%`}
+              tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+            />
+            <Tooltip
+              content={
+                <SprintChartTooltip
+                  rows={[
+                    { key: 'reopenedBug', label: 'Reopened' },
+                    {
+                      key: 'reopenedRate',
+                      label: 'Reopen rate',
+                      format: 'percent',
+                    },
+                    ...(hasTarget
+                      ? ([
+                          {
+                            key: 'targetReopenedRate',
+                            label: 'Target rate',
+                            format: 'percent',
+                          },
+                        ] as const)
+                      : []),
+                  ]}
+                />
+              }
+            />
+            {hasTarget ? (
+              <Line
+                yAxisId="rate"
+                type="monotone"
+                dataKey="targetReopenedRate"
+                stroke="#f5a623"
+                strokeWidth={1.5}
+                strokeDasharray="5 4"
+                dot={false}
+                activeDot={false}
+                name="Target rate"
+              />
+            ) : null}
+            <Bar
+              yAxisId="count"
+              dataKey="reopenedBug"
+              fill="#f5a623"
+              radius={[8, 8, 0, 0]}
+              maxBarSize={26}
+              name="Reopened"
+            />
+            <Line
+              yAxisId="rate"
+              type="monotone"
+              dataKey="reopenedRate"
+              stroke="#c9372c"
+              strokeWidth={2}
+              dot={{ r: 2 }}
+              activeDot={{ r: 4 }}
+              name="Reopen rate"
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+      <ChartLegend
+        items={[
+          { color: '#f5a623', label: 'Reopened' },
+          { color: '#c9372c', label: 'Reopen rate' },
+          ...(hasTarget
+            ? [{ color: '#f5a623', label: 'Target rate', dashed: true }]
+            : []),
+        ]}
+        xLabel="Sprint"
+        yLabel="Count / rate"
+      />
+    </article>
+  )
+}
+
+function MetricPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-full border border-[color:var(--border)]/70 bg-[color:var(--workspace-pane)] px-2.5 py-1 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]">
+      <div className="text-[10px] font-semibold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
+        {label}
+      </div>
+      <div className="text-xs font-semibold text-[var(--foreground)]">
+        {value}
+      </div>
+    </div>
+  )
+}
+
+function ChartLegend({
+  items,
+  xLabel,
+  yLabel,
+}: {
+  items: Array<{ color: string; dashed?: boolean; label: string }>
+  xLabel: string
+  yLabel: string
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--border)]/70 pt-2">
+      <div className="flex flex-wrap items-center gap-3 text-[11px] text-[var(--muted-foreground)]">
+        {items.map((item) => (
+          <div key={item.label} className="flex items-center gap-1.5">
+            <span
+              className="inline-block h-0.5 w-4 rounded-full"
+              style={{
+                background: item.dashed ? 'transparent' : item.color,
+                borderTop: item.dashed ? `2px dashed ${item.color}` : undefined,
+              }}
+            />
+            <span>{item.label}</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-3 text-[10px] font-medium tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
+        <span>X: {xLabel}</span>
+        <span>Y: {yLabel}</span>
+      </div>
+    </div>
+  )
+}
+
+function SprintChartTooltip({
+  active,
+  label,
+  payload,
+  rows,
+}: {
+  active?: boolean
+  label?: string
+  payload?: Array<{
+    name?: string
+    value?: number
+    color?: string
+    payload?: SprintChartDatum
+  }>
+  rows: Array<{
+    key: keyof SprintChartDatum
+    label: string
+    format?: 'compact' | 'percent'
+  }>
+}) {
+  if (!active || !payload?.length) return null
+
+  const datum = payload[0]?.payload
+  if (!datum) return null
+
+  return (
+    <div className="ops-bug-chart-tooltip rounded-md px-3 py-2 text-xs shadow-sm">
+      <div className="font-medium text-[var(--foreground)]">{label}</div>
+      <div className="mt-2 grid gap-1.5 text-[var(--muted-foreground)]">
+        {rows.map((row) => (
+          <TooltipRow
+            key={row.label}
+            label={row.label}
+            value={formatTooltipMetric(datum[row.key], row.format)}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function TooltipRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span>{label}</span>
+      <span className="font-medium text-[var(--foreground)]">{value}</span>
+    </div>
+  )
+}
+
+type SprintChartDatum = {
+  id: number
+  label: string
+  createdAt: number
+  newBug: number
+  resolvedBug: number
+  totalBug: number
+  resolvedVelocity: number
+  targetVelocity: number
+  reopenedBug: number
+  reopenedRate: number
+  targetReopenedRate: number
+}
+
+function buildSprintChartData(
+  statistics: PackageSprintStatistic[],
+): SprintChartDatum[] {
+  return [...statistics]
+    .sort(
+      (left, right) =>
+        new Date(left.created_at).getTime() -
+        new Date(right.created_at).getTime(),
+    )
+    .map((item, index, sorted) => ({
+      id: item.id,
+      label: getSprintLabel(item, index, sorted.length),
+      createdAt: new Date(item.created_at).getTime(),
+      newBug: item.new_bug,
+      resolvedBug: item.resolved_bug,
+      totalBug: item.total_bug,
+      resolvedVelocity: item.resolved_bug_velocity,
+      targetVelocity: item.target_bug_velocity,
+      reopenedBug: item.reopened_bug,
+      reopenedRate:
+        item.resolved_bug > 0
+          ? item.resolved_bug_reopened / item.resolved_bug
+          : 0,
+      targetReopenedRate: item.target_reopened_rate,
+    }))
+}
+
+function getSprintLabel(
+  item: PackageSprintStatistic,
+  index: number,
+  total: number,
+) {
+  const date = new Date(item.created_at)
+  const shortDate = Number.isNaN(date.getTime())
+    ? `S${index + 1}`
+    : date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })
+
+  if (item.active) {
+    return total === 1 ? `Current ${shortDate}` : `Now ${shortDate}`
+  }
+
+  return `S${index + 1}`
+}
+
+function formatMetricValue(value: number) {
+  return new Intl.NumberFormat('en', {
+    notation: 'compact',
+    maximumFractionDigits: value >= 1000 ? 1 : 0,
+  }).format(value)
+}
+
+function formatTooltipMetric(
+  value: SprintChartDatum[keyof SprintChartDatum],
+  format: 'compact' | 'percent' = 'compact',
+) {
+  const numericValue = typeof value === 'number' ? value : 0
+
+  if (format === 'percent') {
+    return `${Math.round(numericValue * 100)}%`
+  }
+
+  return formatMetricValue(numericValue)
+}
+
+function toCompactList(value: string) {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
 }
 
 function PackageIssuesTable({
@@ -1722,11 +2339,29 @@ function RowMenu({
   )
 }
 
-function MetricBlock({ label, value }: { label: string; value: string }) {
+function MetricBlock({
+  compact = false,
+  label,
+  value,
+}: {
+  compact?: boolean
+  label: string
+  value: string
+}) {
   return (
-    <div className="ops-bug-metric rounded-md border border-[color:var(--border)]/80 bg-[var(--workspace-pane-muted)] px-3 py-2.5">
+    <div
+      className={cn(
+        'ops-bug-metric rounded-md border border-[color:var(--border)]/80 bg-[var(--workspace-pane-muted)]',
+        compact ? 'px-3 py-2 text-center' : 'px-3 py-2.5',
+      )}
+    >
       <span className="ops-bug-metric-label">{label}</span>
-      <span className="text-sm font-semibold text-[color:var(--foreground)]">
+      <span
+        className={cn(
+          'font-semibold text-[color:var(--foreground)]',
+          compact ? 'text-base tracking-[-0.02em]' : 'text-sm',
+        )}
+      >
         {value}
       </span>
     </div>
@@ -1764,7 +2399,10 @@ function StatusPill({
 
 function TimelineGrid({ columns }: { columns: number }) {
   return (
-    <div className="grid h-full" style={getGridStyle(columns)}>
+    <div
+      className="pointer-events-none absolute inset-0 grid h-full w-full"
+      style={getGridStyle(columns)}
+    >
       {Array.from({ length: columns }, (_, index) => (
         <div
           key={index}
