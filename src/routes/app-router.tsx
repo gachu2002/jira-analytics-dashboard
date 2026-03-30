@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
+import { AppLoadingScreen } from '@/components/common/loading-state'
 import { useAuthStore } from '@/features/auth'
 import { AppLayout } from '@/layouts/app-layout'
 
@@ -74,11 +75,5 @@ function PreviewGate() {
 }
 
 function RouteShell() {
-  return (
-    <main className="ops-shell bg-background text-foreground flex min-h-screen items-center justify-center px-4">
-      <div className="ops-panel-strong w-full max-w-md rounded-[28px] px-6 py-8 text-center sm:px-8">
-        <p className="ops-kicker">Loading</p>
-      </div>
-    </main>
-  )
+  return <AppLoadingScreen />
 }

@@ -13,7 +13,6 @@ export type BugTrackerPackage = {
   keys: string
   labels: string
   members: string
-  jql: string
   start_date: string
   end_date: string
   resolved_bug: number
@@ -65,7 +64,6 @@ export type BugTrackerPackagePayload = {
   keys: string
   labels: string
   members: string
-  jql: string
   start_date: string
   end_date: string
   bug_tracker_project: number
@@ -95,7 +93,6 @@ export type TimelinePackageBar = {
   members: string[]
   labels: string[]
   keys: string[]
-  jql: string
   health: 'healthy' | 'watch' | 'risk'
 }
 

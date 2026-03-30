@@ -780,6 +780,55 @@
     }
   }
 
+  @keyframes ops-loading-breathe {
+    0%,
+    100% {
+      opacity: 0.68;
+    }
+
+    50% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes ops-loading-pulse {
+    0% {
+      transform: scale(0.92);
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 24%, transparent);
+    }
+
+    70% {
+      transform: scale(1);
+      box-shadow: 0 0 0 12px color-mix(in srgb, var(--primary) 0%, transparent);
+    }
+
+    100% {
+      transform: scale(0.92);
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent);
+    }
+  }
+
+  @keyframes ops-loading-shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+
+    100% {
+      background-position: -20% 0;
+    }
+  }
+
+  @keyframes ops-loading-sheen {
+    0% {
+      transform: translateX(-120%);
+    }
+
+    45%,
+    100% {
+      transform: translateX(120%);
+    }
+  }
+
   .ops-gantt-shell {
     background: var(--workspace-bg);
   }
@@ -1162,20 +1211,72 @@
   }
 
   .ops-bug-table-head {
-    background: color-mix(
-      in srgb,
-      var(--workspace-pane-muted) 98%,
-      transparent
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--workspace-pane-muted) 98%, white 2%) 0%,
+      color-mix(in srgb, var(--workspace-pane-muted) 90%, var(--workspace-pane))
+        100%
     );
     border-bottom: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+    box-shadow: inset 0 -1px 0
+      color-mix(in srgb, var(--border) 72%, transparent);
+  }
+
+  .ops-bug-table-head th {
+    color: var(--muted-foreground);
+    font-size: 0.69rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: transparent;
   }
 
   .ops-bug-table-row {
     border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+    transition: background-color 160ms ease;
+  }
+
+  .ops-bug-table-row:hover {
+    background: color-mix(
+      in srgb,
+      var(--workspace-pane) 88%,
+      var(--primary) 3%
+    );
   }
 
   .ops-bug-table-row:last-child {
     border-bottom: 0;
+  }
+
+  .ops-bug-table-head th,
+  .ops-bug-table-row td {
+    border-right: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  }
+
+  .ops-bug-table-head th:last-child,
+  .ops-bug-table-row td:last-child {
+    border-right: 0;
+  }
+
+  .ops-bug-key-badge {
+    border-color: color-mix(in srgb, var(--border) 84%, transparent);
+    background: color-mix(in srgb, var(--workspace-pane) 92%, transparent);
+    color: var(--primary);
+    box-shadow: none;
+  }
+
+  .ops-bug-summary {
+    text-decoration: none;
+    text-underline-offset: 0.18em;
+  }
+
+  .ops-bug-assignee-avatar {
+    border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+    background: color-mix(in srgb, var(--workspace-pane) 94%, transparent);
+  }
+
+  .ops-bug-status-badge {
+    box-shadow: none;
   }
 
   .ops-bug-tag {

@@ -1,7 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Bar,
-  BarChart,
   CartesianGrid,
   Cell,
   ComposedChart,
@@ -29,6 +28,11 @@ import { useForm, type UseFormReturn } from 'react-hook-form'
 import { createPortal } from 'react-dom'
 import { toast } from 'sonner'
 
+import {
+  LoadingPanel,
+  TimelineWorkspaceLoading,
+} from '@/components/common/loading-state'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -865,7 +869,6 @@ function CrudDrawer({
       keys: selectedPackage?.keys ?? '',
       labels: selectedPackage?.labels ?? '',
       members: selectedPackage?.members ?? '',
-      jql: selectedPackage?.jql ?? '',
       start_date: selectedPackage?.start_date ?? '',
       end_date: selectedPackage?.end_date ?? '',
     },
@@ -1106,14 +1109,6 @@ function PackageDetailPanel({
               <CompactMetaBlock label="Members" items={memberItems} />
               <CompactMetaBlock label="Labels" items={labelItems} />
               <CompactMetaBlock label="Keys" items={keyItems} />
-              <div className="ops-package-query-shell rounded-lg p-3 lg:col-span-3">
-                <div className="text-[11px] font-semibold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
-                  Query
-                </div>
-                <div className="mt-2 text-sm leading-6 break-all text-[var(--foreground)]">
-                  {packageItem.jql || '-'}
-                </div>
-              </div>
             </div>
           </details>
         </section>
@@ -1149,12 +1144,6 @@ function PackageDetailPanel({
         </section>
 
         <section className="grid gap-3">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold tracking-[-0.02em]">Issues</h3>
-            <span className="text-xs text-[var(--muted-foreground)]">
-              {packageItem.issues.length} items
-            </span>
-          </div>
           <PackageIssuesTable issues={packageItem.issues} />
         </section>
       </div>
@@ -1203,9 +1192,10 @@ function PackageBugStatisticsSection({
 }) {
   if (isPending) {
     return (
-      <div className="ops-package-sprint-card ops-bug-chart-shell rounded-xl px-4 py-10 text-sm text-[var(--muted-foreground)]">
-        Loading statistics.
-      </div>
+      <LoadingPanel
+        title="Loading bug analysis"
+        detail="Preparing category distribution."
+      />
     )
   }
 
@@ -1259,30 +1249,42 @@ function PackageBugStatisticsSection({
 
   return (
     <div className="ops-package-sprint-card ops-bug-chart-shell grid h-full gap-4 rounded-xl p-4">
-      <div className="flex flex-wrap items-start gap-4">
-        <div className="h-52 w-full max-w-[13rem] shrink-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={visibleChartData}
-                dataKey="value"
-                innerRadius={48}
-                outerRadius={72}
-                paddingAngle={chartData.length > 1 ? 2 : 0}
-                stroke="none"
-              >
-                {visibleChartData.map((entry) => (
-                  <Cell key={entry.label} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                content={<PackageBugStatisticsTooltip total={total} />}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold tracking-[-0.02em]">
+            Bug Analysis
+          </h4>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+            Distribution of bugs by category.
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[15rem_minmax(0,1fr)]">
+        <div className="grid content-start gap-3">
+          <div className="h-52 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={visibleChartData}
+                  dataKey="value"
+                  innerRadius={48}
+                  outerRadius={72}
+                  paddingAngle={chartData.length > 1 ? 2 : 0}
+                  stroke="none"
+                >
+                  {visibleChartData.map((entry) => (
+                    <Cell key={entry.label} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  content={<PackageBugStatisticsTooltip total={total} />}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
-        <div className="grid min-w-0 flex-1 content-start gap-2 self-start">
+        <div className="grid min-w-0 content-start gap-2 self-start">
           {chartData.map((item) => (
             <div
               key={item.id}
@@ -1377,9 +1379,10 @@ function PackageSprintChartsSection({
 }) {
   if (isPending) {
     return (
-      <div className="ops-bug-chart-shell rounded-md px-4 py-10 text-sm text-[var(--muted-foreground)]">
-        Loading sprint statistics.
-      </div>
+      <LoadingPanel
+        title="Loading sprint metrics"
+        detail="Preparing velocity and reopen trends."
+      />
     )
   }
 
@@ -1420,23 +1423,19 @@ function PackageSprintChartsSection({
 
 function SprintDefectFlowChart({ data }: { data: SprintChartDatum[] }) {
   return (
-    <article className="ops-package-sprint-card ops-bug-chart-shell grid gap-3 rounded-xl p-4">
+    <article className="ops-package-sprint-card ops-bug-chart-shell grid gap-2 rounded-xl p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h4 className="text-sm font-semibold tracking-[-0.02em]">
-            Sprint Defect Flow
+            Bug Fixing
           </h4>
           <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-            New vs resolved with backlog trend.
+            New, resolved, and total bugs by sprint.
           </p>
         </div>
-        <MetricPill
-          label="Current"
-          value={formatMetricValue(data.at(-1)?.totalBug ?? 0)}
-        />
       </div>
 
-      <div className="h-56 w-full">
+      <div className="h-52 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={data}
@@ -1465,10 +1464,27 @@ function SprintDefectFlowChart({ data }: { data: SprintChartDatum[] }) {
                   rows={[
                     { key: 'newBug', label: 'New' },
                     { key: 'resolvedBug', label: 'Resolved' },
-                    { key: 'totalBug', label: 'Backlog' },
+                    { key: 'totalBug', label: 'Total' },
                   ]}
                 />
               }
+            />
+            <Line
+              type="monotone"
+              dataKey="totalBug"
+              stroke="#42526e"
+              strokeWidth={2}
+              dot={{ r: 2 }}
+              activeDot={{ r: 4 }}
+              name="Total"
+            />
+            <Bar
+              dataKey="resolvedBug"
+              stackId="flow"
+              fill="#0c66e4"
+              radius={[0, 0, 0, 0]}
+              maxBarSize={26}
+              name="Resolved"
             />
             <Bar
               dataKey="newBug"
@@ -1478,31 +1494,14 @@ function SprintDefectFlowChart({ data }: { data: SprintChartDatum[] }) {
               maxBarSize={26}
               name="New"
             />
-            <Bar
-              dataKey="resolvedBug"
-              stackId="flow"
-              fill="#0c66e4"
-              radius={[8, 8, 0, 0]}
-              maxBarSize={26}
-              name="Resolved"
-            />
-            <Line
-              type="monotone"
-              dataKey="totalBug"
-              stroke="#42526e"
-              strokeWidth={2}
-              dot={{ r: 2 }}
-              activeDot={{ r: 4 }}
-              name="Backlog"
-            />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
       <ChartLegend
         items={[
-          { color: '#c8d7f0', label: 'New' },
+          { color: '#42526e', label: 'Total' },
           { color: '#0c66e4', label: 'Resolved' },
-          { color: '#42526e', label: 'Backlog' },
+          { color: '#c8d7f0', label: 'New' },
         ]}
         xLabel="Sprint"
         yLabel="Bugs"
@@ -1519,23 +1518,17 @@ function SprintVelocityChart({ data }: { data: SprintChartDatum[] }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h4 className="text-sm font-semibold tracking-[-0.02em]">
-            Resolution Pace
+            Bug Fixing Velocity
           </h4>
           <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-            Resolved velocity against sprint target.
+            New vs resolved with fix rate and target.
           </p>
         </div>
-        <MetricPill
-          label="Peak"
-          value={formatMetricValue(
-            Math.max(...data.map((item) => item.resolvedVelocity), 0),
-          )}
-        />
       </div>
 
       <div className="h-56 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart
+          <ComposedChart
             data={data}
             margin={{ top: 8, right: 8, bottom: 0, left: -16 }}
           >
@@ -1551,16 +1544,32 @@ function SprintVelocityChart({ data }: { data: SprintChartDatum[] }) {
               tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
             />
             <YAxis
+              yAxisId="count"
               width={42}
               tickLine={false}
               axisLine={false}
+              tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+            />
+            <YAxis
+              yAxisId="rate"
+              orientation="right"
+              width={36}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(value) => `${Math.round(Number(value) * 100)}%`}
               tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
             />
             <Tooltip
               content={
                 <SprintChartTooltip
                   rows={[
-                    { key: 'resolvedVelocity', label: 'Velocity' },
+                    { key: 'newBug', label: 'New bugs' },
+                    { key: 'resolvedVelocity', label: 'Resolved bugs' },
+                    {
+                      key: 'resolutionRate',
+                      label: 'Rate',
+                      format: 'percent',
+                    },
                     ...(hasTarget
                       ? ([{ key: 'targetVelocity', label: 'Target' }] as const)
                       : []),
@@ -1568,8 +1577,25 @@ function SprintVelocityChart({ data }: { data: SprintChartDatum[] }) {
                 />
               }
             />
+            <Bar
+              yAxisId="count"
+              dataKey="newBug"
+              fill="#c8d7f0"
+              radius={[8, 8, 0, 0]}
+              maxBarSize={18}
+              name="New bugs"
+            />
+            <Bar
+              yAxisId="count"
+              dataKey="resolvedVelocity"
+              fill="#22a06b"
+              radius={[8, 8, 0, 0]}
+              maxBarSize={18}
+              name="Resolved bugs"
+            />
             {hasTarget ? (
               <Line
+                yAxisId="count"
                 type="monotone"
                 dataKey="targetVelocity"
                 stroke="#f5a623"
@@ -1580,25 +1606,30 @@ function SprintVelocityChart({ data }: { data: SprintChartDatum[] }) {
                 name="Target"
               />
             ) : null}
-            <Bar
-              dataKey="resolvedVelocity"
-              fill="#22a06b"
-              radius={[8, 8, 0, 0]}
-              maxBarSize={26}
-              name="Velocity"
+            <Line
+              yAxisId="rate"
+              type="monotone"
+              dataKey="resolutionRate"
+              stroke="#0c66e4"
+              strokeWidth={2}
+              dot={{ r: 2 }}
+              activeDot={{ r: 4 }}
+              name="Rate"
             />
-          </BarChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
       <ChartLegend
         items={[
-          { color: '#22a06b', label: 'Velocity' },
+          { color: '#c8d7f0', label: 'New bugs' },
+          { color: '#22a06b', label: 'Resolved bugs' },
+          { color: '#0c66e4', label: 'Rate' },
           ...(hasTarget
             ? [{ color: '#f5a623', label: 'Target', dashed: true }]
             : []),
         ]}
         xLabel="Sprint"
-        yLabel="Bugs resolved"
+        yLabel="Count / rate"
       />
     </article>
   )
@@ -1612,16 +1643,12 @@ function SprintReopenChart({ data }: { data: SprintChartDatum[] }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h4 className="text-sm font-semibold tracking-[-0.02em]">
-            Reopen Pressure
+            Reopened Rate
           </h4>
           <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-            Reopened load with reopen rate trend.
+            Reopened bugs with reopen rate by sprint.
           </p>
         </div>
-        <MetricPill
-          label="Latest"
-          value={`${Math.round((data.at(-1)?.reopenedRate ?? 0) * 100)}%`}
-        />
       </div>
 
       <div className="h-56 w-full">
@@ -1729,19 +1756,6 @@ function SprintReopenChart({ data }: { data: SprintChartDatum[] }) {
   )
 }
 
-function MetricPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-full border border-[color:var(--border)]/70 bg-[color:var(--workspace-pane)] px-2.5 py-1 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]">
-      <div className="text-[10px] font-semibold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
-        {label}
-      </div>
-      <div className="text-xs font-semibold text-[var(--foreground)]">
-        {value}
-      </div>
-    </div>
-  )
-}
-
 function ChartLegend({
   items,
   xLabel,
@@ -1828,6 +1842,7 @@ function TooltipRow({ label, value }: { label: string; value: string }) {
 type SprintChartDatum = {
   id: number
   label: string
+  sprintNumber: number
   createdAt: number
   newBug: number
   resolvedBug: number
@@ -1836,6 +1851,7 @@ type SprintChartDatum = {
   targetVelocity: number
   reopenedBug: number
   reopenedRate: number
+  resolutionRate: number
   targetReopenedRate: number
 }
 
@@ -1845,12 +1861,14 @@ function buildSprintChartData(
   return [...statistics]
     .sort(
       (left, right) =>
+        left.sprint - right.sprint ||
         new Date(left.created_at).getTime() -
-        new Date(right.created_at).getTime(),
+          new Date(right.created_at).getTime(),
     )
-    .map((item, index, sorted) => ({
+    .map((item) => ({
       id: item.id,
-      label: getSprintLabel(item, index, sorted.length),
+      label: `S${item.sprint}`,
+      sprintNumber: item.sprint,
       createdAt: new Date(item.created_at).getTime(),
       newBug: item.new_bug,
       resolvedBug: item.resolved_bug,
@@ -1858,29 +1876,14 @@ function buildSprintChartData(
       resolvedVelocity: item.resolved_bug_velocity,
       targetVelocity: item.target_bug_velocity,
       reopenedBug: item.reopened_bug,
+      resolutionRate:
+        item.new_bug > 0 ? item.resolved_bug_velocity / item.new_bug : 0,
       reopenedRate:
         item.resolved_bug > 0
           ? item.resolved_bug_reopened / item.resolved_bug
           : 0,
       targetReopenedRate: item.target_reopened_rate,
     }))
-}
-
-function getSprintLabel(
-  item: PackageSprintStatistic,
-  index: number,
-  total: number,
-) {
-  const date = new Date(item.created_at)
-  const shortDate = Number.isNaN(date.getTime())
-    ? `S${index + 1}`
-    : date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })
-
-  if (item.active) {
-    return total === 1 ? `Current ${shortDate}` : `Now ${shortDate}`
-  }
-
-  return `S${index + 1}`
 }
 
 function formatMetricValue(value: number) {
@@ -1924,37 +1927,48 @@ function PackageIssuesTable({
   }
 
   return (
-    <div className="ops-bug-table-shell overflow-hidden rounded-md">
-      <div className="max-h-[22rem] overflow-auto">
+    <div className="ops-bug-table-shell overflow-hidden rounded-lg">
+      <div className="max-h-[25rem] overflow-auto">
         <table className="w-full border-collapse text-sm">
           <thead className="ops-bug-table-head sticky top-0 z-[1]">
             <tr>
-              <th className="px-3 py-2 text-left font-medium">Key</th>
-              <th className="px-3 py-2 text-left font-medium">Summary</th>
-              <th className="px-3 py-2 text-left font-medium">Assignee</th>
-              <th className="px-3 py-2 text-left font-medium">Status</th>
+              <th className="w-[18%] px-3 py-2 text-left font-medium">Key</th>
+              <th className="w-[46%] px-3 py-2 text-left font-medium">
+                Summary
+              </th>
+              <th className="w-[20%] px-3 py-2 text-left font-medium">
+                Assignee
+              </th>
+              <th className="w-[16%] px-3 py-2 text-left font-medium">
+                Status
+              </th>
             </tr>
           </thead>
           <tbody>
             {issues.map((issue) => (
               <tr key={issue.key} className="ops-bug-table-row align-top">
                 <td className="px-3 py-2.5">
+                  <Badge
+                    variant="outline"
+                    className="ops-bug-key-badge rounded-md px-2 py-0.5 font-semibold"
+                  >
+                    {issue.key}
+                  </Badge>
+                </td>
+                <td className="px-3 py-2.5">
                   <a
-                    className="font-medium text-[var(--primary)] hover:underline"
+                    className="ops-bug-summary line-clamp-2 min-w-0 text-[var(--foreground)] hover:text-[var(--primary)] hover:underline"
                     href={issue.url}
                     rel="noreferrer"
                     target="_blank"
                   >
-                    {issue.key}
+                    {issue.summary}
                   </a>
                 </td>
-                <td className="px-3 py-2.5">
-                  <div className="line-clamp-2 min-w-0 text-[var(--foreground)]">
-                    {issue.summary}
-                  </div>
-                </td>
                 <td className="px-3 py-2.5 text-[var(--muted-foreground)]">
-                  {issue.assignee || '-'}
+                  <span className="truncate text-sm text-[var(--foreground)]">
+                    {issue.assignee || 'Unassigned'}
+                  </span>
                 </td>
                 <td className="px-3 py-2.5">
                   <IssueStatusBadge status={issue.status} />
@@ -1971,15 +1985,18 @@ function PackageIssuesTable({
 function IssueStatusBadge({ status }: { status: string }) {
   const tone = getIssueStatusTone(status)
   return (
-    <span
-      className="inline-flex items-center rounded-md px-2 py-1 text-[11px] font-medium"
+    <Badge
+      variant="outline"
+      className="ops-bug-status-badge gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
       style={{
-        background: `color-mix(in srgb, ${tone} 14%, transparent)`,
+        borderColor: `color-mix(in srgb, ${tone} 28%, var(--border))`,
+        background: `color-mix(in srgb, ${tone} 12%, transparent)`,
         color: tone,
       }}
     >
+      <span className="size-1.5 rounded-full" style={{ background: tone }} />
       {status}
-    </span>
+    </Badge>
   )
 }
 
@@ -2098,13 +2115,6 @@ function PackageFormPanel({
           <Input
             className="ops-workspace-input h-10 rounded-md"
             {...form.register('members')}
-          />
-        </Field>
-        <Field label="JQL">
-          <textarea
-            className="ops-bug-textarea rounded-md"
-            rows={5}
-            {...form.register('jql')}
           />
         </Field>
         <FormActions
@@ -2424,13 +2434,7 @@ function TodayMarker({ offset }: { offset: number }) {
 }
 
 function BugTimelineLoadingState() {
-  return (
-    <div className="flex flex-1 items-center px-4 py-4 lg:px-5">
-      <div className="ops-detail-empty w-full rounded-md px-4 py-10 text-sm">
-        Loading timeline.
-      </div>
-    </div>
-  )
+  return <TimelineWorkspaceLoading />
 }
 
 function BugTimelineErrorState() {
@@ -2462,7 +2466,6 @@ function toPackagePayload(values: PackageFormValues) {
     keys: values.keys.trim(),
     labels: values.labels.trim(),
     members: values.members.trim(),
-    jql: values.jql.trim(),
     start_date: values.start_date,
     end_date: values.end_date,
     bug_tracker_project: values.projectId,

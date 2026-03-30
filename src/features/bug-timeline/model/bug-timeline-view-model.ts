@@ -158,7 +158,6 @@ function mapProjectGroups(
                   .map((entry) => entry.trim())
                   .filter(Boolean)
               : [],
-            jql: item.jql,
             health: getBarHealth(item.resolved_bug, item.total_bug),
           }
         })
