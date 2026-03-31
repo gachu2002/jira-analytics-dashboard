@@ -69,7 +69,7 @@ export type BugTrackerPackagePayload = {
   bug_tracker_project: number
 }
 
-export type TimelineZoomLevel = 'month' | 'quarter' | 'half'
+export type TimelineZoomLevel = 'week' | 'month' | 'quarter'
 
 export type TimelineColumn = {
   key: string

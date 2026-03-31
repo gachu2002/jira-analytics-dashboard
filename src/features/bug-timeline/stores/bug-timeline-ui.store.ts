@@ -27,7 +27,7 @@ type BugTimelineUiState = {
 }
 
 export const useBugTimelineUiStore = create<BugTimelineUiState>((set) => ({
-  zoom: 'quarter',
+  zoom: 'month',
   search: '',
   collapsedProjectIds: [],
   selectedEntity: null,

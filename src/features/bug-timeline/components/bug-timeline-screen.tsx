@@ -1,9 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { toPng } from 'html-to-image'
+import jsPDF from 'jspdf'
 import {
   Bar,
   CartesianGrid,
   Cell,
   ComposedChart,
+  LabelList,
   Line,
   Pie,
   PieChart,
@@ -15,7 +18,10 @@ import {
 import {
   Bug,
   ChevronDown,
+  Download,
   Ellipsis,
+  FileImage,
+  FileText,
   FolderPlus,
   PanelRightClose,
   Pencil,
@@ -34,7 +40,17 @@ import {
 } from '@/components/common/loading-state'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   usePackageBugStatisticsQuery,
   usePackageSprintStatisticsQuery,
@@ -59,11 +75,12 @@ import type {
   PackageSprintStatistic,
   TimelinePackageBar,
   TimelineProjectGroup,
+  TimelineZoomLevel,
 } from '@/features/bug-timeline/types/bug-timeline.types'
 import { cn } from '@/lib/utils'
 
 const labelColumnWidth = '18.5rem'
-const weekColumnWidthRem = 7.5
+const monthViewColumnWidthRem = 7.5
 const monthHeaderHeight = '2.5rem'
 const weekHeaderHeight = '3rem'
 const ganttHeaderHeight = `calc(${monthHeaderHeight} + ${weekHeaderHeight})`
@@ -113,6 +130,8 @@ export function BugTimelineScreen() {
     useBugTimelineQuery()
   const search = useBugTimelineUiStore((state) => state.search)
   const setSearch = useBugTimelineUiStore((state) => state.setSearch)
+  const zoom = useBugTimelineUiStore((state) => state.zoom)
+  const setZoom = useBugTimelineUiStore((state) => state.setZoom)
   const collapsedProjectIds = useBugTimelineUiStore(
     (state) => state.collapsedProjectIds,
   )
@@ -163,11 +182,12 @@ export function BugTimelineScreen() {
         viewModel,
         effectiveFromDate,
         effectiveToDate,
+        zoom,
       ),
-    [effectiveFromDate, effectiveToDate, viewModel],
+    [effectiveFromDate, effectiveToDate, viewModel, zoom],
   )
 
-  const timelineMinWidth = `${Math.max(filteredViewModel.weekColumns.length * weekColumnWidthRem, 44)}rem`
+  const timelineMinWidth = `${Math.max(filteredViewModel.weekColumns.length * getTimelineColumnWidthRem(zoom), 44)}rem`
   const todayOffset = getTodayOffsetPercent(filteredViewModel.weekColumns)
   const selectedProjectId =
     selectedEntity?.type === 'package'
@@ -267,14 +287,18 @@ export function BugTimelineScreen() {
                 <div className="ops-bug-toolbar-top">
                   <div className="min-w-0">
                     <p className="ops-kicker">Bug timeline</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
                       <h1 className="text-base font-semibold tracking-[-0.02em]">
                         Packages
                       </h1>
-                      <div className="ops-bug-inline-meta">
-                        <span>{viewModel.totals.projects} projects</span>
-                        <span>{viewModel.totals.packages} packages</span>
-                        <span>
+                      <div className="ops-bug-summary-stats">
+                        <span className="ops-bug-stat">
+                          {viewModel.totals.projects} projects
+                        </span>
+                        <span className="ops-bug-stat">
+                          {viewModel.totals.packages} packages
+                        </span>
+                        <span className="ops-bug-stat ops-bug-stat-strong">
                           {viewModel.totals.resolved}/{viewModel.totals.bugs}{' '}
                           resolved
                         </span>
@@ -282,7 +306,7 @@ export function BugTimelineScreen() {
                     </div>
                   </div>
 
-                  <div className="ml-auto flex flex-wrap items-center gap-2">
+                  <div className="ops-bug-toolbar-actions ml-auto flex flex-wrap items-center gap-2">
                     <Button
                       size="sm"
                       variant="outline"
@@ -301,7 +325,7 @@ export function BugTimelineScreen() {
                 </div>
 
                 <div className="ops-bug-toolbar-row">
-                  <div className="w-full max-w-[18rem] min-w-[12rem]">
+                  <div className="ops-bug-filter-group w-full max-w-[18rem] min-w-[12rem]">
                     <span className="ops-bug-toolbar-label">Search</span>
                     <div className="relative">
                       <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
@@ -324,6 +348,28 @@ export function BugTimelineScreen() {
                     value={effectiveToDate}
                     onChange={setToDate}
                   />
+                  <div>
+                    <span className="ops-bug-toolbar-label">View</span>
+                    <Tabs
+                      className="gap-0"
+                      value={zoom}
+                      onValueChange={(value) =>
+                        setZoom(value as TimelineZoomLevel)
+                      }
+                    >
+                      <TabsList className="ops-bug-view-tabs h-10 rounded-md p-0.5 shadow-none">
+                        <TabsTrigger className="px-3 text-xs" value="week">
+                          Week
+                        </TabsTrigger>
+                        <TabsTrigger className="px-3 text-xs" value="month">
+                          Month
+                        </TabsTrigger>
+                        <TabsTrigger className="px-3 text-xs" value="quarter">
+                          Quarter
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
                 </div>
               </div>
 
@@ -342,12 +388,10 @@ export function BugTimelineScreen() {
                       gridTemplateRows: `${monthHeaderHeight} ${weekHeaderHeight}`,
                     }}
                   >
-                    <div className="ops-bug-sidebar-cell ops-gantt-sidebar row-span-2 border-r border-[color:var(--border)] px-4 py-3">
-                      <div className="flex h-full items-end">
-                        <p className="text-sm font-semibold tracking-[-0.02em] text-[color:var(--foreground)]">
-                          Project
-                        </p>
-                      </div>
+                    <div className="ops-bug-sidebar-cell ops-gantt-sidebar row-span-2 grid place-items-center px-0 py-3 text-center">
+                      <p className="text-sm font-semibold tracking-[-0.02em] text-[color:var(--foreground)]">
+                        Project
+                      </p>
                     </div>
 
                     <div
@@ -385,9 +429,11 @@ export function BugTimelineScreen() {
                           <p className="text-[11px] font-semibold tracking-[-0.01em]">
                             {column.label}
                           </p>
-                          <p className="text-[10px] text-[color:var(--muted-foreground)]">
-                            {column.shortLabel}
-                          </p>
+                          {column.shortLabel ? (
+                            <p className="text-[10px] text-[color:var(--muted-foreground)]">
+                              {column.shortLabel}
+                            </p>
+                          ) : null}
                         </div>
                       ))}
                     </div>
@@ -887,10 +933,59 @@ function CrudDrawer({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, onClose])
 
+  const packageViewRef = useRef<HTMLDivElement | null>(null)
+  const [exportFormat, setExportFormat] = useState<'png' | 'pdf' | null>(null)
+
   if (!isOpen) return null
 
   const isPackageView =
     inspectorMode === 'view-package' && Boolean(selectedPackage)
+  const selectedPackageProjectName = selectedPackage
+    ? (packageOptions.find(
+        (item) => item.id === selectedPackage.bug_tracker_project,
+      )?.name ?? '')
+    : ''
+
+  async function handleExportPackageView(format: 'png' | 'pdf') {
+    const node = packageViewRef.current
+    if (!node || exportFormat || !selectedPackage) return
+
+    setExportFormat(format)
+
+    try {
+      await document.fonts?.ready
+
+      const dataUrl = await toPng(node, {
+        backgroundColor: getExportBackgroundColor(),
+        cacheBust: true,
+        pixelRatio: 2,
+      })
+      const fileName = buildPackageExportFileName(
+        selectedPackageProjectName,
+        selectedPackage.name,
+      )
+
+      if (format === 'png') {
+        downloadDataUrl(dataUrl, `${fileName}.png`)
+      } else {
+        const pdf = new jsPDF({
+          format: [node.scrollWidth, node.scrollHeight],
+          orientation:
+            node.scrollWidth > node.scrollHeight ? 'landscape' : 'portrait',
+          unit: 'px',
+        })
+
+        pdf.addImage(dataUrl, 'PNG', 0, 0, node.scrollWidth, node.scrollHeight)
+        pdf.save(`${fileName}.pdf`)
+      }
+
+      toast.success(format === 'png' ? 'Image downloaded.' : 'PDF downloaded.')
+    } catch {
+      toast.error('Failed to export package view.')
+    } finally {
+      setExportFormat(null)
+    }
+  }
 
   return (
     <div className="ops-side-drawer-backdrop fixed inset-0 z-40 flex justify-end">
@@ -912,17 +1007,67 @@ function CrudDrawer({
                   : 'Details'}
             </p>
             <p className="mt-1 text-base font-semibold tracking-[-0.02em]">
-              {getInspectorTitle(inspectorMode, project, selectedPackage)}
+              {inspectorMode === 'view-package' && selectedPackage
+                ? formatPackageInspectorTitle(
+                    selectedPackageProjectName,
+                    selectedPackage,
+                  )
+                : getInspectorTitle(inspectorMode, project, selectedPackage)}
             </p>
           </div>
-          <Button
-            className="size-8 rounded-md px-0"
-            size="sm"
-            variant="ghost"
-            onClick={onClose}
-          >
-            <PanelRightClose className="size-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {isPackageView ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    className="ops-package-export-trigger rounded-md"
+                    disabled={exportFormat !== null}
+                    size="sm"
+                    variant="outline"
+                  >
+                    <Download className="size-4" />
+                    {exportFormat === null ? 'Export view' : 'Exporting...'}
+                    <ChevronDown className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="ops-bug-chart-menu-content w-44"
+                >
+                  <DropdownMenuLabel>Package view</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="ops-bug-chart-menu-item"
+                    disabled={exportFormat !== null}
+                    onSelect={() => {
+                      void handleExportPackageView('png')
+                    }}
+                  >
+                    <FileImage className="size-4" />
+                    Image (.png)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="ops-bug-chart-menu-item"
+                    disabled={exportFormat !== null}
+                    onSelect={() => {
+                      void handleExportPackageView('pdf')
+                    }}
+                  >
+                    <FileText className="size-4" />
+                    PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
+            <Button
+              className="size-8 rounded-md px-0"
+              size="sm"
+              variant="ghost"
+              onClick={onClose}
+            >
+              <PanelRightClose className="size-4" />
+            </Button>
+          </div>
         </div>
         <div className="flex-1 overflow-auto">
           {inspectorMode === 'view-project' && project ? (
@@ -932,13 +1077,10 @@ function CrudDrawer({
           selectedPackage &&
           selectedPackageBar ? (
             <PackageDetailPanel
+              key={selectedPackage.id}
+              contentRef={packageViewRef}
               packageItem={selectedPackage}
               packageBar={selectedPackageBar}
-              projectName={
-                packageOptions.find(
-                  (item) => item.id === selectedPackage.bug_tracker_project,
-                )?.name ?? ''
-              }
             />
           ) : null}
           {inspectorMode === 'create-project' ? (
@@ -1040,13 +1182,13 @@ function ProjectViewPanel({ project }: { project: BugTrackerProject }) {
 }
 
 function PackageDetailPanel({
+  contentRef,
   packageBar,
   packageItem,
-  projectName,
 }: {
+  contentRef: React.RefObject<HTMLDivElement | null>
   packageBar: TimelinePackageBar
   packageItem: BugTrackerPackage
-  projectName: string
 }) {
   const openBugCount = packageBar.totalBug - packageBar.resolvedBug
   const statisticsQuery = usePackageBugStatisticsQuery(packageItem.id, true)
@@ -1054,66 +1196,95 @@ function PackageDetailPanel({
     packageItem.id,
     true,
   )
-  const memberItems = toCompactList(packageItem.members)
-  const labelItems = toCompactList(packageItem.labels)
-  const keyItems = toCompactList(packageItem.keys)
+  const [optionalCharts, setOptionalCharts] = useState<
+    Array<'velocity' | 'reopen'>
+  >([])
+  const memberNames = parseCommaList(packageItem.members)
 
   return (
     <div className="p-4">
-      <div className="grid gap-5">
-        <section className="ops-package-summary-card grid gap-4 rounded-xl p-4">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0 space-y-2">
-              <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
-                <span>{projectName || 'Project'}</span>
-                <span className="size-1 rounded-full bg-[color:var(--border)]" />
-                <span>{packageItem.start_date}</span>
-                <span>-</span>
-                <span>{packageItem.end_date}</span>
-              </div>
-              <h3 className="text-lg font-semibold tracking-[-0.03em] text-[var(--foreground)]">
-                {packageItem.name}
-              </h3>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted-foreground)]">
-                <span>{memberItems.length} members</span>
-                <span className="size-1 rounded-full bg-[color:var(--border)]" />
-                <span>{labelItems.length} labels</span>
-                <span className="size-1 rounded-full bg-[color:var(--border)]" />
-                <span>{keyItems.length} keys</span>
-              </div>
-            </div>
+      <div ref={contentRef} className="grid gap-5">
+        <section className="grid gap-4">
+          <PackageStatusSummary
+            openCount={openBugCount}
+            resolvedCount={packageBar.resolvedBug}
+          />
 
-            <div className="grid min-w-[14rem] grid-cols-3 gap-2 self-start">
-              <MetricBlock
-                label="Resolved"
-                value={`${packageBar.resolvedBug}`}
-                compact
-              />
-              <MetricBlock label="Open" value={`${openBugCount}`} compact />
-              <MetricBlock
-                label="Issues"
-                value={`${packageItem.issues.length}`}
-                compact
-              />
-            </div>
+          <div>
+            <PackageMemberStatusSummary
+              issues={packageItem.issues}
+              members={memberNames}
+            />
           </div>
-
-          <details className="ops-package-details group">
-            <summary className="ops-package-details-summary">
-              <span>Package details</span>
-              <span className="text-[var(--muted-foreground)] transition-transform group-open:rotate-180">
-                <ChevronDown className="size-4" />
-              </span>
-            </summary>
-            <div className="grid gap-3 pt-3 lg:grid-cols-[1.1fr_1.1fr_0.9fr]">
-              <CompactMetaBlock label="Members" items={memberItems} />
-              <CompactMetaBlock label="Labels" items={labelItems} />
-              <CompactMetaBlock label="Keys" items={keyItems} />
-            </div>
-          </details>
         </section>
 
         <section className="grid gap-3">
+          <div className="px-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="ops-bug-chart-menu-trigger w-48 justify-between rounded-md"
+                  size="sm"
+                  variant="outline"
+                >
+                  <span className="truncate text-left">Visible charts</span>
+                  <ChevronDown className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="ops-bug-chart-menu-content w-48"
+              >
+                <DropdownMenuLabel>Charts</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuCheckboxItem
+                  checked
+                  className="ops-bug-chart-menu-item"
+                  disabled
+                  onSelect={(event) => event.preventDefault()}
+                >
+                  Bug analysis
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked
+                  className="ops-bug-chart-menu-item"
+                  disabled
+                  onSelect={(event) => event.preventDefault()}
+                >
+                  Bug fixing
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuCheckboxItem
+                  checked={optionalCharts.includes('velocity')}
+                  className="ops-bug-chart-menu-item"
+                  onSelect={(event) => event.preventDefault()}
+                  onCheckedChange={(checked) => {
+                    setOptionalCharts((current) =>
+                      checked
+                        ? [...current, 'velocity']
+                        : current.filter((item) => item !== 'velocity'),
+                    )
+                  }}
+                >
+                  Velocity
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={optionalCharts.includes('reopen')}
+                  className="ops-bug-chart-menu-item"
+                  onSelect={(event) => event.preventDefault()}
+                  onCheckedChange={(checked) => {
+                    setOptionalCharts((current) =>
+                      checked
+                        ? [...current, 'reopen']
+                        : current.filter((item) => item !== 'reopen'),
+                    )
+                  }}
+                >
+                  Reopen rate
+                </DropdownMenuCheckboxItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           <div className="grid gap-3 xl:grid-cols-2">
             <PackageBugStatisticsSection
               isError={statisticsQuery.isError}
@@ -1126,20 +1297,22 @@ function PackageDetailPanel({
               statistics={sprintStatisticsQuery.data ?? []}
               chartKeys={['flow']}
             />
-          </div>
-          <div className="grid gap-3 xl:grid-cols-2">
-            <PackageSprintChartsSection
-              isError={sprintStatisticsQuery.isError}
-              isPending={sprintStatisticsQuery.isPending}
-              statistics={sprintStatisticsQuery.data ?? []}
-              chartKeys={['velocity']}
-            />
-            <PackageSprintChartsSection
-              isError={sprintStatisticsQuery.isError}
-              isPending={sprintStatisticsQuery.isPending}
-              statistics={sprintStatisticsQuery.data ?? []}
-              chartKeys={['reopen']}
-            />
+            {optionalCharts.includes('velocity') ? (
+              <PackageSprintChartsSection
+                isError={sprintStatisticsQuery.isError}
+                isPending={sprintStatisticsQuery.isPending}
+                statistics={sprintStatisticsQuery.data ?? []}
+                chartKeys={['velocity']}
+              />
+            ) : null}
+            {optionalCharts.includes('reopen') ? (
+              <PackageSprintChartsSection
+                isError={sprintStatisticsQuery.isError}
+                isPending={sprintStatisticsQuery.isPending}
+                statistics={sprintStatisticsQuery.data ?? []}
+                chartKeys={['reopen']}
+              />
+            ) : null}
           </div>
         </section>
 
@@ -1151,32 +1324,112 @@ function PackageDetailPanel({
   )
 }
 
-function CompactMetaBlock({
-  items,
-  label,
+function PackageStatusSummary({
+  openCount,
+  resolvedCount,
 }: {
-  items: string[]
-  label: string
+  openCount: number
+  resolvedCount: number
 }) {
+  const total = openCount + resolvedCount
+  const resolvedWidth = total > 0 ? `${(resolvedCount / total) * 100}%` : '0%'
+
   return (
-    <div className="ops-package-meta-block rounded-lg p-3">
-      <div className="text-[11px] font-semibold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
-        {label}
+    <div className="grid gap-2">
+      <div className="flex items-center justify-between gap-4 text-sm">
+        <div className="flex items-baseline gap-2">
+          <span className="text-[11px] font-semibold tracking-[0.08em] text-[color:var(--status-success)] uppercase">
+            Resolved
+          </span>
+          <span className="text-base font-semibold tracking-[-0.02em] text-[var(--foreground)]">
+            {resolvedCount}
+          </span>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <span className="text-[11px] font-semibold tracking-[0.08em] text-[color:var(--status-warning)] uppercase">
+            Open
+          </span>
+          <span className="text-base font-semibold tracking-[-0.02em] text-[var(--foreground)]">
+            {openCount}
+          </span>
+        </div>
       </div>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {items.length ? (
-          items.map((item) => (
-            <span
-              key={item}
-              className="ops-package-meta-chip rounded-full px-2.5 py-1 text-xs"
-            >
-              {item}
+      <div className="h-2 overflow-hidden rounded-full bg-[color:var(--status-warning)]/14">
+        <div
+          className="h-full rounded-full bg-[color:var(--status-success)]"
+          style={{ width: resolvedWidth }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function PackageMemberStatusSummary({
+  issues,
+  members,
+}: {
+  issues: BugTrackerPackage['issues']
+  members: string[]
+}) {
+  const membersWithCounts = useMemo(() => {
+    const openIssues = issues.filter(
+      (issue) => !isIssueDoneStatus(issue.status),
+    )
+    const issueCounts = new Map<string, number>()
+
+    for (const issue of openIssues) {
+      const assignee = issue.assignee || 'Unassigned'
+      issueCounts.set(assignee, (issueCounts.get(assignee) ?? 0) + 1)
+    }
+
+    const orderedMembers = new Set([
+      ...members,
+      ...issueCounts.keys(),
+      ...(issueCounts.has('Unassigned') ? ['Unassigned'] : []),
+    ])
+
+    return [...orderedMembers]
+      .filter(Boolean)
+      .map((assignee) => ({
+        assignee,
+        openCount: issueCounts.get(assignee) ?? 0,
+      }))
+      .sort(
+        (left, right) =>
+          right.openCount - left.openCount ||
+          left.assignee.localeCompare(right.assignee),
+      )
+  }, [issues, members])
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {membersWithCounts.length ? (
+        membersWithCounts.map((group) => (
+          <div
+            key={group.assignee}
+            className={cn(
+              'inline-flex min-h-9 items-center gap-2.5 rounded-full border px-3 py-1.5 text-sm',
+              getMemberLoadTone(group.openCount).chip,
+            )}
+          >
+            <span className="truncate leading-none font-medium">
+              {group.assignee}
             </span>
-          ))
-        ) : (
-          <span className="text-sm text-[var(--muted-foreground)]">-</span>
-        )}
-      </div>
+            <span
+              className={cn(
+                'inline-flex items-center text-xs leading-none font-semibold tabular-nums',
+                getMemberLoadTone(group.openCount).count,
+              )}
+            >
+              {group.openCount}
+            </span>
+          </div>
+        ))
+      ) : (
+        <div className="py-1 text-sm text-[var(--muted-foreground)]">
+          No members.
+        </div>
+      )}
     </div>
   )
 }
@@ -1218,8 +1471,9 @@ function PackageBugStatisticsSection({
     if (right.value !== left.value) return right.value - left.value
     return left.label.localeCompare(right.label)
   })
-  const topCategories = sortedChartData.slice(0, 5)
-  const remainingCategories = sortedChartData.slice(5)
+  const directLegendCount = sortedChartData.length > 4 ? 3 : 4
+  const topCategories = sortedChartData.slice(0, directLegendCount)
+  const remainingCategories = sortedChartData.slice(directLegendCount)
   const otherValue = remainingCategories.reduce(
     (sum, item) => sum + item.value,
     0,
@@ -1430,7 +1684,7 @@ function SprintDefectFlowChart({ data }: { data: SprintChartDatum[] }) {
             Bug Fixing
           </h4>
           <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-            New, resolved, and total bugs by sprint.
+            Resolved versus total backlog by sprint.
           </p>
         </div>
       </div>
@@ -1439,7 +1693,7 @@ function SprintDefectFlowChart({ data }: { data: SprintChartDatum[] }) {
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={data}
-            margin={{ top: 8, right: 8, bottom: 0, left: -16 }}
+            margin={{ top: 24, right: 8, bottom: 0, left: -16 }}
           >
             <CartesianGrid
               vertical={false}
@@ -1462,21 +1716,13 @@ function SprintDefectFlowChart({ data }: { data: SprintChartDatum[] }) {
               content={
                 <SprintChartTooltip
                   rows={[
-                    { key: 'newBug', label: 'New' },
-                    { key: 'resolvedBug', label: 'Resolved' },
                     { key: 'totalBug', label: 'Total' },
+                    { key: 'resolvedBug', label: 'Resolved' },
+                    { key: 'remainingBug', label: 'Remaining' },
+                    { key: 'newBug', label: 'New' },
                   ]}
                 />
               }
-            />
-            <Line
-              type="monotone"
-              dataKey="totalBug"
-              stroke="#42526e"
-              strokeWidth={2}
-              dot={{ r: 2 }}
-              activeDot={{ r: 4 }}
-              name="Total"
             />
             <Bar
               dataKey="resolvedBug"
@@ -1487,26 +1733,77 @@ function SprintDefectFlowChart({ data }: { data: SprintChartDatum[] }) {
               name="Resolved"
             />
             <Bar
-              dataKey="newBug"
+              dataKey="remainingBug"
               stackId="flow"
               fill="#c8d7f0"
-              radius={[8, 8, 0, 0]}
+              radius={[6, 6, 0, 0]}
               maxBarSize={26}
-              name="New"
-            />
+              name="Remaining"
+            >
+              <LabelList content={<SprintNewBugMarker />} position="top" />
+            </Bar>
           </ComposedChart>
         </ResponsiveContainer>
       </div>
       <ChartLegend
         items={[
-          { color: '#42526e', label: 'Total' },
           { color: '#0c66e4', label: 'Resolved' },
-          { color: '#c8d7f0', label: 'New' },
+          { color: '#c8d7f0', label: 'Remaining' },
+          { color: '#42526e', label: 'New' },
         ]}
         xLabel="Sprint"
         yLabel="Bugs"
       />
     </article>
+  )
+}
+
+function SprintNewBugMarker({
+  payload,
+  width,
+  x,
+  y,
+}: {
+  payload?: SprintChartDatum
+  width?: number
+  x?: number
+  y?: number
+}) {
+  const value = payload?.newBug ?? 0
+
+  if (!value || x === undefined || y === undefined || width === undefined) {
+    return null
+  }
+
+  const label = `+${value}`
+  const pillWidth = Math.max(28, label.length * 8 + 10)
+  const pillHeight = 18
+  const pillX = x + width / 2 - pillWidth / 2
+  const pillY = y - pillHeight - 6
+
+  return (
+    <g>
+      <rect
+        x={pillX}
+        y={pillY}
+        width={pillWidth}
+        height={pillHeight}
+        rx={9}
+        fill="#f59e0b"
+        stroke="#b45309"
+      />
+      <text
+        x={x + width / 2}
+        y={pillY + pillHeight / 2 + 0.5}
+        dominantBaseline="middle"
+        fill="#ffffff"
+        fontSize="10"
+        fontWeight="700"
+        textAnchor="middle"
+      >
+        {label}
+      </text>
+    </g>
   )
 }
 
@@ -1846,6 +2143,7 @@ type SprintChartDatum = {
   createdAt: number
   newBug: number
   resolvedBug: number
+  remainingBug: number
   totalBug: number
   resolvedVelocity: number
   targetVelocity: number
@@ -1872,6 +2170,7 @@ function buildSprintChartData(
       createdAt: new Date(item.created_at).getTime(),
       newBug: item.new_bug,
       resolvedBug: item.resolved_bug,
+      remainingBug: Math.max(item.total_bug - item.resolved_bug, 0),
       totalBug: item.total_bug,
       resolvedVelocity: item.resolved_bug_velocity,
       targetVelocity: item.target_bug_velocity,
@@ -1906,11 +2205,29 @@ function formatTooltipMetric(
   return formatMetricValue(numericValue)
 }
 
-function toCompactList(value: string) {
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
+function getExportBackgroundColor() {
+  return (
+    getComputedStyle(document.documentElement)
+      .getPropertyValue('--workspace-pane')
+      .trim() || '#ffffff'
+  )
+}
+
+function buildPackageExportFileName(projectName: string, packageName: string) {
+  const value = `${projectName || 'package'} ${packageName}`
+    .trim()
+    .toLowerCase()
+
+  return (
+    value.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'package-view'
+  )
+}
+
+function downloadDataUrl(dataUrl: string, fileName: string) {
+  const link = document.createElement('a')
+  link.href = dataUrl
+  link.download = fileName
+  link.click()
 }
 
 function PackageIssuesTable({
@@ -1918,6 +2235,18 @@ function PackageIssuesTable({
 }: {
   issues: BugTrackerPackage['issues']
 }) {
+  const [query, setQuery] = useState('')
+  const filteredIssues = useMemo(() => {
+    const searchValue = query.trim().toLowerCase()
+    if (!searchValue) return issues
+
+    return issues.filter((issue) =>
+      `${issue.key} ${issue.summary} ${issue.assignee} ${issue.status}`
+        .toLowerCase()
+        .includes(searchValue),
+    )
+  }, [issues, query])
+
   if (!issues.length) {
     return (
       <div className="ops-bug-table-shell rounded-md px-4 py-10 text-sm text-[var(--muted-foreground)]">
@@ -1927,58 +2256,81 @@ function PackageIssuesTable({
   }
 
   return (
-    <div className="ops-bug-table-shell overflow-hidden rounded-lg">
-      <div className="max-h-[25rem] overflow-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead className="ops-bug-table-head sticky top-0 z-[1]">
-            <tr>
-              <th className="w-[18%] px-3 py-2 text-left font-medium">Key</th>
-              <th className="w-[46%] px-3 py-2 text-left font-medium">
-                Summary
-              </th>
-              <th className="w-[20%] px-3 py-2 text-left font-medium">
-                Assignee
-              </th>
-              <th className="w-[16%] px-3 py-2 text-left font-medium">
-                Status
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {issues.map((issue) => (
-              <tr key={issue.key} className="ops-bug-table-row align-top">
-                <td className="px-3 py-2.5">
-                  <Badge
-                    variant="outline"
-                    className="ops-bug-key-badge rounded-md px-2 py-0.5 font-semibold"
-                  >
-                    {issue.key}
-                  </Badge>
-                </td>
-                <td className="px-3 py-2.5">
-                  <a
-                    className="ops-bug-summary line-clamp-2 min-w-0 text-[var(--foreground)] hover:text-[var(--primary)] hover:underline"
-                    href={issue.url}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    {issue.summary}
-                  </a>
-                </td>
-                <td className="px-3 py-2.5 text-[var(--muted-foreground)]">
-                  <span className="truncate text-sm text-[var(--foreground)]">
-                    {issue.assignee || 'Unassigned'}
-                  </span>
-                </td>
-                <td className="px-3 py-2.5">
-                  <IssueStatusBadge status={issue.status} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <section className="grid gap-3">
+      <div className="px-1">
+        <div className="relative w-full max-w-sm">
+          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <Input
+            className="ops-workspace-input h-9 rounded-md pl-9"
+            placeholder="Key, summary, assignee, status"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
       </div>
-    </div>
+      <div className="ops-bug-table-shell overflow-hidden rounded-lg">
+        <div className="max-h-[25rem] overflow-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead className="ops-bug-table-head sticky top-0 z-[1]">
+              <tr>
+                <th className="w-[18%] px-3 py-2 text-left font-medium">Key</th>
+                <th className="w-[46%] px-3 py-2 text-left font-medium">
+                  Summary
+                </th>
+                <th className="w-[20%] px-3 py-2 text-left font-medium">
+                  Assignee
+                </th>
+                <th className="w-[16%] px-3 py-2 text-left font-medium">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredIssues.map((issue) => (
+                <tr key={issue.key} className="ops-bug-table-row align-top">
+                  <td className="px-3 py-2.5">
+                    <Badge
+                      variant="outline"
+                      className="ops-bug-key-badge rounded-md px-2 py-0.5 font-semibold"
+                    >
+                      {issue.key}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <a
+                      className="ops-bug-summary line-clamp-2 min-w-0 text-[var(--foreground)] hover:text-[var(--primary)] hover:underline"
+                      href={issue.url}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      {issue.summary}
+                    </a>
+                  </td>
+                  <td className="px-3 py-2.5 text-[var(--muted-foreground)]">
+                    <span className="truncate text-sm text-[var(--foreground)]">
+                      {issue.assignee || 'Unassigned'}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <IssueStatusBadge status={issue.status} />
+                  </td>
+                </tr>
+              ))}
+              {!filteredIssues.length ? (
+                <tr className="ops-bug-table-row">
+                  <td
+                    colSpan={4}
+                    className="px-3 py-8 text-center text-sm text-[var(--muted-foreground)]"
+                  >
+                    No results.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -2349,35 +2701,6 @@ function RowMenu({
   )
 }
 
-function MetricBlock({
-  compact = false,
-  label,
-  value,
-}: {
-  compact?: boolean
-  label: string
-  value: string
-}) {
-  return (
-    <div
-      className={cn(
-        'ops-bug-metric rounded-md border border-[color:var(--border)]/80 bg-[var(--workspace-pane-muted)]',
-        compact ? 'px-3 py-2 text-center' : 'px-3 py-2.5',
-      )}
-    >
-      <span className="ops-bug-metric-label">{label}</span>
-      <span
-        className={cn(
-          'font-semibold text-[color:var(--foreground)]',
-          compact ? 'text-base tracking-[-0.02em]' : 'text-sm',
-        )}
-      >
-        {value}
-      </span>
-    </div>
-  )
-}
-
 function StatusPill({
   compact = false,
   health,
@@ -2458,6 +2781,18 @@ function getInspectorTitle(
   if (mode === 'edit-package') return `Edit ${packageItem?.name ?? 'package'}`
   if (mode === 'view-project') return project?.name ?? 'Project'
   return packageItem?.name ?? 'Package'
+}
+
+function formatPackageInspectorTitle(
+  projectName: string,
+  packageItem: BugTrackerPackage,
+) {
+  const prefix = projectName || 'Project'
+  return `${prefix} > ${packageItem.name} (${formatSlashDate(packageItem.start_date)} - ${formatSlashDate(packageItem.end_date)})`
+}
+
+function formatSlashDate(value: string) {
+  return value.replaceAll('-', '/')
 }
 
 function toPackagePayload(values: PackageFormValues) {
@@ -2549,9 +2884,42 @@ function formatBugCategoryLabel(value: string) {
   return value.replace(/^FPT\.BUG\./, '').replaceAll('_', ' ')
 }
 
+function parseCommaList(value: string) {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function getMemberLoadTone(openCount: number) {
+  if (openCount === 0) {
+    return {
+      chip: 'border-[color:var(--status-success)]/24 bg-[color:var(--status-success)]/6 text-[var(--muted-foreground)]',
+      count: 'text-[color:var(--status-success)]',
+    }
+  }
+
+  if (openCount >= 3) {
+    return {
+      chip: 'border-[color:var(--status-danger)]/24 bg-[color:var(--status-danger)]/6 text-[var(--foreground)]',
+      count: 'text-[color:var(--status-danger)]',
+    }
+  }
+
+  return {
+    chip: 'border-[color:var(--status-warning)]/24 bg-[color:var(--status-warning)]/6 text-[var(--foreground)]',
+    count: 'text-[color:var(--status-warning)]',
+  }
+}
+
+function isIssueDoneStatus(status: string) {
+  const normalized = status.toLowerCase()
+  return normalized === 'closed' || normalized === 'resolved'
+}
+
 function getIssueStatusTone(status: string) {
   const normalized = status.toLowerCase()
-  if (normalized === 'closed' || normalized === 'resolved') {
+  if (isIssueDoneStatus(status)) {
     return 'var(--status-success)'
   }
   if (
@@ -2597,6 +2965,12 @@ function addDays(date: Date, amount: number) {
   return next
 }
 
+function addMonths(date: Date, amount: number) {
+  const next = new Date(date)
+  next.setMonth(next.getMonth() + amount)
+  return next
+}
+
 function startOfDay(date: Date) {
   const next = new Date(date)
   next.setHours(0, 0, 0, 0)
@@ -2610,10 +2984,149 @@ function startOfWeek(date: Date) {
   return addDays(next, diff)
 }
 
+function startOfMonth(date: Date) {
+  const next = startOfDay(date)
+  next.setDate(1)
+  return next
+}
+
+function formatDayNumber(date: Date) {
+  return new Intl.DateTimeFormat('en', { day: 'numeric' }).format(date)
+}
+
+function formatWeekdayLabel(date: Date) {
+  return new Intl.DateTimeFormat('en', { weekday: 'short' }).format(date)
+}
+
+function formatMonthShortLabel(date: Date) {
+  return new Intl.DateTimeFormat('en', { month: 'short' }).format(date)
+}
+
+function formatQuarterLabel(date: Date) {
+  return `Q${Math.floor(date.getMonth() / 3) + 1} ${date.getFullYear()}`
+}
+
+function getTimelineColumnWidthRem(zoom: TimelineZoomLevel) {
+  if (zoom === 'week') return 4.25
+  if (zoom === 'quarter') return 8.5
+  return monthViewColumnWidthRem
+}
+
+function buildTimeColumns(
+  rangeStart: Date,
+  rangeEnd: Date,
+  zoom: TimelineZoomLevel,
+) {
+  const columns: WeekColumn[] = []
+
+  if (zoom === 'week') {
+    for (
+      let cursor = startOfDay(rangeStart);
+      cursor < rangeEnd;
+      cursor = addDays(cursor, 1)
+    ) {
+      const start = new Date(Math.max(cursor.getTime(), rangeStart.getTime()))
+      const end = new Date(
+        Math.min(addDays(cursor, 1).getTime(), rangeEnd.getTime()),
+      )
+
+      columns.push({
+        key: `${start.toISOString()}-${end.toISOString()}`,
+        label: formatDayNumber(start),
+        shortLabel: formatWeekdayLabel(start),
+        start,
+        end,
+      })
+    }
+
+    return columns
+  }
+
+  if (zoom === 'quarter') {
+    for (
+      let cursor = startOfMonth(rangeStart);
+      cursor < rangeEnd;
+      cursor = addMonths(cursor, 1)
+    ) {
+      const start = new Date(Math.max(cursor.getTime(), rangeStart.getTime()))
+      const end = new Date(
+        Math.min(addMonths(cursor, 1).getTime(), rangeEnd.getTime()),
+      )
+
+      columns.push({
+        key: `${start.toISOString()}-${end.toISOString()}`,
+        label: formatMonthShortLabel(start),
+        shortLabel: '',
+        start,
+        end,
+      })
+    }
+
+    return columns
+  }
+
+  for (
+    let cursor = startOfWeek(rangeStart);
+    cursor < rangeEnd;
+    cursor = addDays(cursor, 7)
+  ) {
+    const start = new Date(Math.max(cursor.getTime(), rangeStart.getTime()))
+    const end = new Date(
+      Math.min(addDays(cursor, 7).getTime(), rangeEnd.getTime()),
+    )
+    columns.push({
+      key: `${start.toISOString()}-${end.toISOString()}`,
+      label: formatWeekLabel(start),
+      shortLabel: formatWeekShortLabel(start, end),
+      start,
+      end,
+    })
+  }
+
+  return columns
+}
+
+function buildHeaderGroups(columns: WeekColumn[], zoom: TimelineZoomLevel) {
+  const groups: MonthGroup[] = []
+
+  columns.forEach((column, index) => {
+    const midpoint = new Date(
+      column.start.getTime() +
+        (column.end.getTime() - column.start.getTime()) / 2,
+    )
+
+    const key =
+      zoom === 'quarter'
+        ? `${midpoint.getFullYear()}-q${Math.floor(midpoint.getMonth() / 3)}`
+        : `${midpoint.getFullYear()}-${midpoint.getMonth()}`
+
+    const label =
+      zoom === 'quarter'
+        ? formatQuarterLabel(midpoint)
+        : formatMonthLabel(midpoint)
+
+    const lastGroup = groups.at(-1)
+    if (lastGroup?.key === key) {
+      lastGroup.span += 1
+      return
+    }
+
+    groups.push({
+      key,
+      label,
+      start: index + 1,
+      span: 1,
+    })
+  })
+
+  return groups
+}
+
 function buildVisibleTimelineViewModel(
   viewModel: BugTimelineViewModel,
   fromDate: string,
   toDate: string,
+  zoom: TimelineZoomLevel,
 ): VisibleTimelineViewModel {
   const rawStart = startOfDay(parseInputDate(fromDate, viewModel.rangeStart))
   const rawEnd = addDays(
@@ -2624,44 +3137,8 @@ function buildVisibleTimelineViewModel(
   const rangeEnd = rawEnd > rawStart ? rawEnd : addDays(rawStart, 1)
   const totalDuration = rangeEnd.getTime() - rangeStart.getTime()
 
-  const weekColumns: WeekColumn[] = []
-  for (
-    let cursor = startOfWeek(rangeStart);
-    cursor < rangeEnd;
-    cursor = addDays(cursor, 7)
-  ) {
-    const start = new Date(Math.max(cursor.getTime(), rangeStart.getTime()))
-    const end = new Date(
-      Math.min(addDays(cursor, 7).getTime(), rangeEnd.getTime()),
-    )
-    weekColumns.push({
-      key: `${start.toISOString()}-${end.toISOString()}`,
-      label: formatWeekLabel(start),
-      shortLabel: formatWeekShortLabel(start, end),
-      start,
-      end,
-    })
-  }
-
-  const monthGroups: MonthGroup[] = []
-  weekColumns.forEach((column, index) => {
-    const midpoint = new Date(
-      column.start.getTime() +
-        (column.end.getTime() - column.start.getTime()) / 2,
-    )
-    const monthKey = `${midpoint.getFullYear()}-${midpoint.getMonth()}`
-    const lastGroup = monthGroups.at(-1)
-    if (lastGroup?.key === monthKey) {
-      lastGroup.span += 1
-      return
-    }
-    monthGroups.push({
-      key: monthKey,
-      label: formatMonthLabel(midpoint),
-      start: index + 1,
-      span: 1,
-    })
-  })
+  const weekColumns = buildTimeColumns(rangeStart, rangeEnd, zoom)
+  const monthGroups = buildHeaderGroups(weekColumns, zoom)
 
   const projects = viewModel.projects
     .map<TimelineProjectGroup>((project) => {

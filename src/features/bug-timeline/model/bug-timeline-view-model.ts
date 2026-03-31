@@ -37,8 +37,8 @@ function formatMonth(date: Date) {
 }
 
 function getTimelineDays(zoom: TimelineZoomLevel) {
-  if (zoom === 'month') return 35
-  if (zoom === 'half') return 180
+  if (zoom === 'week') return 28
+  if (zoom === 'quarter') return 180
   return 90
 }
 
@@ -48,7 +48,7 @@ function getTimelineColumns(
   zoom: TimelineZoomLevel,
 ) {
   const columns: TimelineColumn[] = []
-  const step = zoom === 'month' ? 7 : zoom === 'quarter' ? 14 : 30
+  const step = zoom === 'week' ? 1 : zoom === 'month' ? 7 : 30
 
   for (
     let cursor = new Date(rangeStart);
@@ -60,7 +60,7 @@ function getTimelineColumns(
       key: `${cursor.toISOString()}-${end.toISOString()}`,
       label: formatMonth(cursor),
       shortLabel:
-        zoom === 'half'
+        zoom === 'quarter'
           ? cursor.toLocaleString('en', { month: 'short' })
           : formatMonth(cursor),
       start: new Date(cursor),
