@@ -1293,9 +1293,42 @@
     opacity: 0.72;
   }
 
-  .ops-bug-view-tabs {
-    background: color-mix(in srgb, var(--workspace-pane) 98%, white 2%);
-    border-color: color-mix(in srgb, var(--border) 90%, transparent);
+  .ops-view-toggle-shell {
+    display: grid;
+    gap: 0.35rem;
+    align-content: start;
+  }
+
+  .ops-view-toggle-list {
+    background: color-mix(in srgb, var(--workspace-pane) 99%, white 1%);
+    border: 1px solid color-mix(in srgb, var(--border) 96%, transparent);
+    box-shadow: none;
+    background-color: color-mix(in srgb, var(--workspace-pane) 99%, white 1%);
+  }
+
+  .ops-view-toggle-trigger {
+    min-width: 4.85rem;
+    border-radius: 0.58rem;
+    border-color: transparent;
+    color: color-mix(in srgb, var(--foreground) 70%, var(--muted-foreground));
+    letter-spacing: 0.01em;
+    box-shadow: none;
+  }
+
+  .ops-view-toggle-trigger:hover {
+    background: color-mix(in srgb, var(--workspace-pane-muted) 88%, white 12%);
+    color: var(--foreground);
+  }
+
+  .ops-view-toggle-trigger[data-state='active'] {
+    border-color: color-mix(in srgb, var(--border) 88%, var(--primary) 12%);
+    background: color-mix(in srgb, var(--workspace-pane-muted) 84%, white 16%);
+    color: var(--foreground);
+    box-shadow: none;
+  }
+
+  .ops-view-toggle-trigger[data-state='active']:hover {
+    background: color-mix(in srgb, var(--workspace-pane-muted) 80%, white 20%);
   }
 
   .ops-bug-chart-tooltip {

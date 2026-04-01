@@ -4,8 +4,8 @@ import {
   useBugTrackerPackagesQuery,
   useBugTrackerProjectsQuery,
 } from '@/features/bug-timeline/api/bug-timeline.queries'
-import { buildBugTimelineViewModel } from '@/features/bug-timeline/model/bug-timeline-view-model'
 import { useBugTimelineUiStore } from '@/features/bug-timeline/stores/bug-timeline-ui.store'
+import { buildTimelineViewModel } from '@/features/timeline-workspace/model/build-timeline-view-model'
 
 export function useBugTimelineQuery() {
   const zoom = useBugTimelineUiStore((state) => state.zoom)
@@ -14,7 +14,7 @@ export function useBugTimelineQuery() {
   const packagesQuery = useBugTrackerPackagesQuery()
 
   const viewModel = useMemo(() => {
-    return buildBugTimelineViewModel(
+    return buildTimelineViewModel(
       projectsQuery.data ?? [],
       packagesQuery.data ?? [],
       zoom,

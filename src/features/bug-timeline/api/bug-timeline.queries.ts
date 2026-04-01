@@ -3,31 +3,19 @@ import { useQuery } from '@tanstack/react-query'
 import {
   getAllProjectPackages,
   getBugTrackerProjects,
-  getBugTrackerProject,
   getPackageBugStatistics,
   getPackageSprintStatistics,
-  getProjectPackage,
 } from '@/features/bug-timeline/api/bug-timeline.api'
+import { createTimelineQueryKeys } from '@/features/timeline-workspace/utils/create-timeline-query-keys'
+
+const timelineQueryKeys = createTimelineQueryKeys('bug-timeline')
 
 export const bugTimelineQueryKeys = {
-  all: ['bug-timeline'] as const,
-  projects: () => [...bugTimelineQueryKeys.all, 'projects'] as const,
-  project: (projectId: number) =>
-    [...bugTimelineQueryKeys.all, 'project', projectId] as const,
-  packages: (projectId?: number) =>
-    projectId === undefined
-      ? ([...bugTimelineQueryKeys.all, 'packages'] as const)
-      : ([...bugTimelineQueryKeys.all, 'packages', projectId] as const),
-  package: (packageId: number) =>
-    [...bugTimelineQueryKeys.all, 'package', packageId] as const,
+  ...timelineQueryKeys,
   packageBugStatistics: (packageId: number) =>
-    [...bugTimelineQueryKeys.all, 'package-bug-statistics', packageId] as const,
+    [...timelineQueryKeys.all, 'package-bug-statistics', packageId] as const,
   packageSprintStatistics: (packageId: number) =>
-    [
-      ...bugTimelineQueryKeys.all,
-      'package-sprint-statistics',
-      packageId,
-    ] as const,
+    [...timelineQueryKeys.all, 'package-sprint-statistics', packageId] as const,
 }
 
 export function useBugTrackerProjectsQuery() {
@@ -41,22 +29,6 @@ export function useBugTrackerPackagesQuery() {
   return useQuery({
     queryKey: bugTimelineQueryKeys.packages(),
     queryFn: getAllProjectPackages,
-  })
-}
-
-export function useBugTrackerProjectQuery(projectId: number, enabled = true) {
-  return useQuery({
-    queryKey: bugTimelineQueryKeys.project(projectId),
-    queryFn: () => getBugTrackerProject(projectId),
-    enabled,
-  })
-}
-
-export function useProjectPackageQuery(packageId: number, enabled = true) {
-  return useQuery({
-    queryKey: bugTimelineQueryKeys.package(packageId),
-    queryFn: () => getProjectPackage(packageId),
-    enabled,
   })
 }
 

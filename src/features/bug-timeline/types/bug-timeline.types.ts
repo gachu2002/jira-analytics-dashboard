@@ -1,3 +1,13 @@
+import type {
+  TimelineDeleteTarget,
+  TimelineInspectorMode,
+  TimelineIssue,
+  TimelineSelectedEntity,
+  TimelineZoomLevel as WorkspaceTimelineZoomLevel,
+  TimelinePackageBar as WorkspaceTimelinePackageBar,
+  TimelineProjectGroup as WorkspaceTimelineProjectGroup,
+} from '@/features/timeline-workspace/types/timeline-workspace.types'
+
 export type BugTrackerProject = {
   id: number
   name: string
@@ -21,13 +31,7 @@ export type BugTrackerPackage = {
   bug_tracker_project: number
 }
 
-export type BugTrackerIssue = {
-  url: string
-  key: string
-  summary: string
-  assignee: string
-  status: string
-}
+export type BugTrackerIssue = TimelineIssue
 
 export type BugTrackerBugCategory = {
   id: number
@@ -69,67 +73,14 @@ export type BugTrackerPackagePayload = {
   bug_tracker_project: number
 }
 
-export type TimelineZoomLevel = 'week' | 'month' | 'quarter'
+export type TimelineZoomLevel = WorkspaceTimelineZoomLevel
 
-export type TimelineColumn = {
-  key: string
-  label: string
-  shortLabel: string
-  start: Date
-  end: Date
-}
+export type TimelinePackageBar = WorkspaceTimelinePackageBar
 
-export type TimelinePackageBar = {
-  id: number
-  projectId: number
-  name: string
-  leftPercent: number
-  widthPercent: number
-  startDate: string
-  endDate: string
-  resolvedBug: number
-  totalBug: number
-  progress: number
-  members: string[]
-  labels: string[]
-  keys: string[]
-  health: 'healthy' | 'watch' | 'risk'
-}
+export type TimelineProjectGroup = WorkspaceTimelineProjectGroup
 
-export type TimelineProjectGroup = {
-  id: number
-  name: string
-  packageCount: number
-  totalBug: number
-  resolvedBug: number
-  packages: TimelinePackageBar[]
-}
+export type BugTimelineSelectedEntity = TimelineSelectedEntity
 
-export type BugTimelineViewModel = {
-  rangeStart: Date
-  rangeEnd: Date
-  columns: TimelineColumn[]
-  projects: TimelineProjectGroup[]
-  totals: {
-    projects: number
-    packages: number
-    bugs: number
-    resolved: number
-  }
-}
+export type BugTimelineInspectorMode = TimelineInspectorMode
 
-export type BugTimelineSelectedEntity =
-  | { type: 'project'; projectId: number }
-  | { type: 'package'; projectId: number; packageId: number }
-
-export type BugTimelineInspectorMode =
-  | 'view-project'
-  | 'edit-project'
-  | 'create-project'
-  | 'view-package'
-  | 'edit-package'
-  | 'create-package'
-
-export type BugTimelineDeleteTarget =
-  | { type: 'project'; projectId: number; name: string }
-  | { type: 'package'; projectId: number; packageId: number; name: string }
+export type BugTimelineDeleteTarget = TimelineDeleteTarget

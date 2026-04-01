@@ -19,26 +19,22 @@ import {
   Bug,
   ChevronDown,
   Download,
-  Ellipsis,
   FileImage,
   FileText,
   FolderPlus,
-  PanelRightClose,
   Pencil,
   Plus,
   Search,
   Trash2,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm, type UseFormReturn } from 'react-hook-form'
-import { createPortal } from 'react-dom'
 import { toast } from 'sonner'
 
 import {
   LoadingPanel,
   TimelineWorkspaceLoading,
 } from '@/components/common/loading-state'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -50,7 +46,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   usePackageBugStatisticsQuery,
   usePackageSprintStatisticsQuery,
@@ -65,22 +60,46 @@ import {
 } from '@/features/bug-timeline/schemas/bug-timeline.schema'
 import { useBugTimelineUiStore } from '@/features/bug-timeline/stores/bug-timeline-ui.store'
 import type {
-  BugTimelineDeleteTarget,
   BugTimelineInspectorMode,
   BugTimelineSelectedEntity,
-  BugTimelineViewModel,
   BugTrackerPackage,
   BugTrackerProject,
   PackageBugStatistic,
   PackageSprintStatistic,
   TimelinePackageBar,
-  TimelineProjectGroup,
-  TimelineZoomLevel,
 } from '@/features/bug-timeline/types/bug-timeline.types'
-import { cn } from '@/lib/utils'
-
+import {
+  TimelineDateField as DateField,
+  TimelineDeleteDialog as DeleteDialog,
+  TimelineField as Field,
+  TimelineFormActions as FormActions,
+  TimelineIssuesTable as PackageIssuesTable,
+  TimelineMemberStatusSummary as PackageMemberStatusSummary,
+  TimelineStatusSummary as PackageStatusSummary,
+  TimelineTodayMarker as TodayMarker,
+} from '@/features/timeline-workspace/components/timeline-shared'
+import { TimelineDrawerShell } from '@/features/timeline-workspace/components/timeline-drawer-shell'
+import { TimelineItemRow } from '@/features/timeline-workspace/components/timeline-item-row'
+import { TimelineProjectSection } from '@/features/timeline-workspace/components/timeline-project-section'
+import { TimelineViewToggle } from '@/features/timeline-workspace/components/timeline-view-toggle'
+import { buildVisibleTimelineViewModel } from '@/features/timeline-workspace/model/build-visible-timeline-view-model'
+import {
+  addDays,
+  buildTimelineItemExportFileName,
+  downloadDataUrl,
+  getExportBackgroundColor,
+  getGridStyle,
+  getTimelineColumnWidthRem,
+  getTodayOffsetPercent,
+  parseCommaList,
+  toInputDate,
+} from '@/features/timeline-workspace/utils/timeline-workspace.utils'
+import {
+  formatTimelineItemInspectorTitle,
+  getInspectorEyebrow,
+  getTimelineInspectorTitle,
+} from '@/features/timeline-workspace/utils/timeline-inspector.utils'
 const labelColumnWidth = '18.5rem'
-const monthViewColumnWidthRem = 7.5
 const monthHeaderHeight = '2.5rem'
 const weekHeaderHeight = '3rem'
 const ganttHeaderHeight = `calc(${monthHeaderHeight} + ${weekHeaderHeight})`
@@ -101,29 +120,6 @@ const BUG_CATEGORY_COLORS = [
   '#00a3bf',
   '#8777d9',
 ]
-
-type MonthGroup = {
-  key: string
-  label: string
-  start: number
-  span: number
-}
-
-type WeekColumn = {
-  key: string
-  label: string
-  shortLabel: string
-  start: Date
-  end: Date
-}
-
-type VisibleTimelineViewModel = {
-  rangeStart: Date
-  rangeEnd: Date
-  monthGroups: MonthGroup[]
-  weekColumns: WeekColumn[]
-  projects: TimelineProjectGroup[]
-}
 
 export function BugTimelineScreen() {
   const { projects, packages, viewModel, isPending, isError } =
@@ -348,28 +344,7 @@ export function BugTimelineScreen() {
                     value={effectiveToDate}
                     onChange={setToDate}
                   />
-                  <div>
-                    <span className="ops-bug-toolbar-label">View</span>
-                    <Tabs
-                      className="gap-0"
-                      value={zoom}
-                      onValueChange={(value) =>
-                        setZoom(value as TimelineZoomLevel)
-                      }
-                    >
-                      <TabsList className="ops-bug-view-tabs h-10 rounded-md p-0.5 shadow-none">
-                        <TabsTrigger className="px-3 text-xs" value="week">
-                          Week
-                        </TabsTrigger>
-                        <TabsTrigger className="px-3 text-xs" value="month">
-                          Month
-                        </TabsTrigger>
-                        <TabsTrigger className="px-3 text-xs" value="quarter">
-                          Quarter
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                  </div>
+                  <TimelineViewToggle value={zoom} onChange={setZoom} />
                 </div>
               </div>
 
@@ -449,24 +424,92 @@ export function BugTimelineScreen() {
                       </div>
                     ) : null}
                     {filteredViewModel.projects.map((project) => (
-                      <ProjectSection
+                      <TimelineProjectSection
                         key={project.id}
+                        actionMenuId={openActionMenu}
                         columns={filteredViewModel.weekColumns.length}
                         isCollapsed={collapsedProjectIds.includes(project.id)}
-                        actionMenuId={openActionMenu}
-                        onAddPackage={handleCreatePackage}
+                        itemCountLabel="packages"
+                        labelColumnWidth={labelColumnWidth}
+                        menuItems={[
+                          {
+                            label: 'View',
+                            icon: <Bug className="size-3.5" />,
+                            onSelect: () => openProjectView(project.id),
+                          },
+                          {
+                            label: 'Add package',
+                            icon: <FolderPlus className="size-3.5" />,
+                            onSelect: () => handleCreatePackage(project.id),
+                          },
+                          {
+                            label: 'Edit',
+                            icon: <Pencil className="size-3.5" />,
+                            onSelect: () => openEditProject(project.id),
+                          },
+                          {
+                            label: 'Delete',
+                            icon: <Trash2 className="size-3.5" />,
+                            onSelect: () =>
+                              setDeleteTarget({
+                                type: 'project',
+                                projectId: project.id,
+                                name: project.name,
+                              }),
+                          },
+                        ]}
                         onCloseMenu={() => setOpenActionMenu(null)}
-                        onDeletePackage={(target) => setDeleteTarget(target)}
-                        onDeleteProject={(target) => setDeleteTarget(target)}
-                        onEditPackage={openEditPackage}
-                        onEditProject={openEditProject}
-                        onViewProject={openProjectView}
-                        onSelectPackage={handleSelectPackage}
                         onOpenMenu={setOpenActionMenu}
                         onToggle={() => toggleProject(project.id)}
+                        progressLabel="resolved"
                         project={project}
-                        selectedEntity={selectedEntity}
-                      />
+                      >
+                        {project.packages.map((item) => (
+                          <TimelineItemRow
+                            key={item.id}
+                            actionMenuId={openActionMenu}
+                            columns={filteredViewModel.weekColumns.length}
+                            item={item}
+                            labelColumnWidth={labelColumnWidth}
+                            menuId={`package-${item.id}`}
+                            menuItems={[
+                              {
+                                label: 'View',
+                                icon: <Bug className="size-3.5" />,
+                                onSelect: () =>
+                                  handleSelectPackage(item.projectId, item.id),
+                              },
+                              {
+                                label: 'Edit',
+                                icon: <Pencil className="size-3.5" />,
+                                onSelect: () =>
+                                  openEditPackage(item.projectId, item.id),
+                              },
+                              {
+                                label: 'Delete',
+                                icon: <Trash2 className="size-3.5" />,
+                                onSelect: () =>
+                                  setDeleteTarget({
+                                    type: 'package',
+                                    projectId: item.projectId,
+                                    packageId: item.id,
+                                    name: item.name,
+                                  }),
+                              },
+                            ]}
+                            onCloseMenu={() => setOpenActionMenu(null)}
+                            onOpenMenu={setOpenActionMenu}
+                            onSelect={() =>
+                              handleSelectPackage(item.projectId, item.id)
+                            }
+                            progressLabel="resolved"
+                            selected={
+                              selectedEntity?.type === 'package' &&
+                              selectedEntity.packageId === item.id
+                            }
+                          />
+                        ))}
+                      </TimelineProjectSection>
                     ))}
                   </div>
                 </div>
@@ -571,298 +614,6 @@ export function BugTimelineScreen() {
   )
 }
 
-function ProjectSection({
-  columns,
-  actionMenuId,
-  isCollapsed,
-  onAddPackage,
-  onCloseMenu,
-  onDeletePackage,
-  onDeleteProject,
-  onEditPackage,
-  onEditProject,
-  onViewProject,
-  onSelectPackage,
-  onOpenMenu,
-  onToggle,
-  project,
-  selectedEntity,
-}: {
-  columns: number
-  actionMenuId: string | null
-  isCollapsed: boolean
-  onAddPackage: (projectId?: number) => void
-  onCloseMenu: () => void
-  onDeletePackage: (target: BugTimelineDeleteTarget) => void
-  onDeleteProject: (target: BugTimelineDeleteTarget) => void
-  onEditPackage: (projectId: number, packageId: number) => void
-  onEditProject: (projectId: number) => void
-  onViewProject: (projectId: number) => void
-  onSelectPackage: (projectId: number, packageId: number) => void
-  onOpenMenu: (id: string | null) => void
-  onToggle: () => void
-  project: TimelineProjectGroup
-  selectedEntity: BugTimelineSelectedEntity | null
-}) {
-  const projectHealth = getHealthFromProgress(
-    project.resolvedBug,
-    project.totalBug,
-  )
-  const projectWindow = getProjectWindow(project.packages)
-
-  return (
-    <section className="ops-project-section bg-[var(--workspace-pane)]">
-      <div
-        className={cn(
-          'ops-project-header-row sticky z-20 grid border-b border-[color:var(--border)]',
-          actionMenuId === `project-${project.id}` && 'z-30',
-        )}
-        style={{ gridTemplateColumns: `${labelColumnWidth} minmax(0, 1fr)` }}
-      >
-        <div className="group/row ops-bug-sidebar-cell ops-gantt-project px-4 py-3">
-          <div className="flex items-start justify-between gap-3">
-            <button
-              type="button"
-              className="min-w-0 flex-1 text-left"
-              onClick={onToggle}
-            >
-              <div className="flex items-center gap-2">
-                <ChevronDown
-                  className={cn(
-                    'text-muted-foreground size-4 shrink-0 transition-transform',
-                    isCollapsed && '-rotate-90',
-                  )}
-                />
-                <p className="truncate text-[15px] font-semibold tracking-[-0.02em] text-[color:var(--foreground)]">
-                  {project.name}
-                </p>
-              </div>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2 pl-6">
-                <div className="ops-bug-inline-meta text-[11px]">
-                  <span>{project.packageCount} packages</span>
-                  <span>
-                    {project.resolvedBug}/{project.totalBug} resolved
-                  </span>
-                </div>
-                <StatusPill compact health={projectHealth} />
-              </div>
-            </button>
-
-            <div className="flex shrink-0 items-start gap-1">
-              <RowMenu
-                isOpen={actionMenuId === `project-${project.id}`}
-                onClose={onCloseMenu}
-                onOpen={() => onOpenMenu(`project-${project.id}`)}
-                items={[
-                  {
-                    label: 'View',
-                    icon: <Bug className="size-3.5" />,
-                    onSelect: () => onViewProject(project.id),
-                  },
-                  {
-                    label: 'Add package',
-                    icon: <FolderPlus className="size-3.5" />,
-                    onSelect: () => onAddPackage(project.id),
-                  },
-                  {
-                    label: 'Edit',
-                    icon: <Pencil className="size-3.5" />,
-                    onSelect: () => onEditProject(project.id),
-                  },
-                  {
-                    label: 'Delete',
-                    icon: <Trash2 className="size-3.5" />,
-                    onSelect: () =>
-                      onDeleteProject({
-                        type: 'project',
-                        projectId: project.id,
-                        name: project.name,
-                      }),
-                  },
-                ]}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="ops-gantt-project-band ops-gantt-grid-frame relative overflow-hidden py-3">
-          <TimelineGrid columns={columns} />
-          {projectWindow ? (
-            <div
-              className="ops-project-summary-bar absolute top-1/2 h-3 -translate-y-1/2 rounded-full"
-              style={{
-                left: `${projectWindow.leftPercent}%`,
-                width: `${projectWindow.widthPercent}%`,
-                background: getProjectBandColor(projectHealth),
-              }}
-            />
-          ) : null}
-        </div>
-      </div>
-
-      {!isCollapsed ? (
-        <div className="ops-project-packages bg-[var(--workspace-pane)]">
-          {project.packages.map((item) => (
-            <PackageRow
-              key={item.id}
-              actionMenuId={actionMenuId}
-              columns={columns}
-              item={item}
-              onCloseMenu={onCloseMenu}
-              selected={
-                selectedEntity?.type === 'package' &&
-                selectedEntity.packageId === item.id
-              }
-              onDeletePackage={onDeletePackage}
-              onEditPackage={onEditPackage}
-              onOpenMenu={onOpenMenu}
-              onSelect={() => onSelectPackage(item.projectId, item.id)}
-            />
-          ))}
-        </div>
-      ) : null}
-    </section>
-  )
-}
-
-function PackageRow({
-  columns,
-  actionMenuId,
-  item,
-  onCloseMenu,
-  onDeletePackage,
-  onEditPackage,
-  onOpenMenu,
-  onSelect,
-  selected,
-}: {
-  columns: number
-  actionMenuId: string | null
-  item: TimelinePackageBar
-  onCloseMenu: () => void
-  onDeletePackage: (target: BugTimelineDeleteTarget) => void
-  onEditPackage: (projectId: number, packageId: number) => void
-  onOpenMenu: (id: string | null) => void
-  onSelect: () => void
-  selected: boolean
-}) {
-  return (
-    <div
-      className={cn(
-        'ops-gantt-row grid border-b border-[color:var(--border)]/70',
-        actionMenuId === `package-${item.id}` && 'z-30',
-      )}
-      style={{ gridTemplateColumns: `${labelColumnWidth} minmax(0, 1fr)` }}
-    >
-      <div
-        className={cn(
-          'group/row ops-bug-sidebar-cell ops-gantt-package px-4 py-2 transition-colors',
-          selected && 'ops-bug-selected',
-        )}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <button
-            type="button"
-            onClick={onSelect}
-            className="ops-package-rail min-w-0 flex-1 text-left"
-          >
-            <span className="ops-package-rail-line" aria-hidden="true" />
-            <div className="ops-package-rail-content">
-              <p className="truncate text-[13px] font-medium tracking-[-0.015em] text-[color:var(--foreground)]">
-                {item.name}
-              </p>
-              <div className="mt-1 flex flex-wrap gap-x-2.5 gap-y-1 text-[10px] text-[color:var(--muted-foreground)]">
-                <div className="ops-bug-inline-meta min-w-0">
-                  <span>
-                    {formatDateLabel(item.startDate)} -{' '}
-                    {formatDateLabel(item.endDate)}
-                  </span>
-                </div>
-                <div className="ops-bug-inline-meta min-w-0">
-                  <span>{item.keys.length} keys</span>
-                </div>
-                <div className="ops-bug-inline-meta min-w-0">
-                  <span>{item.members.length} members</span>
-                  <span>
-                    {item.resolvedBug}/{item.totalBug} resolved
-                  </span>
-                </div>
-              </div>
-            </div>
-          </button>
-          <div className="flex shrink-0 items-start gap-1">
-            <StatusPill compact health={item.health} />
-            <RowMenu
-              isOpen={actionMenuId === `package-${item.id}`}
-              onClose={onCloseMenu}
-              onOpen={() => onOpenMenu(`package-${item.id}`)}
-              items={[
-                {
-                  label: 'View',
-                  icon: <Bug className="size-3.5" />,
-                  onSelect: onSelect,
-                },
-                {
-                  label: 'Edit',
-                  icon: <Pencil className="size-3.5" />,
-                  onSelect: () => onEditPackage(item.projectId, item.id),
-                },
-                {
-                  label: 'Delete',
-                  icon: <Trash2 className="size-3.5" />,
-                  onSelect: () =>
-                    onDeletePackage({
-                      type: 'package',
-                      projectId: item.projectId,
-                      packageId: item.id,
-                      name: item.name,
-                    }),
-                },
-              ]}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="ops-gantt-package-band ops-gantt-grid-frame relative overflow-hidden py-2">
-        <TimelineGrid columns={columns} />
-        <button
-          type="button"
-          onClick={onSelect}
-          className={cnSelected(
-            'ops-timeline-bar absolute top-1/2 flex h-8 min-w-[4.5rem] -translate-y-1/2 items-center rounded-md border px-2.5 text-left text-white transition-[box-shadow,filter] hover:brightness-[0.99]',
-            selected,
-          )}
-          style={{
-            left: `${item.leftPercent}%`,
-            width: `${item.widthPercent}%`,
-            background: getBarTrackColor(item.health),
-          }}
-        >
-          <span
-            className="pointer-events-none absolute inset-y-0 left-0 rounded-[inherit]"
-            style={{
-              width: `${Math.max(item.progress * 100, 8)}%`,
-              background: getBarColor(item.health),
-            }}
-          />
-          <div className="relative z-10 flex w-full items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="truncate text-[12px] leading-none font-semibold">
-                {item.name}
-              </div>
-              <div className="mt-1 truncate text-[10px] font-semibold text-white/82">
-                {item.resolvedBug}/{item.totalBug} resolved ·{' '}
-                {Math.round(item.progress * 100)}%
-              </div>
-            </div>
-          </div>
-        </button>
-      </div>
-    </div>
-  )
-}
-
 function CrudDrawer({
   inspectorMode,
   isOpen,
@@ -960,7 +711,7 @@ function CrudDrawer({
         cacheBust: true,
         pixelRatio: 2,
       })
-      const fileName = buildPackageExportFileName(
+      const fileName = buildTimelineItemExportFileName(
         selectedPackageProjectName,
         selectedPackage.name,
       )
@@ -988,182 +739,137 @@ function CrudDrawer({
   }
 
   return (
-    <div className="ops-side-drawer-backdrop fixed inset-0 z-40 flex justify-end">
-      <div
-        className={cn(
-          'ops-side-drawer-panel flex h-full w-full flex-col',
-          isPackageView
-            ? 'max-w-[min(72rem,calc(100vw-2rem))]'
-            : 'max-w-[28rem]',
-        )}
-      >
-        <div className="flex items-start justify-between border-b border-[color:var(--border)] px-4 py-4">
-          <div>
-            <p className="ops-inspector-label">
-              {inspectorMode.startsWith('create')
-                ? 'Create'
-                : inspectorMode.startsWith('edit')
-                  ? 'Edit'
-                  : 'Details'}
-            </p>
-            <p className="mt-1 text-base font-semibold tracking-[-0.02em]">
-              {inspectorMode === 'view-package' && selectedPackage
-                ? formatPackageInspectorTitle(
-                    selectedPackageProjectName,
-                    selectedPackage,
-                  )
-                : getInspectorTitle(inspectorMode, project, selectedPackage)}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {isPackageView ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    className="ops-package-export-trigger rounded-md"
-                    disabled={exportFormat !== null}
-                    size="sm"
-                    variant="outline"
-                  >
-                    <Download className="size-4" />
-                    {exportFormat === null ? 'Export view' : 'Exporting...'}
-                    <ChevronDown className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="ops-bug-chart-menu-content w-44"
-                >
-                  <DropdownMenuLabel>Package view</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="ops-bug-chart-menu-item"
-                    disabled={exportFormat !== null}
-                    onSelect={() => {
-                      void handleExportPackageView('png')
-                    }}
-                  >
-                    <FileImage className="size-4" />
-                    Image (.png)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="ops-bug-chart-menu-item"
-                    disabled={exportFormat !== null}
-                    onSelect={() => {
-                      void handleExportPackageView('pdf')
-                    }}
-                  >
-                    <FileText className="size-4" />
-                    PDF
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : null}
-            <Button
-              className="size-8 rounded-md px-0"
-              size="sm"
-              variant="ghost"
-              onClick={onClose}
+    <TimelineDrawerShell
+      actions={
+        isPackageView ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                className="ops-package-export-trigger rounded-md"
+                disabled={exportFormat !== null}
+                size="sm"
+                variant="outline"
+              >
+                <Download className="size-4" />
+                {exportFormat === null ? 'Export view' : 'Exporting...'}
+                <ChevronDown className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="ops-bug-chart-menu-content w-44"
             >
-              <PanelRightClose className="size-4" />
-            </Button>
+              <DropdownMenuLabel>Package view</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="ops-bug-chart-menu-item"
+                disabled={exportFormat !== null}
+                onSelect={() => {
+                  void handleExportPackageView('png')
+                }}
+              >
+                <FileImage className="size-4" />
+                Image (.png)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="ops-bug-chart-menu-item"
+                disabled={exportFormat !== null}
+                onSelect={() => {
+                  void handleExportPackageView('pdf')
+                }}
+              >
+                <FileText className="size-4" />
+                PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null
+      }
+      eyebrow={getInspectorEyebrow(inspectorMode)}
+      isOpen={isOpen}
+      isWide={isPackageView}
+      onClose={onClose}
+      title={
+        inspectorMode === 'view-package' && selectedPackage
+          ? formatTimelineItemInspectorTitle({
+              projectName: selectedPackageProjectName,
+              itemName: selectedPackage.name,
+              startDate: selectedPackage.start_date,
+              endDate: selectedPackage.end_date,
+            })
+          : getTimelineInspectorTitle({
+              mode: inspectorMode,
+              projectName: project?.name ?? null,
+              itemName: selectedPackage?.name ?? null,
+              itemLabel: 'package',
+              itemTitle: 'Package',
+            })
+      }
+    >
+      {inspectorMode === 'view-project' && project ? (
+        <ProjectViewPanel project={project} />
+      ) : null}
+      {inspectorMode === 'view-package' &&
+      selectedPackage &&
+      selectedPackageBar ? (
+        <PackageDetailPanel
+          key={selectedPackage.id}
+          contentRef={packageViewRef}
+          packageItem={selectedPackage}
+          packageBar={selectedPackageBar}
+        />
+      ) : null}
+      {inspectorMode === 'create-project' ? (
+        <ProjectFormPanel
+          form={projectForm}
+          isPending={projectMutationState.create.isPending}
+          submitLabel="Create project"
+          onCancel={onClose}
+          onSubmit={onSubmitCreateProject}
+        />
+      ) : null}
+      {inspectorMode === 'edit-project' && project ? (
+        <ProjectFormPanel
+          form={projectForm}
+          isPending={projectMutationState.update.isPending}
+          submitLabel="Save"
+          onCancel={onClose}
+          onSubmit={onSubmitUpdateProject}
+        />
+      ) : null}
+      {inspectorMode === 'create-package' ? (
+        <PackageFormPanel
+          allowProjectChange
+          form={packageForm}
+          isPending={packageMutationState.create.isPending}
+          projects={packageOptions}
+          submitLabel="Create package"
+          onCancel={onClose}
+          onSubmit={onSubmitCreatePackage}
+        />
+      ) : null}
+      {inspectorMode === 'edit-package' && selectedPackage ? (
+        <PackageFormPanel
+          allowProjectChange={false}
+          form={packageForm}
+          isPending={packageMutationState.update.isPending}
+          projects={packageOptions}
+          submitLabel="Save"
+          onCancel={onClose}
+          onSubmit={onSubmitUpdatePackage}
+        />
+      ) : null}
+      {(inspectorMode === 'edit-package' && !selectedPackage) ||
+      (inspectorMode === 'edit-project' && !project) ||
+      (inspectorMode === 'view-package' && !selectedPackage) ||
+      (inspectorMode === 'view-project' && !project) ? (
+        <div className="p-4">
+          <div className="ops-detail-empty rounded-md px-4 py-6 text-sm">
+            Item not available.
           </div>
         </div>
-        <div className="flex-1 overflow-auto">
-          {inspectorMode === 'view-project' && project ? (
-            <ProjectViewPanel project={project} />
-          ) : null}
-          {inspectorMode === 'view-package' &&
-          selectedPackage &&
-          selectedPackageBar ? (
-            <PackageDetailPanel
-              key={selectedPackage.id}
-              contentRef={packageViewRef}
-              packageItem={selectedPackage}
-              packageBar={selectedPackageBar}
-            />
-          ) : null}
-          {inspectorMode === 'create-project' ? (
-            <ProjectFormPanel
-              form={projectForm}
-              isPending={projectMutationState.create.isPending}
-              submitLabel="Create project"
-              onCancel={onClose}
-              onSubmit={onSubmitCreateProject}
-            />
-          ) : null}
-          {inspectorMode === 'edit-project' && project ? (
-            <ProjectFormPanel
-              form={projectForm}
-              isPending={projectMutationState.update.isPending}
-              submitLabel="Save"
-              onCancel={onClose}
-              onSubmit={onSubmitUpdateProject}
-            />
-          ) : null}
-          {inspectorMode === 'create-package' ? (
-            <PackageFormPanel
-              allowProjectChange
-              form={packageForm}
-              isPending={packageMutationState.create.isPending}
-              projects={packageOptions}
-              submitLabel="Create package"
-              onCancel={onClose}
-              onSubmit={onSubmitCreatePackage}
-            />
-          ) : null}
-          {inspectorMode === 'edit-package' && selectedPackage ? (
-            <PackageFormPanel
-              allowProjectChange={false}
-              form={packageForm}
-              isPending={packageMutationState.update.isPending}
-              projects={packageOptions}
-              submitLabel="Save"
-              onCancel={onClose}
-              onSubmit={onSubmitUpdatePackage}
-            />
-          ) : null}
-          {(inspectorMode === 'edit-package' && !selectedPackage) ||
-          (inspectorMode === 'edit-project' && !project) ||
-          (inspectorMode === 'view-package' && !selectedPackage) ||
-          (inspectorMode === 'view-project' && !project) ? (
-            <div className="p-4">
-              <div className="ops-detail-empty rounded-md px-4 py-6 text-sm">
-                Item not available.
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function DeleteDialog({
-  isOpen,
-  isPending,
-  target,
-  onCancel,
-  onConfirm,
-}: {
-  isOpen: boolean
-  isPending: boolean
-  target: BugTimelineDeleteTarget | null
-  onCancel: () => void
-  onConfirm: () => Promise<void>
-}) {
-  if (!isOpen || !target) return null
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/28 px-4 backdrop-blur-[2px]">
-      <div className="w-full max-w-sm rounded-xl border border-[color:var(--border)] bg-[var(--workspace-pane)] p-0 shadow-[0_20px_56px_rgba(9,30,66,0.22)]">
-        <DeletePanel
-          isPending={isPending}
-          target={target}
-          onCancel={onCancel}
-          onConfirm={onConfirm}
-        />
-      </div>
-    </div>
+      ) : null}
+    </TimelineDrawerShell>
   )
 }
 
@@ -1320,116 +1026,6 @@ function PackageDetailPanel({
           <PackageIssuesTable issues={packageItem.issues} />
         </section>
       </div>
-    </div>
-  )
-}
-
-function PackageStatusSummary({
-  openCount,
-  resolvedCount,
-}: {
-  openCount: number
-  resolvedCount: number
-}) {
-  const total = openCount + resolvedCount
-  const resolvedWidth = total > 0 ? `${(resolvedCount / total) * 100}%` : '0%'
-
-  return (
-    <div className="grid gap-2">
-      <div className="flex items-center justify-between gap-4 text-sm">
-        <div className="flex items-baseline gap-2">
-          <span className="text-[11px] font-semibold tracking-[0.08em] text-[color:var(--status-success)] uppercase">
-            Resolved
-          </span>
-          <span className="text-base font-semibold tracking-[-0.02em] text-[var(--foreground)]">
-            {resolvedCount}
-          </span>
-        </div>
-        <div className="flex items-baseline gap-2">
-          <span className="text-[11px] font-semibold tracking-[0.08em] text-[color:var(--status-warning)] uppercase">
-            Open
-          </span>
-          <span className="text-base font-semibold tracking-[-0.02em] text-[var(--foreground)]">
-            {openCount}
-          </span>
-        </div>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-[color:var(--status-warning)]/14">
-        <div
-          className="h-full rounded-full bg-[color:var(--status-success)]"
-          style={{ width: resolvedWidth }}
-        />
-      </div>
-    </div>
-  )
-}
-
-function PackageMemberStatusSummary({
-  issues,
-  members,
-}: {
-  issues: BugTrackerPackage['issues']
-  members: string[]
-}) {
-  const membersWithCounts = useMemo(() => {
-    const openIssues = issues.filter(
-      (issue) => !isIssueDoneStatus(issue.status),
-    )
-    const issueCounts = new Map<string, number>()
-
-    for (const issue of openIssues) {
-      const assignee = issue.assignee || 'Unassigned'
-      issueCounts.set(assignee, (issueCounts.get(assignee) ?? 0) + 1)
-    }
-
-    const orderedMembers = new Set([
-      ...members,
-      ...issueCounts.keys(),
-      ...(issueCounts.has('Unassigned') ? ['Unassigned'] : []),
-    ])
-
-    return [...orderedMembers]
-      .filter(Boolean)
-      .map((assignee) => ({
-        assignee,
-        openCount: issueCounts.get(assignee) ?? 0,
-      }))
-      .sort(
-        (left, right) =>
-          right.openCount - left.openCount ||
-          left.assignee.localeCompare(right.assignee),
-      )
-  }, [issues, members])
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {membersWithCounts.length ? (
-        membersWithCounts.map((group) => (
-          <div
-            key={group.assignee}
-            className={cn(
-              'inline-flex min-h-9 items-center gap-2.5 rounded-full border px-3 py-1.5 text-sm',
-              getMemberLoadTone(group.openCount).chip,
-            )}
-          >
-            <span className="truncate leading-none font-medium">
-              {group.assignee}
-            </span>
-            <span
-              className={cn(
-                'inline-flex items-center text-xs leading-none font-semibold tabular-nums',
-                getMemberLoadTone(group.openCount).count,
-              )}
-            >
-              {group.openCount}
-            </span>
-          </div>
-        ))
-      ) : (
-        <div className="py-1 text-sm text-[var(--muted-foreground)]">
-          No members.
-        </div>
-      )}
     </div>
   )
 }
@@ -2205,153 +1801,6 @@ function formatTooltipMetric(
   return formatMetricValue(numericValue)
 }
 
-function getExportBackgroundColor() {
-  return (
-    getComputedStyle(document.documentElement)
-      .getPropertyValue('--workspace-pane')
-      .trim() || '#ffffff'
-  )
-}
-
-function buildPackageExportFileName(projectName: string, packageName: string) {
-  const value = `${projectName || 'package'} ${packageName}`
-    .trim()
-    .toLowerCase()
-
-  return (
-    value.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'package-view'
-  )
-}
-
-function downloadDataUrl(dataUrl: string, fileName: string) {
-  const link = document.createElement('a')
-  link.href = dataUrl
-  link.download = fileName
-  link.click()
-}
-
-function PackageIssuesTable({
-  issues,
-}: {
-  issues: BugTrackerPackage['issues']
-}) {
-  const [query, setQuery] = useState('')
-  const filteredIssues = useMemo(() => {
-    const searchValue = query.trim().toLowerCase()
-    if (!searchValue) return issues
-
-    return issues.filter((issue) =>
-      `${issue.key} ${issue.summary} ${issue.assignee} ${issue.status}`
-        .toLowerCase()
-        .includes(searchValue),
-    )
-  }, [issues, query])
-
-  if (!issues.length) {
-    return (
-      <div className="ops-bug-table-shell rounded-md px-4 py-10 text-sm text-[var(--muted-foreground)]">
-        No issues.
-      </div>
-    )
-  }
-
-  return (
-    <section className="grid gap-3">
-      <div className="px-1">
-        <div className="relative w-full max-w-sm">
-          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-          <Input
-            className="ops-workspace-input h-9 rounded-md pl-9"
-            placeholder="Key, summary, assignee, status"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </div>
-      </div>
-      <div className="ops-bug-table-shell overflow-hidden rounded-lg">
-        <div className="max-h-[25rem] overflow-auto">
-          <table className="w-full border-collapse text-sm">
-            <thead className="ops-bug-table-head sticky top-0 z-[1]">
-              <tr>
-                <th className="w-[18%] px-3 py-2 text-left font-medium">Key</th>
-                <th className="w-[46%] px-3 py-2 text-left font-medium">
-                  Summary
-                </th>
-                <th className="w-[20%] px-3 py-2 text-left font-medium">
-                  Assignee
-                </th>
-                <th className="w-[16%] px-3 py-2 text-left font-medium">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredIssues.map((issue) => (
-                <tr key={issue.key} className="ops-bug-table-row align-top">
-                  <td className="px-3 py-2.5">
-                    <Badge
-                      variant="outline"
-                      className="ops-bug-key-badge rounded-md px-2 py-0.5 font-semibold"
-                    >
-                      {issue.key}
-                    </Badge>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <a
-                      className="ops-bug-summary line-clamp-2 min-w-0 text-[var(--foreground)] hover:text-[var(--primary)] hover:underline"
-                      href={issue.url}
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      {issue.summary}
-                    </a>
-                  </td>
-                  <td className="px-3 py-2.5 text-[var(--muted-foreground)]">
-                    <span className="truncate text-sm text-[var(--foreground)]">
-                      {issue.assignee || 'Unassigned'}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <IssueStatusBadge status={issue.status} />
-                  </td>
-                </tr>
-              ))}
-              {!filteredIssues.length ? (
-                <tr className="ops-bug-table-row">
-                  <td
-                    colSpan={4}
-                    className="px-3 py-8 text-center text-sm text-[var(--muted-foreground)]"
-                  >
-                    No results.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function IssueStatusBadge({ status }: { status: string }) {
-  const tone = getIssueStatusTone(status)
-  return (
-    <Badge
-      variant="outline"
-      className="ops-bug-status-badge gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
-      style={{
-        borderColor: `color-mix(in srgb, ${tone} 28%, var(--border))`,
-        background: `color-mix(in srgb, ${tone} 12%, transparent)`,
-        color: tone,
-      }}
-    >
-      <span className="size-1.5 rounded-full" style={{ background: tone }} />
-      {status}
-    </Badge>
-  )
-}
-
 function ProjectFormPanel({
   form,
   isPending,
@@ -2479,283 +1928,6 @@ function PackageFormPanel({
   )
 }
 
-function DeletePanel({
-  isPending,
-  target,
-  onCancel,
-  onConfirm,
-}: {
-  isPending: boolean
-  target: BugTimelineDeleteTarget
-  onCancel: () => void
-  onConfirm: () => Promise<void>
-}) {
-  return (
-    <div className="p-5">
-      <div className="rounded-xl border border-[color:var(--status-danger)]/18 bg-[color:var(--status-danger)]/5 p-4">
-        <p className="text-sm font-semibold text-[var(--foreground)]">
-          Delete {target.type}
-        </p>
-        <p className="mt-2 text-sm text-[color:var(--muted-foreground)]">
-          {target.name}
-        </p>
-        <p className="mt-1 text-xs text-[color:var(--muted-foreground)]">
-          This change cannot be undone.
-        </p>
-        <div className="mt-5 flex justify-end gap-2">
-          <Button
-            size="sm"
-            variant="destructive"
-            disabled={isPending}
-            onClick={() => void onConfirm()}
-          >
-            Delete
-          </Button>
-          <Button size="sm" variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function Field({
-  children,
-  error,
-  label,
-}: {
-  children: ReactNode
-  error?: string
-  label: string
-}) {
-  return (
-    <label className="grid gap-1.5">
-      <span className="ops-bug-toolbar-label">{label}</span>
-      {children}
-      {error ? (
-        <span className="text-[11px] text-[var(--status-danger)]">{error}</span>
-      ) : null}
-    </label>
-  )
-}
-
-function FormActions({
-  isPending,
-  submitLabel,
-  onCancel,
-}: {
-  isPending: boolean
-  submitLabel: string
-  onCancel: () => void
-}) {
-  return (
-    <div className="flex gap-2 pt-2">
-      <Button size="sm" type="submit" disabled={isPending}>
-        {submitLabel}
-      </Button>
-      <Button size="sm" type="button" variant="outline" onClick={onCancel}>
-        Cancel
-      </Button>
-    </div>
-  )
-}
-
-function DateField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-}) {
-  return (
-    <label className="ops-bug-date-field">
-      <span className="ops-bug-toolbar-label">{label}</span>
-      <Input
-        className="ops-workspace-input ops-bug-filter-input h-10 min-w-[9.5rem] rounded-md"
-        type="date"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </label>
-  )
-}
-
-function RowActionButton({
-  children,
-  className,
-  label,
-  onClick,
-}: {
-  children: ReactNode
-  className?: string
-  label: string
-  onClick: () => void
-}) {
-  return (
-    <Button
-      size="icon-xs"
-      variant="ghost"
-      className={cn('text-muted-foreground hover:text-foreground', className)}
-      title={label}
-      onClick={(event) => {
-        event.stopPropagation()
-        onClick()
-      }}
-    >
-      {children}
-    </Button>
-  )
-}
-
-function RowMenu({
-  isOpen,
-  items,
-  onClose,
-  onOpen,
-}: {
-  isOpen: boolean
-  items: Array<{ label: string; icon: ReactNode; onSelect: () => void }>
-  onClose: () => void
-  onOpen: () => void
-}) {
-  const triggerRef = useRef<HTMLDivElement | null>(null)
-  const menuRef = useRef<HTMLDivElement | null>(null)
-  const [menuStyle, setMenuStyle] = useState<{
-    top: number
-    left: number
-  } | null>(null)
-
-  useEffect(() => {
-    if (!isOpen) return
-
-    const updatePosition = () => {
-      const rect = triggerRef.current?.getBoundingClientRect()
-      if (!rect) return
-
-      setMenuStyle({
-        top: rect.bottom + 6,
-        left: rect.right - 144,
-      })
-    }
-
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node | null
-      if (triggerRef.current?.contains(target)) return
-      if (menuRef.current?.contains(target)) return
-      onClose()
-    }
-
-    updatePosition()
-    window.addEventListener('resize', updatePosition)
-    window.addEventListener('scroll', updatePosition, true)
-    document.addEventListener('mousedown', handlePointerDown)
-
-    return () => {
-      window.removeEventListener('resize', updatePosition)
-      window.removeEventListener('scroll', updatePosition, true)
-      document.removeEventListener('mousedown', handlePointerDown)
-    }
-  }, [isOpen, onClose])
-
-  return (
-    <div ref={triggerRef}>
-      <RowActionButton
-        className={cn(
-          'opacity-0 transition-opacity group-focus-within/row:opacity-100 group-hover/row:opacity-100',
-          isOpen && 'opacity-100',
-        )}
-        label="More actions"
-        onClick={() => (isOpen ? onClose() : onOpen())}
-      >
-        <Ellipsis className="size-3.5" />
-      </RowActionButton>
-      {isOpen && menuStyle
-        ? createPortal(
-            <div
-              ref={menuRef}
-              className="ops-row-menu fixed z-[120] min-w-[9rem] rounded-md p-1"
-              style={{ top: menuStyle.top, left: menuStyle.left }}
-            >
-              {items.map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  className="ops-row-menu-item flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm"
-                  onClick={() => {
-                    onClose()
-                    item.onSelect()
-                  }}
-                >
-                  {item.icon}
-                  <span>{item.label}</span>
-                </button>
-              ))}
-            </div>,
-            document.body,
-          )
-        : null}
-    </div>
-  )
-}
-
-function StatusPill({
-  compact = false,
-  health,
-}: {
-  compact?: boolean
-  health: TimelinePackageBar['health']
-}) {
-  const label =
-    health === 'healthy' ? 'Healthy' : health === 'watch' ? 'Watch' : 'Risk'
-  const color =
-    health === 'healthy'
-      ? 'var(--status-success)'
-      : health === 'watch'
-        ? 'var(--status-warning)'
-        : 'var(--status-danger)'
-
-  return (
-    <span
-      className={`inline-flex items-center rounded-md font-semibold ${compact ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-[11px]'}`}
-      style={{
-        background: `color-mix(in srgb, ${color} 14%, transparent)`,
-        color,
-      }}
-    >
-      {label}
-    </span>
-  )
-}
-
-function TimelineGrid({ columns }: { columns: number }) {
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 grid h-full w-full"
-      style={getGridStyle(columns)}
-    >
-      {Array.from({ length: columns }, (_, index) => (
-        <div
-          key={index}
-          className="ops-gantt-column h-full"
-          style={{ borderLeftWidth: index === 0 ? 0 : 1 }}
-        />
-      ))}
-    </div>
-  )
-}
-
-function TodayMarker({ offset }: { offset: number }) {
-  return (
-    <div
-      className="pointer-events-none absolute top-0 bottom-0 z-10 w-px bg-[color:var(--primary)]/60"
-      style={{ left: `${offset}%` }}
-    />
-  )
-}
-
 function BugTimelineLoadingState() {
   return <TimelineWorkspaceLoading />
 }
@@ -2770,31 +1942,6 @@ function BugTimelineErrorState() {
   )
 }
 
-function getInspectorTitle(
-  mode: BugTimelineInspectorMode,
-  project: BugTrackerProject | null,
-  packageItem: BugTrackerPackage | null,
-) {
-  if (mode === 'create-project') return 'New project'
-  if (mode === 'create-package') return 'New package'
-  if (mode === 'edit-project') return `Edit ${project?.name ?? 'project'}`
-  if (mode === 'edit-package') return `Edit ${packageItem?.name ?? 'package'}`
-  if (mode === 'view-project') return project?.name ?? 'Project'
-  return packageItem?.name ?? 'Package'
-}
-
-function formatPackageInspectorTitle(
-  projectName: string,
-  packageItem: BugTrackerPackage,
-) {
-  const prefix = projectName || 'Project'
-  return `${prefix} > ${packageItem.name} (${formatSlashDate(packageItem.start_date)} - ${formatSlashDate(packageItem.end_date)})`
-}
-
-function formatSlashDate(value: string) {
-  return value.replaceAll('-', '/')
-}
-
 function toPackagePayload(values: PackageFormValues) {
   return {
     name: values.name.trim(),
@@ -2807,383 +1954,6 @@ function toPackagePayload(values: PackageFormValues) {
   }
 }
 
-function getGridStyle(columns: number) {
-  return { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }
-}
-
-function getTodayOffsetPercent(weekColumns: WeekColumn[]) {
-  if (!weekColumns.length) return null
-  const now = new Date()
-  const current = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-  ).getTime()
-  const columnIndex = weekColumns.findIndex(
-    (column) =>
-      current >= column.start.getTime() && current < column.end.getTime(),
-  )
-  if (columnIndex === -1) return null
-  const column = weekColumns[columnIndex]
-  const columnDuration = column.end.getTime() - column.start.getTime()
-  const withinColumn =
-    columnDuration > 0 ? (current - column.start.getTime()) / columnDuration : 0
-  return ((columnIndex + withinColumn) / weekColumns.length) * 100
-}
-
-function getBarColor(health: TimelinePackageBar['health']) {
-  if (health === 'healthy') return 'var(--timeline-bar-healthy)'
-  if (health === 'watch') return 'var(--timeline-bar-watch)'
-  return 'var(--timeline-bar-risk)'
-}
-
-function getBarTrackColor(health: TimelinePackageBar['health']) {
-  const color = getBarColor(health)
-  return `color-mix(in srgb, ${color} 32%, var(--workspace-pane))`
-}
-
-function getProjectBandColor(health: TimelinePackageBar['health']) {
-  const color = getBarColor(health)
-  return `color-mix(in srgb, ${color} 22%, transparent)`
-}
-
-function getHealthFromProgress(resolvedBug: number, totalBug: number) {
-  if (totalBug === 0) return 'healthy' as const
-  const progress = resolvedBug / totalBug
-  if (progress >= 0.75) return 'healthy' as const
-  if (progress >= 0.4) return 'watch' as const
-  return 'risk' as const
-}
-
-function formatDateLabel(value: string) {
-  return new Intl.DateTimeFormat('en', {
-    month: 'short',
-    day: 'numeric',
-  }).format(new Date(`${value}T00:00:00`))
-}
-
-function formatMonthLabel(value: Date) {
-  return new Intl.DateTimeFormat('en', {
-    month: 'short',
-    year: 'numeric',
-  }).format(value)
-}
-
-function formatWeekLabel(value: Date) {
-  return new Intl.DateTimeFormat('en', {
-    month: 'short',
-    day: 'numeric',
-  }).format(value)
-}
-
-function formatWeekShortLabel(start: Date, end: Date) {
-  return `${start.getDate()}-${addDays(end, -1).getDate()}`
-}
-
 function formatBugCategoryLabel(value: string) {
   return value.replace(/^FPT\.BUG\./, '').replaceAll('_', ' ')
-}
-
-function parseCommaList(value: string) {
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
-}
-
-function getMemberLoadTone(openCount: number) {
-  if (openCount === 0) {
-    return {
-      chip: 'border-[color:var(--status-success)]/24 bg-[color:var(--status-success)]/6 text-[var(--muted-foreground)]',
-      count: 'text-[color:var(--status-success)]',
-    }
-  }
-
-  if (openCount >= 3) {
-    return {
-      chip: 'border-[color:var(--status-danger)]/24 bg-[color:var(--status-danger)]/6 text-[var(--foreground)]',
-      count: 'text-[color:var(--status-danger)]',
-    }
-  }
-
-  return {
-    chip: 'border-[color:var(--status-warning)]/24 bg-[color:var(--status-warning)]/6 text-[var(--foreground)]',
-    count: 'text-[color:var(--status-warning)]',
-  }
-}
-
-function isIssueDoneStatus(status: string) {
-  const normalized = status.toLowerCase()
-  return normalized === 'closed' || normalized === 'resolved'
-}
-
-function getIssueStatusTone(status: string) {
-  const normalized = status.toLowerCase()
-  if (isIssueDoneStatus(status)) {
-    return 'var(--status-success)'
-  }
-  if (
-    normalized === 'in progress' ||
-    normalized === 'open' ||
-    normalized === 'fixready'
-  ) {
-    return 'var(--status-warning)'
-  }
-  return 'var(--status-danger)'
-}
-
-function cnSelected(base: string, selected: boolean) {
-  return `${base} ${selected ? 'ops-bug-selected' : ''}`
-}
-
-function getProjectWindow(packages: TimelinePackageBar[]) {
-  if (!packages.length) return null
-
-  const leftPercent = Math.min(...packages.map((item) => item.leftPercent))
-  const rightPercent = Math.max(
-    ...packages.map((item) => item.leftPercent + item.widthPercent),
-  )
-
-  return {
-    leftPercent,
-    widthPercent: Math.max(rightPercent - leftPercent, 6),
-  }
-}
-
-function toInputDate(value: Date) {
-  return value.toISOString().slice(0, 10)
-}
-
-function parseInputDate(value: string, fallback: Date) {
-  if (!value) return new Date(fallback)
-  return new Date(`${value}T00:00:00`)
-}
-
-function addDays(date: Date, amount: number) {
-  const next = new Date(date)
-  next.setDate(next.getDate() + amount)
-  return next
-}
-
-function addMonths(date: Date, amount: number) {
-  const next = new Date(date)
-  next.setMonth(next.getMonth() + amount)
-  return next
-}
-
-function startOfDay(date: Date) {
-  const next = new Date(date)
-  next.setHours(0, 0, 0, 0)
-  return next
-}
-
-function startOfWeek(date: Date) {
-  const next = startOfDay(date)
-  const day = next.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  return addDays(next, diff)
-}
-
-function startOfMonth(date: Date) {
-  const next = startOfDay(date)
-  next.setDate(1)
-  return next
-}
-
-function formatDayNumber(date: Date) {
-  return new Intl.DateTimeFormat('en', { day: 'numeric' }).format(date)
-}
-
-function formatWeekdayLabel(date: Date) {
-  return new Intl.DateTimeFormat('en', { weekday: 'short' }).format(date)
-}
-
-function formatMonthShortLabel(date: Date) {
-  return new Intl.DateTimeFormat('en', { month: 'short' }).format(date)
-}
-
-function formatQuarterLabel(date: Date) {
-  return `Q${Math.floor(date.getMonth() / 3) + 1} ${date.getFullYear()}`
-}
-
-function getTimelineColumnWidthRem(zoom: TimelineZoomLevel) {
-  if (zoom === 'week') return 4.25
-  if (zoom === 'quarter') return 8.5
-  return monthViewColumnWidthRem
-}
-
-function buildTimeColumns(
-  rangeStart: Date,
-  rangeEnd: Date,
-  zoom: TimelineZoomLevel,
-) {
-  const columns: WeekColumn[] = []
-
-  if (zoom === 'week') {
-    for (
-      let cursor = startOfDay(rangeStart);
-      cursor < rangeEnd;
-      cursor = addDays(cursor, 1)
-    ) {
-      const start = new Date(Math.max(cursor.getTime(), rangeStart.getTime()))
-      const end = new Date(
-        Math.min(addDays(cursor, 1).getTime(), rangeEnd.getTime()),
-      )
-
-      columns.push({
-        key: `${start.toISOString()}-${end.toISOString()}`,
-        label: formatDayNumber(start),
-        shortLabel: formatWeekdayLabel(start),
-        start,
-        end,
-      })
-    }
-
-    return columns
-  }
-
-  if (zoom === 'quarter') {
-    for (
-      let cursor = startOfMonth(rangeStart);
-      cursor < rangeEnd;
-      cursor = addMonths(cursor, 1)
-    ) {
-      const start = new Date(Math.max(cursor.getTime(), rangeStart.getTime()))
-      const end = new Date(
-        Math.min(addMonths(cursor, 1).getTime(), rangeEnd.getTime()),
-      )
-
-      columns.push({
-        key: `${start.toISOString()}-${end.toISOString()}`,
-        label: formatMonthShortLabel(start),
-        shortLabel: '',
-        start,
-        end,
-      })
-    }
-
-    return columns
-  }
-
-  for (
-    let cursor = startOfWeek(rangeStart);
-    cursor < rangeEnd;
-    cursor = addDays(cursor, 7)
-  ) {
-    const start = new Date(Math.max(cursor.getTime(), rangeStart.getTime()))
-    const end = new Date(
-      Math.min(addDays(cursor, 7).getTime(), rangeEnd.getTime()),
-    )
-    columns.push({
-      key: `${start.toISOString()}-${end.toISOString()}`,
-      label: formatWeekLabel(start),
-      shortLabel: formatWeekShortLabel(start, end),
-      start,
-      end,
-    })
-  }
-
-  return columns
-}
-
-function buildHeaderGroups(columns: WeekColumn[], zoom: TimelineZoomLevel) {
-  const groups: MonthGroup[] = []
-
-  columns.forEach((column, index) => {
-    const midpoint = new Date(
-      column.start.getTime() +
-        (column.end.getTime() - column.start.getTime()) / 2,
-    )
-
-    const key =
-      zoom === 'quarter'
-        ? `${midpoint.getFullYear()}-q${Math.floor(midpoint.getMonth() / 3)}`
-        : `${midpoint.getFullYear()}-${midpoint.getMonth()}`
-
-    const label =
-      zoom === 'quarter'
-        ? formatQuarterLabel(midpoint)
-        : formatMonthLabel(midpoint)
-
-    const lastGroup = groups.at(-1)
-    if (lastGroup?.key === key) {
-      lastGroup.span += 1
-      return
-    }
-
-    groups.push({
-      key,
-      label,
-      start: index + 1,
-      span: 1,
-    })
-  })
-
-  return groups
-}
-
-function buildVisibleTimelineViewModel(
-  viewModel: BugTimelineViewModel,
-  fromDate: string,
-  toDate: string,
-  zoom: TimelineZoomLevel,
-): VisibleTimelineViewModel {
-  const rawStart = startOfDay(parseInputDate(fromDate, viewModel.rangeStart))
-  const rawEnd = addDays(
-    startOfDay(parseInputDate(toDate, addDays(viewModel.rangeEnd, -1))),
-    1,
-  )
-  const rangeStart = rawStart
-  const rangeEnd = rawEnd > rawStart ? rawEnd : addDays(rawStart, 1)
-  const totalDuration = rangeEnd.getTime() - rangeStart.getTime()
-
-  const weekColumns = buildTimeColumns(rangeStart, rangeEnd, zoom)
-  const monthGroups = buildHeaderGroups(weekColumns, zoom)
-
-  const projects = viewModel.projects
-    .map<TimelineProjectGroup>((project) => {
-      const projectPackages = project.packages
-        .map((item) => {
-          const itemStart = startOfDay(new Date(`${item.startDate}T00:00:00`))
-          const itemEnd = addDays(
-            startOfDay(new Date(`${item.endDate}T00:00:00`)),
-            1,
-          )
-          if (itemEnd <= rangeStart || itemStart >= rangeEnd) return null
-          const clippedStart = new Date(
-            Math.max(itemStart.getTime(), rangeStart.getTime()),
-          )
-          const clippedEnd = new Date(
-            Math.min(itemEnd.getTime(), rangeEnd.getTime()),
-          )
-          return {
-            ...item,
-            leftPercent:
-              ((clippedStart.getTime() - rangeStart.getTime()) /
-                totalDuration) *
-              100,
-            widthPercent: Math.max(
-              ((clippedEnd.getTime() - clippedStart.getTime()) /
-                totalDuration) *
-                100,
-              3,
-            ),
-          }
-        })
-        .filter((item): item is TimelinePackageBar => item !== null)
-
-      return {
-        ...project,
-        packageCount: projectPackages.length,
-        totalBug: projectPackages.reduce((sum, item) => sum + item.totalBug, 0),
-        resolvedBug: projectPackages.reduce(
-          (sum, item) => sum + item.resolvedBug,
-          0,
-        ),
-        packages: projectPackages,
-      }
-    })
-    .filter((project) => project.packages.length > 0)
-
-  return { rangeStart, rangeEnd, monthGroups, weekColumns, projects }
 }

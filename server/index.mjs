@@ -6,6 +6,8 @@ const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173'
 
 let projectIdCounter = 4
 let packageIdCounter = 12
+let dashboardProjectIdCounter = 4
+let dashboardMilestoneIdCounter = 7
 
 const bugCategories = [
   'FPT.BUG.LACK_TEST',
@@ -33,6 +35,10 @@ function buildIssue(key, summary, assignee, status) {
     assignee,
     status,
   }
+}
+
+function cloneIssues(issues) {
+  return issues.map((issue) => ({ ...issue }))
 }
 
 function isDoneStatus(status) {
@@ -71,6 +77,23 @@ function buildSprintStatistics(packageId, sprints) {
     active: item.active ?? false,
     package: packageId,
     sprint: item.sprint ?? index + 1,
+  }))
+}
+
+function buildDashboardMilestoneSprintStatistics(milestoneId, sprints) {
+  return sprints.map((item, index) => ({
+    id: milestoneId * 1000 + index + 1,
+    sprint: {
+      id: milestoneId * 100 + index + 1,
+      name: item.name,
+      start_date: item.start_date,
+      end_date: item.end_date,
+    },
+    completed_point: item.completed_point,
+    scope_point: item.scope_point,
+    created_at: item.created_at,
+    active: item.active ?? false,
+    milestone: milestoneId,
   }))
 }
 
@@ -648,6 +671,271 @@ const packageSprintStatistics = {
   ]),
 }
 
+const dashboardProjects = [
+  {
+    id: 1,
+    name: 'Atlas Cloud',
+    keys: 'ATL, AUTH',
+    description: 'Authentication, search, and release readiness workstreams.',
+    members: 'Mai, Ben, Linh, Huy',
+    labels: 'cloud, auth, release',
+    pm: 101,
+    pl: 201,
+  },
+  {
+    id: 2,
+    name: 'Console Platform',
+    keys: 'CON, OPS',
+    description: 'Console reliability, audit, and reporting delivery track.',
+    members: 'Quang, Amy, Khanh, Zoe',
+    labels: 'console, compliance, reporting',
+    pm: 102,
+    pl: 202,
+  },
+  {
+    id: 3,
+    name: 'Mobile Release Train',
+    keys: 'MOB, REL',
+    description: 'Mobile push and store-release milestone schedule.',
+    members: 'Trang, Omar, Nia',
+    labels: 'mobile, release, notifications',
+    pm: 103,
+    pl: 203,
+  },
+]
+
+const dashboardMilestones = [
+  {
+    id: 1,
+    name: 'Authentication hardening',
+    description: 'Lock down long-idle session behavior before release review.',
+    start_date: '2026-03-05',
+    end_date: '2026-04-03',
+    closed_ticket: 18,
+    total_ticket: 24,
+    jql: 'project = ATL AND labels in (auth, blocker) AND sprint in openSprints()',
+    issues: cloneIssues(packages[0].issues),
+    project: 1,
+  },
+  {
+    id: 2,
+    name: 'Search stability',
+    description: 'Reduce regression noise before scope freeze.',
+    start_date: '2026-04-02',
+    end_date: '2026-05-04',
+    closed_ticket: 11,
+    total_ticket: 26,
+    jql: 'project = ATL AND labels in (search, regression)',
+    issues: cloneIssues(packages[1].issues),
+    project: 1,
+  },
+  {
+    id: 3,
+    name: 'Audit trail fixes',
+    description: 'Close compliance gaps before executive sign-off.',
+    start_date: '2026-03-12',
+    end_date: '2026-04-18',
+    closed_ticket: 8,
+    total_ticket: 9,
+    jql: 'project = CON AND labels in (audit, compliance)',
+    issues: cloneIssues(packages[2].issues),
+    project: 2,
+  },
+  {
+    id: 4,
+    name: 'Dashboard query tuning',
+    description: 'Bring reporting latency under review-meeting threshold.',
+    start_date: '2026-04-10',
+    end_date: '2026-05-22',
+    closed_ticket: 14,
+    total_ticket: 20,
+    jql: 'project = CON AND labels in (performance, query)',
+    issues: cloneIssues(packages[3].issues),
+    project: 2,
+  },
+  {
+    id: 5,
+    name: 'Push notification reliability',
+    description: 'Stabilize mobile delivery flows across iOS and Android.',
+    start_date: '2026-03-01',
+    end_date: '2026-04-14',
+    closed_ticket: 9,
+    total_ticket: 13,
+    jql: 'project = MOB AND labels in (notification, ios, android)',
+    issues: cloneIssues(packages[4].issues),
+    project: 3,
+  },
+  {
+    id: 6,
+    name: 'Store submission readiness',
+    description: 'Track release blockers through app-store submission.',
+    start_date: '2026-04-01',
+    end_date: '2026-05-18',
+    closed_ticket: 7,
+    total_ticket: 11,
+    jql: 'project = MOB AND labels in (release, store)',
+    issues: cloneIssues(packages[5].issues),
+    project: 3,
+  },
+]
+
+const dashboardMilestoneSprintStatistics = {
+  1: buildDashboardMilestoneSprintStatistics(1, [
+    {
+      name: 'Sprint 31',
+      start_date: '2026-03-02',
+      end_date: '2026-03-15',
+      completed_point: 18,
+      scope_point: 24,
+      created_at: '2026-03-15T09:00:00.000Z',
+    },
+    {
+      name: 'Sprint 32',
+      start_date: '2026-03-16',
+      end_date: '2026-03-29',
+      completed_point: 20,
+      scope_point: 24,
+      created_at: '2026-03-29T09:00:00.000Z',
+    },
+    {
+      name: 'Sprint 33',
+      start_date: '2026-03-30',
+      end_date: '2026-04-12',
+      completed_point: 23,
+      scope_point: 25,
+      created_at: '2026-04-12T09:00:00.000Z',
+      active: true,
+    },
+  ]),
+  2: buildDashboardMilestoneSprintStatistics(2, [
+    {
+      name: 'Sprint 33',
+      start_date: '2026-03-30',
+      end_date: '2026-04-12',
+      completed_point: 9,
+      scope_point: 18,
+      created_at: '2026-04-12T09:00:00.000Z',
+    },
+    {
+      name: 'Sprint 34',
+      start_date: '2026-04-13',
+      end_date: '2026-04-26',
+      completed_point: 11,
+      scope_point: 22,
+      created_at: '2026-04-26T09:00:00.000Z',
+    },
+    {
+      name: 'Sprint 35',
+      start_date: '2026-04-27',
+      end_date: '2026-05-10',
+      completed_point: 14,
+      scope_point: 26,
+      created_at: '2026-05-10T09:00:00.000Z',
+      active: true,
+    },
+  ]),
+  3: buildDashboardMilestoneSprintStatistics(3, [
+    {
+      name: 'Sprint 31',
+      start_date: '2026-03-09',
+      end_date: '2026-03-22',
+      completed_point: 6,
+      scope_point: 8,
+      created_at: '2026-03-22T09:00:00.000Z',
+    },
+    {
+      name: 'Sprint 32',
+      start_date: '2026-03-23',
+      end_date: '2026-04-05',
+      completed_point: 8,
+      scope_point: 9,
+      created_at: '2026-04-05T09:00:00.000Z',
+      active: true,
+    },
+  ]),
+  4: buildDashboardMilestoneSprintStatistics(4, [
+    {
+      name: 'Sprint 34',
+      start_date: '2026-04-06',
+      end_date: '2026-04-19',
+      completed_point: 8,
+      scope_point: 15,
+      created_at: '2026-04-19T09:00:00.000Z',
+    },
+    {
+      name: 'Sprint 35',
+      start_date: '2026-04-20',
+      end_date: '2026-05-03',
+      completed_point: 12,
+      scope_point: 18,
+      created_at: '2026-05-03T09:00:00.000Z',
+    },
+    {
+      name: 'Sprint 36',
+      start_date: '2026-05-04',
+      end_date: '2026-05-17',
+      completed_point: 14,
+      scope_point: 20,
+      created_at: '2026-05-17T09:00:00.000Z',
+      active: true,
+    },
+  ]),
+  5: buildDashboardMilestoneSprintStatistics(5, [
+    {
+      name: 'Sprint 30',
+      start_date: '2026-03-02',
+      end_date: '2026-03-15',
+      completed_point: 4,
+      scope_point: 7,
+      created_at: '2026-03-15T09:00:00.000Z',
+    },
+    {
+      name: 'Sprint 31',
+      start_date: '2026-03-16',
+      end_date: '2026-03-29',
+      completed_point: 7,
+      scope_point: 10,
+      created_at: '2026-03-29T09:00:00.000Z',
+    },
+    {
+      name: 'Sprint 32',
+      start_date: '2026-03-30',
+      end_date: '2026-04-12',
+      completed_point: 9,
+      scope_point: 13,
+      created_at: '2026-04-12T09:00:00.000Z',
+      active: true,
+    },
+  ]),
+  6: buildDashboardMilestoneSprintStatistics(6, [
+    {
+      name: 'Sprint 33',
+      start_date: '2026-03-30',
+      end_date: '2026-04-12',
+      completed_point: 3,
+      scope_point: 6,
+      created_at: '2026-04-12T09:00:00.000Z',
+    },
+    {
+      name: 'Sprint 34',
+      start_date: '2026-04-13',
+      end_date: '2026-04-26',
+      completed_point: 5,
+      scope_point: 8,
+      created_at: '2026-04-26T09:00:00.000Z',
+    },
+    {
+      name: 'Sprint 35',
+      start_date: '2026-04-27',
+      end_date: '2026-05-10',
+      completed_point: 7,
+      scope_point: 11,
+      created_at: '2026-05-10T09:00:00.000Z',
+      active: true,
+    },
+  ]),
+}
+
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
     'Access-Control-Allow-Origin': allowedOrigin,
@@ -698,6 +986,14 @@ function getPackage(currentPackageId) {
   return packages.find((item) => item.id === currentPackageId) ?? null
 }
 
+function getDashboardProject(projectId) {
+  return dashboardProjects.find((project) => project.id === projectId) ?? null
+}
+
+function getDashboardMilestone(milestoneId) {
+  return dashboardMilestones.find((item) => item.id === milestoneId) ?? null
+}
+
 function validateName(value) {
   return String(value || '').trim()
 }
@@ -726,6 +1022,57 @@ function validatePackagePayload(payload) {
     start_date: startDate,
     end_date: endDate,
     bug_tracker_project: projectId,
+  }
+}
+
+function validateDashboardProjectPayload(payload) {
+  const name = validateName(payload.name)
+  const pm = Number(payload.pm)
+  const pl = Number(payload.pl)
+
+  if (
+    !name ||
+    !Number.isInteger(pm) ||
+    pm < 0 ||
+    !Number.isInteger(pl) ||
+    pl < 0
+  ) {
+    return null
+  }
+
+  return {
+    name,
+    keys: String(payload.keys || '').trim(),
+    description: String(payload.description || '').trim(),
+    members: String(payload.members || '').trim(),
+    labels: String(payload.labels || '').trim(),
+    pm,
+    pl,
+  }
+}
+
+function validateDashboardMilestonePayload(payload) {
+  const name = validateName(payload.name)
+  const startDate = String(payload.start_date || '').trim()
+  const endDate = String(payload.end_date || '').trim()
+  const projectId = Number(payload.project)
+
+  if (
+    !name ||
+    !startDate ||
+    !endDate ||
+    !Number.isInteger(projectId) ||
+    projectId < 1
+  ) {
+    return null
+  }
+
+  return {
+    name,
+    description: String(payload.description || '').trim(),
+    start_date: startDate,
+    end_date: endDate,
+    project: projectId,
   }
 }
 
@@ -791,6 +1138,219 @@ const server = createServer(async (request, response) => {
       return
     } catch {
       sendJson(response, 400, { detail: 'Request body must be valid JSON.' })
+      return
+    }
+  }
+
+  if (path === '/api/dashboard/projects/' && request.method === 'GET') {
+    sendJson(response, 200, dashboardProjects)
+    return
+  }
+
+  if (path === '/api/dashboard/projects/' && request.method === 'POST') {
+    try {
+      const payload = await readJsonBody(request)
+      const project = validateDashboardProjectPayload(payload)
+
+      if (!project) {
+        sendJson(response, 400, { detail: 'Project payload is incomplete.' })
+        return
+      }
+
+      const nextProject = { id: dashboardProjectIdCounter++, ...project }
+      dashboardProjects.push(nextProject)
+      sendJson(response, 201, nextProject)
+      return
+    } catch {
+      sendJson(response, 400, { detail: 'Request body must be valid JSON.' })
+      return
+    }
+  }
+
+  const dashboardProjectMatch = path.match(
+    /^\/api\/dashboard\/projects\/(\d+)\/$/,
+  )
+
+  if (dashboardProjectMatch) {
+    const projectId = Number(dashboardProjectMatch[1])
+    const project = getDashboardProject(projectId)
+
+    if (!project) {
+      sendJson(response, 404, { detail: 'Project not found.' })
+      return
+    }
+
+    if (request.method === 'GET') {
+      sendJson(response, 200, project)
+      return
+    }
+
+    if (request.method === 'PATCH') {
+      try {
+        const payload = await readJsonBody(request)
+        const nextProject = validateDashboardProjectPayload({
+          ...project,
+          ...payload,
+        })
+
+        if (!nextProject) {
+          sendJson(response, 400, { detail: 'Project payload is incomplete.' })
+          return
+        }
+
+        Object.assign(project, nextProject)
+        sendJson(response, 200, project)
+        return
+      } catch {
+        sendJson(response, 400, { detail: 'Request body must be valid JSON.' })
+        return
+      }
+    }
+
+    if (request.method === 'DELETE') {
+      const projectIndex = dashboardProjects.findIndex(
+        (item) => item.id === projectId,
+      )
+      dashboardProjects.splice(projectIndex, 1)
+
+      for (let index = dashboardMilestones.length - 1; index >= 0; index -= 1) {
+        if (dashboardMilestones[index].project === projectId) {
+          dashboardMilestones.splice(index, 1)
+        }
+      }
+
+      sendJson(response, 204, null)
+      return
+    }
+  }
+
+  if (path === '/api/dashboard/milestones/' && request.method === 'GET') {
+    const projectIdParam = requestUrl.searchParams.get('project_id')
+    const projectId = projectIdParam ? Number(projectIdParam) : null
+
+    if (projectIdParam && (!Number.isInteger(projectId) || projectId < 1)) {
+      sendJson(response, 400, {
+        detail: 'project_id must be a positive integer.',
+      })
+      return
+    }
+
+    sendJson(
+      response,
+      200,
+      projectId === null
+        ? dashboardMilestones
+        : dashboardMilestones.filter((item) => item.project === projectId),
+    )
+    return
+  }
+
+  if (path === '/api/dashboard/milestones/' && request.method === 'POST') {
+    try {
+      const payload = await readJsonBody(request)
+      const nextMilestone = validateDashboardMilestonePayload(payload)
+
+      if (!nextMilestone) {
+        sendJson(response, 400, { detail: 'Milestone payload is incomplete.' })
+        return
+      }
+
+      if (!getDashboardProject(nextMilestone.project)) {
+        sendJson(response, 404, { detail: 'Project not found.' })
+        return
+      }
+
+      const milestone = {
+        id: dashboardMilestoneIdCounter++,
+        ...nextMilestone,
+        closed_ticket: 0,
+        total_ticket: 0,
+        jql: '',
+        issues: [],
+      }
+
+      dashboardMilestones.push(milestone)
+      sendJson(response, 201, milestone)
+      return
+    } catch {
+      sendJson(response, 400, { detail: 'Request body must be valid JSON.' })
+      return
+    }
+  }
+
+  const dashboardMilestoneSprintMatch = path.match(
+    /^\/api\/dashboard\/milestones\/(\d+)\/sprint-statistics\/$/,
+  )
+
+  if (dashboardMilestoneSprintMatch && request.method === 'GET') {
+    const milestoneId = Number(dashboardMilestoneSprintMatch[1])
+
+    if (!getDashboardMilestone(milestoneId)) {
+      sendJson(response, 404, { detail: 'Milestone not found.' })
+      return
+    }
+
+    sendJson(
+      response,
+      200,
+      dashboardMilestoneSprintStatistics[milestoneId] ?? [],
+    )
+    return
+  }
+
+  const dashboardMilestoneMatch = path.match(
+    /^\/api\/dashboard\/milestones\/(\d+)\/$/,
+  )
+
+  if (dashboardMilestoneMatch) {
+    const milestoneId = Number(dashboardMilestoneMatch[1])
+    const milestone = getDashboardMilestone(milestoneId)
+
+    if (!milestone) {
+      sendJson(response, 404, { detail: 'Milestone not found.' })
+      return
+    }
+
+    if (request.method === 'GET') {
+      sendJson(response, 200, milestone)
+      return
+    }
+
+    if (request.method === 'PATCH') {
+      try {
+        const payload = await readJsonBody(request)
+        const nextMilestone = validateDashboardMilestonePayload({
+          ...milestone,
+          ...payload,
+        })
+
+        if (!nextMilestone) {
+          sendJson(response, 400, {
+            detail: 'Milestone payload is incomplete.',
+          })
+          return
+        }
+
+        if (!getDashboardProject(nextMilestone.project)) {
+          sendJson(response, 404, { detail: 'Project not found.' })
+          return
+        }
+
+        Object.assign(milestone, nextMilestone)
+        sendJson(response, 200, milestone)
+        return
+      } catch {
+        sendJson(response, 400, { detail: 'Request body must be valid JSON.' })
+        return
+      }
+    }
+
+    if (request.method === 'DELETE') {
+      const milestoneIndex = dashboardMilestones.findIndex(
+        (item) => item.id === milestoneId,
+      )
+      dashboardMilestones.splice(milestoneIndex, 1)
+      sendJson(response, 204, null)
       return
     }
   }

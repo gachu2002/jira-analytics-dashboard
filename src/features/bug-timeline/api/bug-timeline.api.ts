@@ -26,13 +26,6 @@ export async function createBugTrackerProject(
   return response.data
 }
 
-export async function getBugTrackerProject(projectId: number) {
-  const response = await http.get<BugTrackerProject>(
-    `/api/bug-tracker/projects/${projectId}/`,
-  )
-  return response.data
-}
-
 export async function updateBugTrackerProject(
   projectId: number,
   payload: Partial<BugTrackerProjectPayload>,
@@ -48,18 +41,6 @@ export async function deleteBugTrackerProject(projectId: number) {
   await http.delete(`/api/bug-tracker/projects/${projectId}/`)
 }
 
-export async function getProjectPackages(projectId: number) {
-  const response = await http.get<BugTrackerPackage[]>(
-    '/api/bug-tracker/packages/',
-    {
-      params: {
-        bug_tracker_project: projectId,
-      },
-    },
-  )
-  return response.data
-}
-
 export async function getAllProjectPackages() {
   const response = await http.get<BugTrackerPackage[]>(
     '/api/bug-tracker/packages/',
@@ -71,13 +52,6 @@ export async function createProjectPackage(payload: BugTrackerPackagePayload) {
   const response = await http.post<BugTrackerPackage>(
     '/api/bug-tracker/packages/',
     payload,
-  )
-  return response.data
-}
-
-export async function getProjectPackage(packageId: number) {
-  const response = await http.get<BugTrackerPackage>(
-    `/api/bug-tracker/packages/${packageId}/`,
   )
   return response.data
 }
