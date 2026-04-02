@@ -79,12 +79,13 @@ export function TimelineMemberStatusSummary({
 
       for (const issue of openIssues) {
         const partner = resolveIssuePartner(issue.assignee, uniqueMembers)
-        const label = partner ?? (issue.assignee ? 'Unmapped' : 'Unassigned')
-        const key = label.toLowerCase()
+        if (!partner) continue
+
+        const key = partner.toLowerCase()
         const current = issueCounts.get(key)
 
         issueCounts.set(key, {
-          label: current?.label ?? label,
+          label: current?.label ?? partner,
           openCount: (current?.openCount ?? 0) + 1,
         })
       }
@@ -94,6 +95,15 @@ export function TimelineMemberStatusSummary({
           right.openCount - left.openCount ||
           left.label.localeCompare(right.label),
       )
+    }
+
+    for (const assignee of [
+      ...new Set(issues.map((issue) => issue.assignee || 'Unassigned')),
+    ]) {
+      issueCounts.set(assignee.toLowerCase(), {
+        label: assignee,
+        openCount: 0,
+      })
     }
 
     for (const issue of openIssues) {
