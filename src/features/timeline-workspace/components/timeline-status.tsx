@@ -221,7 +221,7 @@ export function TimelineSyncStatusPill({
       }}
     >
       <span
-        className="size-1.5 rounded-full"
+        className="ops-sync-dot size-1.5 rounded-full"
         style={{ background: 'var(--status-info)' }}
       />
       {label}

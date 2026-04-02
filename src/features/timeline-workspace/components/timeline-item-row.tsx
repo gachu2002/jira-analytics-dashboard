@@ -116,7 +116,7 @@ export function TimelineItemRow({
         </div>
       </div>
 
-      <div className="ops-gantt-package-band ops-gantt-grid-frame relative overflow-hidden py-2">
+      <div className="ops-gantt-package-band ops-gantt-grid-frame relative overflow-hidden py-3">
         <TimelineGrid columns={columns} />
         <button
           type="button"

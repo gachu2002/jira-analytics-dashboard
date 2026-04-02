@@ -532,6 +532,29 @@
     z-index: 2;
   }
 
+  .ops-sync-dot {
+    animation: ops-sync-pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes ops-sync-pulse {
+    0%,
+    100% {
+      opacity: 0.45;
+      transform: scale(0.9);
+    }
+
+    50% {
+      opacity: 1;
+      transform: scale(1.15);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ops-sync-dot {
+      animation: none;
+    }
+  }
+
   .ops-details-pane {
     min-width: 0;
     flex-direction: column;
@@ -1444,6 +1467,34 @@
     );
     font-size: 0.75rem;
     line-height: 1.55;
+  }
+
+  .ops-jql-builder-shell {
+    border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--workspace-pane-muted) 94%,
+      transparent
+    );
+  }
+
+  .ops-jql-preview {
+    border-color: color-mix(in srgb, var(--border) 78%, transparent);
+    background: color-mix(in srgb, var(--workspace-pane) 99%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    color: var(--foreground);
+    font-family:
+      ui-monospace,
+      SFMono-Regular,
+      SFMono-Regular,
+      Menlo,
+      Monaco,
+      Consolas,
+      Liberation Mono,
+      Courier New,
+      monospace;
+    line-height: 1.65;
+    white-space: pre-wrap;
   }
 
   .ops-bug-selected {

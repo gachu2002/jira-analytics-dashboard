@@ -15,8 +15,6 @@ export type DashboardProject = {
   description: string
   members: string
   labels: string
-  pm: number
-  pl: number
 }
 
 export type DashboardProjectPayload = {
@@ -25,8 +23,6 @@ export type DashboardProjectPayload = {
   description: string
   members: string
   labels: string
-  pm: number
-  pl: number
 }
 
 export type DashboardMilestone = {

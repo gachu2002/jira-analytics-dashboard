@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { toPng } from 'html-to-image'
 import jsPDF from 'jspdf'
 import {
   Bar,
@@ -79,9 +78,9 @@ import { buildVisibleTimelineViewModel } from '@/features/timeline-workspace/mod
 import {
   addDays,
   buildTimelineItemExportFileName,
+  captureTimelineExportSnapshot,
   downloadDataUrl,
   formatDateLabel,
-  getExportBackgroundColor,
   getGridStyle,
   getTimelineTrackWidthRem,
   getTodayOffsetPercent,
@@ -678,8 +677,6 @@ function CrudDrawer({
       description: project?.description ?? '',
       members: project?.members ?? '',
       labels: project?.labels ?? '',
-      pm: project?.pm ?? 0,
-      pl: project?.pl ?? 0,
     },
   })
   const milestoneForm = useForm<MilestoneFormValues>({
@@ -731,27 +728,30 @@ function CrudDrawer({
     try {
       await document.fonts?.ready
 
-      const dataUrl = await toPng(node, {
-        backgroundColor: getExportBackgroundColor(),
-        cacheBust: true,
-        pixelRatio: 2,
-      })
+      const snapshot = await captureTimelineExportSnapshot(node)
       const fileName = buildTimelineItemExportFileName(
         selectedMilestoneProjectName,
         selectedMilestone.name,
       )
 
       if (format === 'png') {
-        downloadDataUrl(dataUrl, `${fileName}.png`)
+        downloadDataUrl(snapshot.dataUrl, `${fileName}.png`)
       } else {
         const pdf = new jsPDF({
-          format: [node.scrollWidth, node.scrollHeight],
+          format: [snapshot.width, snapshot.height],
           orientation:
-            node.scrollWidth > node.scrollHeight ? 'landscape' : 'portrait',
+            snapshot.width > snapshot.height ? 'landscape' : 'portrait',
           unit: 'px',
         })
 
-        pdf.addImage(dataUrl, 'PNG', 0, 0, node.scrollWidth, node.scrollHeight)
+        pdf.addImage(
+          snapshot.dataUrl,
+          'PNG',
+          0,
+          0,
+          snapshot.width,
+          snapshot.height,
+        )
         pdf.save(`${fileName}.pdf`)
       }
 
@@ -927,18 +927,6 @@ function ProjectViewPanel({ project }: { project: DashboardProject }) {
             {project.labels || '-'}
           </div>
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="PM">
-            <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
-              {project.pm}
-            </div>
-          </Field>
-          <Field label="PL">
-            <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
-              {project.pl}
-            </div>
-          </Field>
-        </div>
       </div>
     </div>
   )
@@ -1263,26 +1251,6 @@ function ProjectFormPanel({
             {...form.register('labels')}
           />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="PM" error={form.formState.errors.pm?.message}>
-            <Input
-              className="ops-workspace-input h-10 rounded-md"
-              type="number"
-              {...form.register('pm', {
-                setValueAs: (value) => Number(value),
-              })}
-            />
-          </Field>
-          <Field label="PL" error={form.formState.errors.pl?.message}>
-            <Input
-              className="ops-workspace-input h-10 rounded-md"
-              type="number"
-              {...form.register('pl', {
-                setValueAs: (value) => Number(value),
-              })}
-            />
-          </Field>
-        </div>
         <FormActions
           isPending={isPending}
           submitLabel={submitLabel}
@@ -1410,7 +1378,5 @@ function toProjectPayload(values: ProjectFormValues) {
     description: values.description.trim(),
     members: values.members.trim(),
     labels: values.labels.trim(),
-    pm: values.pm,
-    pl: values.pl,
   }
 }

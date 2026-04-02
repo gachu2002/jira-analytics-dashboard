@@ -1,3 +1,5 @@
+import { toPng } from 'html-to-image'
+
 import type {
   TimelineHealth,
   TimelinePackageBar,
@@ -271,6 +273,44 @@ export function getExportBackgroundColor() {
       .getPropertyValue('--workspace-pane')
       .trim() || '#ffffff'
   )
+}
+
+export async function captureTimelineExportSnapshot(node: HTMLElement) {
+  const contentWidth = Math.ceil(
+    Math.max(node.scrollWidth, node.getBoundingClientRect().width),
+  )
+  const exportPadding = 16
+  const exportWidth = contentWidth + exportPadding * 2
+
+  const contentHeight = Math.ceil(
+    Math.max(node.scrollHeight, node.getBoundingClientRect().height),
+  )
+  const exportHeight = contentHeight + exportPadding * 2
+
+  const dataUrl = await toPng(node, {
+    backgroundColor: getExportBackgroundColor(),
+    cacheBust: true,
+    pixelRatio: 2,
+    canvasWidth: exportWidth * 2,
+    canvasHeight: exportHeight * 2,
+    width: exportWidth,
+    height: exportHeight,
+    style: {
+      width: `${exportWidth}px`,
+      padding: `${exportPadding}px`,
+      boxSizing: 'border-box',
+      border: '1px solid color-mix(in srgb, var(--border) 82%, transparent)',
+      borderRadius: '16px',
+      background: 'color-mix(in srgb, var(--workspace-pane) 98%, transparent)',
+      boxShadow: '0 12px 28px rgba(9, 30, 66, 0.08)',
+    },
+  })
+
+  return {
+    dataUrl,
+    width: exportWidth,
+    height: exportHeight,
+  }
 }
 
 export function buildTimelineItemExportFileName(

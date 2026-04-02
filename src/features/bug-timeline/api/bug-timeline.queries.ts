@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 
 import {
+  getCustomJqlBugStatistics,
+  getCustomJqlPackage,
+  getCustomJqlSprintStatistics,
   getAllProjectPackages,
   getBugTrackerProjects,
   getPackageBugStatistics,
@@ -16,6 +19,12 @@ export const bugTimelineQueryKeys = {
     [...timelineQueryKeys.all, 'package-bug-statistics', packageId] as const,
   packageSprintStatistics: (packageId: number) =>
     [...timelineQueryKeys.all, 'package-sprint-statistics', packageId] as const,
+  customJqlPackage: (jql: string) =>
+    [...timelineQueryKeys.all, 'custom-jql-package', jql] as const,
+  customJqlBugStatistics: (jql: string) =>
+    [...timelineQueryKeys.all, 'custom-jql-bug-statistics', jql] as const,
+  customJqlSprintStatistics: (jql: string) =>
+    [...timelineQueryKeys.all, 'custom-jql-sprint-statistics', jql] as const,
 }
 
 export function useBugTrackerProjectsQuery() {
@@ -51,5 +60,29 @@ export function usePackageSprintStatisticsQuery(
     queryKey: bugTimelineQueryKeys.packageSprintStatistics(packageId),
     queryFn: () => getPackageSprintStatistics(packageId),
     enabled,
+  })
+}
+
+export function useCustomJqlPackageQuery(jql: string, enabled = true) {
+  return useQuery({
+    queryKey: bugTimelineQueryKeys.customJqlPackage(jql),
+    queryFn: () => getCustomJqlPackage(jql),
+    enabled: enabled && Boolean(jql.trim()),
+  })
+}
+
+export function useCustomJqlBugStatisticsQuery(jql: string, enabled = true) {
+  return useQuery({
+    queryKey: bugTimelineQueryKeys.customJqlBugStatistics(jql),
+    queryFn: () => getCustomJqlBugStatistics(jql),
+    enabled: enabled && Boolean(jql.trim()),
+  })
+}
+
+export function useCustomJqlSprintStatisticsQuery(jql: string, enabled = true) {
+  return useQuery({
+    queryKey: bugTimelineQueryKeys.customJqlSprintStatistics(jql),
+    queryFn: () => getCustomJqlSprintStatistics(jql),
+    enabled: enabled && Boolean(jql.trim()),
   })
 }

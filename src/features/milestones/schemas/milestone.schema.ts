@@ -6,8 +6,6 @@ export const projectFormSchema = z.object({
   description: z.string().trim(),
   members: z.string().trim(),
   labels: z.string().trim(),
-  pm: z.number().int().nonnegative('Required'),
-  pl: z.number().int().nonnegative('Required'),
 })
 
 export const milestoneFormSchema = z

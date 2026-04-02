@@ -35,6 +35,18 @@ export type BugTrackerPackage = {
 
 export type BugTrackerIssue = TimelineIssue
 
+export type BugTrackerCustomJqlPackage = {
+  keys: string
+  start_date: string
+  end_date: string
+  labels: string
+  assignees: string
+  jql: string
+  total_bug: number
+  resolved_bug: number
+  issues: BugTrackerIssue[]
+}
+
 export type BugTrackerBugCategory = {
   id: number
   name: string

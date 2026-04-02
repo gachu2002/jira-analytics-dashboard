@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { toPng } from 'html-to-image'
 import jsPDF from 'jspdf'
 import {
   Bar,
@@ -45,7 +44,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import {
+  useCustomJqlBugStatisticsQuery,
+  useCustomJqlPackageQuery,
+  useCustomJqlSprintStatisticsQuery,
   usePackageBugStatisticsQuery,
   usePackageSprintStatisticsQuery,
 } from '@/features/bug-timeline/api/bug-timeline.queries'
@@ -86,8 +89,8 @@ import { buildVisibleTimelineViewModel } from '@/features/timeline-workspace/mod
 import {
   addDays,
   buildTimelineItemExportFileName,
+  captureTimelineExportSnapshot,
   downloadDataUrl,
-  getExportBackgroundColor,
   getGridStyle,
   getTimelineTrackWidthRem,
   getTodayOffsetPercent,
@@ -169,6 +172,7 @@ export function BugTimelineScreen() {
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [openActionMenu, setOpenActionMenu] = useState<string | null>(null)
+  const [isCustomJqlOpen, setIsCustomJqlOpen] = useState(false)
 
   const effectiveFromDate = fromDate || toInputDate(viewModel.rangeStart)
   const effectiveToDate = toDate || toInputDate(addDays(viewModel.rangeEnd, -1))
@@ -212,20 +216,24 @@ export function BugTimelineScreen() {
       : null
 
   const openProjectView = (projectId: number) => {
+    setIsCustomJqlOpen(false)
     setSelectedEntity({ type: 'project', projectId })
     setInspectorMode('view-project')
   }
 
   const handleSelectPackage = (projectId: number, packageId: number) => {
+    setIsCustomJqlOpen(false)
     setSelectedEntity({ type: 'package', projectId, packageId })
     setInspectorMode('view-package')
   }
 
   const handleCreateProject = () => {
+    setIsCustomJqlOpen(false)
     openCreateProject()
   }
 
   const handleCreatePackage = (projectId?: number) => {
+    setIsCustomJqlOpen(false)
     openCreatePackage(projectId)
   }
 
@@ -307,6 +315,17 @@ export function BugTimelineScreen() {
                   </div>
 
                   <div className="ops-bug-toolbar-actions ml-auto flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        handleCloseDrawer()
+                        setIsCustomJqlOpen(true)
+                      }}
+                    >
+                      <Bug className="size-4" />
+                      Custom JQL
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
@@ -637,6 +656,13 @@ export function BugTimelineScreen() {
               onCancel={() => setDeleteTarget(null)}
               onConfirm={handleDeleteConfirm}
             />
+
+            <CustomJqlDrawer
+              initialEndDate={effectiveToDate}
+              initialStartDate={effectiveFromDate}
+              isOpen={isCustomJqlOpen}
+              onClose={() => setIsCustomJqlOpen(false)}
+            />
           </>
         ) : null}
       </div>
@@ -736,27 +762,30 @@ function CrudDrawer({
     try {
       await document.fonts?.ready
 
-      const dataUrl = await toPng(node, {
-        backgroundColor: getExportBackgroundColor(),
-        cacheBust: true,
-        pixelRatio: 2,
-      })
+      const snapshot = await captureTimelineExportSnapshot(node)
       const fileName = buildTimelineItemExportFileName(
         selectedPackageProjectName,
         selectedPackage.name,
       )
 
       if (format === 'png') {
-        downloadDataUrl(dataUrl, `${fileName}.png`)
+        downloadDataUrl(snapshot.dataUrl, `${fileName}.png`)
       } else {
         const pdf = new jsPDF({
-          format: [node.scrollWidth, node.scrollHeight],
+          format: [snapshot.width, snapshot.height],
           orientation:
-            node.scrollWidth > node.scrollHeight ? 'landscape' : 'portrait',
+            snapshot.width > snapshot.height ? 'landscape' : 'portrait',
           unit: 'px',
         })
 
-        pdf.addImage(dataUrl, 'PNG', 0, 0, node.scrollWidth, node.scrollHeight)
+        pdf.addImage(
+          snapshot.dataUrl,
+          'PNG',
+          0,
+          0,
+          snapshot.width,
+          snapshot.height,
+        )
         pdf.save(`${fileName}.pdf`)
       }
 
@@ -932,30 +961,387 @@ function PackageDetailPanel({
     packageItem.id,
     true,
   )
-  const [optionalCharts, setOptionalCharts] = useState<
-    Array<'velocity' | 'reopen'>
-  >([])
-  const memberNames = parseCommaList(packageItem.members)
 
   return (
-    <div className="p-4">
-      <div ref={contentRef} className="grid gap-5">
-        {packageBar.isSyncing ? (
+    <BugDetailContent
+      bugStatistics={statisticsQuery.data ?? []}
+      bugStatisticsError={statisticsQuery.isError}
+      bugStatisticsPending={statisticsQuery.isPending}
+      contentRef={contentRef}
+      issues={packageItem.issues}
+      membersText={packageItem.members}
+      notice={
+        packageBar.isSyncing ? (
           <div className="flex items-center gap-2 rounded-md border border-[color:var(--status-info)]/18 bg-[color:var(--status-info)]/6 px-3 py-2 text-sm text-[var(--muted-foreground)]">
             <TimelineSyncStatusPill compact />
             <span>Jira sync in progress.</span>
           </div>
-        ) : null}
+        ) : null
+      }
+      openCount={openBugCount}
+      resolvedCount={packageBar.resolvedBug}
+      sprintStatistics={sprintStatisticsQuery.data ?? []}
+      sprintStatisticsError={sprintStatisticsQuery.isError}
+      sprintStatisticsPending={sprintStatisticsQuery.isPending}
+    />
+  )
+}
+
+function CustomJqlDrawer({
+  initialEndDate,
+  initialStartDate,
+  isOpen,
+  onClose,
+}: {
+  initialEndDate: string
+  initialStartDate: string
+  isOpen: boolean
+  onClose: () => void
+}) {
+  const [projectKeysInput, setProjectKeysInput] = useState('')
+  const [labelsInput, setLabelsInput] = useState('')
+  const [assigneesInput, setAssigneesInput] = useState('')
+  const [startDateInput, setStartDateInput] = useState(initialStartDate)
+  const [endDateInput, setEndDateInput] = useState(initialEndDate)
+  const [isEditingRawJql, setIsEditingRawJql] = useState(false)
+  const [jqlInput, setJqlInput] = useState(() =>
+    buildCustomBugJql({
+      assignees: '',
+      endDate: initialEndDate,
+      labels: '',
+      projectKeys: '',
+      startDate: initialStartDate,
+    }),
+  )
+  const [submittedJql, setSubmittedJql] = useState('')
+  const [exportFormat, setExportFormat] = useState<'png' | 'pdf' | null>(null)
+  const contentRef = useRef<HTMLDivElement | null>(null)
+  const customPackageQuery = useCustomJqlPackageQuery(submittedJql, isOpen)
+  const customBugStatisticsQuery = useCustomJqlBugStatisticsQuery(
+    submittedJql,
+    isOpen,
+  )
+  const customSprintStatisticsQuery = useCustomJqlSprintStatisticsQuery(
+    submittedJql,
+    isOpen,
+  )
+  const generatedJql = useMemo(
+    () =>
+      buildCustomBugJql({
+        assignees: assigneesInput,
+        endDate: endDateInput,
+        labels: labelsInput,
+        projectKeys: projectKeysInput,
+        startDate: startDateInput,
+      }),
+    [
+      assigneesInput,
+      endDateInput,
+      labelsInput,
+      projectKeysInput,
+      startDateInput,
+    ],
+  )
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    setStartDateInput(initialStartDate)
+    setEndDateInput(initialEndDate)
+  }, [initialEndDate, initialStartDate, isOpen])
+
+  useEffect(() => {
+    if (isEditingRawJql) return
+    setJqlInput(generatedJql)
+  }, [generatedJql, isEditingRawJql])
+
+  if (!isOpen) return null
+
+  const customPackage = customPackageQuery.data ?? null
+
+  async function handleExportCustomJqlView(format: 'png' | 'pdf') {
+    const node = contentRef.current
+    if (!node || exportFormat || !customPackage) return
+
+    setExportFormat(format)
+
+    try {
+      await document.fonts?.ready
+
+      const snapshot = await captureTimelineExportSnapshot(node)
+      const fileName = buildTimelineItemExportFileName('custom-jql', 'bug-view')
+
+      if (format === 'png') {
+        downloadDataUrl(snapshot.dataUrl, `${fileName}.png`)
+      } else {
+        const pdf = new jsPDF({
+          format: [snapshot.width, snapshot.height],
+          orientation:
+            snapshot.width > snapshot.height ? 'landscape' : 'portrait',
+          unit: 'px',
+        })
+
+        pdf.addImage(
+          snapshot.dataUrl,
+          'PNG',
+          0,
+          0,
+          snapshot.width,
+          snapshot.height,
+        )
+        pdf.save(`${fileName}.pdf`)
+      }
+
+      toast.success(format === 'png' ? 'Image downloaded.' : 'PDF downloaded.')
+    } catch {
+      toast.error('Failed to export custom view.')
+    } finally {
+      setExportFormat(null)
+    }
+  }
+
+  function handleLoadCustomJql() {
+    const nextJql = jqlInput.trim()
+
+    if (!nextJql) {
+      toast.error('Enter a JQL query.')
+      return
+    }
+
+    if (nextJql === submittedJql) {
+      void Promise.all([
+        customPackageQuery.refetch(),
+        customBugStatisticsQuery.refetch(),
+        customSprintStatisticsQuery.refetch(),
+      ])
+      return
+    }
+
+    setSubmittedJql(nextJql)
+  }
+
+  function handleResetGeneratedJql() {
+    setIsEditingRawJql(false)
+    setJqlInput(generatedJql)
+  }
+
+  return (
+    <TimelineDrawerShell
+      actions={
+        customPackage ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                className="ops-package-export-trigger rounded-md"
+                disabled={exportFormat !== null}
+                size="sm"
+                variant="outline"
+              >
+                <Download className="size-4" />
+                {exportFormat === null ? 'Export view' : 'Exporting...'}
+                <ChevronDown className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="ops-bug-chart-menu-content w-44"
+            >
+              <DropdownMenuLabel>Custom view</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="ops-bug-chart-menu-item"
+                disabled={exportFormat !== null}
+                onSelect={() => {
+                  void handleExportCustomJqlView('png')
+                }}
+              >
+                <FileImage className="size-4" />
+                Image (.png)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="ops-bug-chart-menu-item"
+                disabled={exportFormat !== null}
+                onSelect={() => {
+                  void handleExportCustomJqlView('pdf')
+                }}
+              >
+                <FileText className="size-4" />
+                PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null
+      }
+      eyebrow="Custom query"
+      isOpen={isOpen}
+      isWide
+      onClose={onClose}
+      title="Custom JQL"
+    >
+      <div className="grid gap-4 p-4">
+        <div className="ops-jql-builder-shell grid gap-3 rounded-lg p-4">
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.4fr)]">
+            <Field label="Project keys">
+              <Input
+                className="ops-workspace-input h-10 rounded-md"
+                placeholder="qeventth, qeventsit"
+                value={projectKeysInput}
+                onChange={(event) => setProjectKeysInput(event.target.value)}
+              />
+            </Field>
+            <Field label="Labels">
+              <Input
+                className="ops-workspace-input h-10 rounded-md"
+                placeholder="fpt.flutter.home"
+                value={labelsInput}
+                onChange={(event) => setLabelsInput(event.target.value)}
+              />
+            </Field>
+            <Field label="Assignees">
+              <Input
+                className="ops-workspace-input h-10 rounded-md"
+                placeholder="thehoang.nguyen, phu.nguyenhoc, linh.nguyengia"
+                value={assigneesInput}
+                onChange={(event) => setAssigneesInput(event.target.value)}
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+            <Field label="Start">
+              <Input
+                className="ops-workspace-input h-10 rounded-md"
+                type="date"
+                value={startDateInput}
+                onChange={(event) => setStartDateInput(event.target.value)}
+              />
+            </Field>
+            <Field label="End">
+              <Input
+                className="ops-workspace-input h-10 rounded-md"
+                type="date"
+                value={endDateInput}
+                onChange={(event) => setEndDateInput(event.target.value)}
+              />
+            </Field>
+            <div className="flex gap-2 lg:justify-end">
+              <Button
+                size="sm"
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (isEditingRawJql) {
+                    handleResetGeneratedJql()
+                    return
+                  }
+
+                  setIsEditingRawJql(true)
+                  setJqlInput(generatedJql)
+                }}
+              >
+                {isEditingRawJql ? 'Use generated' : 'Edit JQL'}
+              </Button>
+              <Button size="sm" type="button" onClick={handleLoadCustomJql}>
+                Load
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <span className="ops-bug-toolbar-label">JQL</span>
+            {isEditingRawJql ? (
+              <Textarea
+                className="ops-workspace-input min-h-28 rounded-md font-mono text-xs"
+                value={jqlInput}
+                onChange={(event) => setJqlInput(event.target.value)}
+              />
+            ) : (
+              <div className="ops-bug-jql ops-jql-preview rounded-lg px-3 py-3 text-xs break-all">
+                {jqlInput || 'Add filters to generate the query.'}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {!submittedJql ? (
+          <div className="ops-detail-empty rounded-md px-4 py-8 text-sm">
+            Build a query to load a custom bug view.
+          </div>
+        ) : customPackageQuery.isPending ? (
+          <LoadingPanel title="Loading custom query" />
+        ) : customPackageQuery.isError || !customPackage ? (
+          <div className="ops-detail-empty rounded-md px-4 py-8 text-sm text-[var(--status-danger)]">
+            Failed to load custom query data.
+          </div>
+        ) : (
+          <BugDetailContent
+            bugStatistics={customBugStatisticsQuery.data ?? []}
+            bugStatisticsError={customBugStatisticsQuery.isError}
+            bugStatisticsPending={customBugStatisticsQuery.isPending}
+            contentRef={contentRef}
+            issues={customPackage.issues}
+            membersText={customPackage.assignees}
+            openCount={Math.max(
+              customPackage.total_bug - customPackage.resolved_bug,
+              0,
+            )}
+            resolvedCount={customPackage.resolved_bug}
+            sprintStatistics={customSprintStatisticsQuery.data ?? []}
+            sprintStatisticsError={customSprintStatisticsQuery.isError}
+            sprintStatisticsPending={customSprintStatisticsQuery.isPending}
+          />
+        )}
+      </div>
+    </TimelineDrawerShell>
+  )
+}
+
+function BugDetailContent({
+  bugStatistics,
+  bugStatisticsError,
+  bugStatisticsPending,
+  contentRef,
+  issues,
+  membersText,
+  notice,
+  openCount,
+  resolvedCount,
+  sprintStatistics,
+  sprintStatisticsError,
+  sprintStatisticsPending,
+}: {
+  bugStatistics: PackageBugStatistic[]
+  bugStatisticsError: boolean
+  bugStatisticsPending: boolean
+  contentRef: React.RefObject<HTMLDivElement | null>
+  issues: BugTrackerPackage['issues']
+  membersText: string
+  notice?: React.ReactNode
+  openCount: number
+  resolvedCount: number
+  sprintStatistics: PackageSprintStatistic[]
+  sprintStatisticsError: boolean
+  sprintStatisticsPending: boolean
+}) {
+  const [optionalCharts, setOptionalCharts] = useState<
+    Array<'velocity' | 'reopen'>
+  >([])
+  const memberNames = parseCommaList(membersText)
+
+  return (
+    <div className="p-4">
+      <div ref={contentRef} className="grid gap-5">
+        {notice ?? null}
 
         <section className="grid gap-4">
           <PackageStatusSummary
-            openCount={openBugCount}
-            resolvedCount={packageBar.resolvedBug}
+            openCount={openCount}
+            resolvedCount={resolvedCount}
           />
 
           <div>
             <PackageMemberStatusSummary
-              issues={packageItem.issues}
+              issues={issues}
               members={memberNames}
               mode="partner"
             />
@@ -1031,29 +1417,29 @@ function PackageDetailPanel({
           </div>
           <div className="grid gap-3 xl:grid-cols-2">
             <PackageBugStatisticsSection
-              isError={statisticsQuery.isError}
-              isPending={statisticsQuery.isPending}
-              statistics={statisticsQuery.data ?? []}
+              isError={bugStatisticsError}
+              isPending={bugStatisticsPending}
+              statistics={bugStatistics}
             />
             <PackageSprintChartsSection
-              isError={sprintStatisticsQuery.isError}
-              isPending={sprintStatisticsQuery.isPending}
-              statistics={sprintStatisticsQuery.data ?? []}
+              isError={sprintStatisticsError}
+              isPending={sprintStatisticsPending}
+              statistics={sprintStatistics}
               chartKeys={['flow']}
             />
             {optionalCharts.includes('velocity') ? (
               <PackageSprintChartsSection
-                isError={sprintStatisticsQuery.isError}
-                isPending={sprintStatisticsQuery.isPending}
-                statistics={sprintStatisticsQuery.data ?? []}
+                isError={sprintStatisticsError}
+                isPending={sprintStatisticsPending}
+                statistics={sprintStatistics}
                 chartKeys={['velocity']}
               />
             ) : null}
             {optionalCharts.includes('reopen') ? (
               <PackageSprintChartsSection
-                isError={sprintStatisticsQuery.isError}
-                isPending={sprintStatisticsQuery.isPending}
-                statistics={sprintStatisticsQuery.data ?? []}
+                isError={sprintStatisticsError}
+                isPending={sprintStatisticsPending}
+                statistics={sprintStatistics}
                 chartKeys={['reopen']}
               />
             ) : null}
@@ -1061,10 +1447,7 @@ function PackageDetailPanel({
         </section>
 
         <section className="grid gap-3">
-          <PackageIssuesTable
-            issues={packageItem.issues}
-            members={memberNames}
-          />
+          <PackageIssuesTable issues={issues} members={memberNames} />
         </section>
       </div>
     </div>
@@ -1941,6 +2324,49 @@ function toPackagePayload(values: PackageFormValues) {
     end_date: values.end_date,
     bug_tracker_project: values.projectId,
   }
+}
+
+function buildCustomBugJql({
+  assignees,
+  endDate,
+  labels,
+  projectKeys,
+  startDate,
+}: {
+  assignees: string
+  endDate: string
+  labels: string
+  projectKeys: string
+  startDate: string
+}) {
+  const clauses: string[] = []
+  const normalizedProjectKeys = parseCommaList(projectKeys)
+  const normalizedLabels = parseCommaList(labels)
+  const normalizedAssignees = parseCommaList(assignees)
+
+  if (normalizedProjectKeys.length) {
+    clauses.push(
+      `project in (${normalizedProjectKeys.map((item) => `"${item}"`).join(', ')})`,
+    )
+  }
+
+  if (normalizedLabels.length) {
+    clauses.push(`labels in (${normalizedLabels.join(', ')})`)
+  }
+
+  if (normalizedAssignees.length) {
+    clauses.push(`assignee in (${normalizedAssignees.join(', ')})`)
+  }
+
+  if (startDate) {
+    clauses.push(`startdate >= ${startDate}`)
+  }
+
+  if (endDate) {
+    clauses.push(`enddate <= ${endDate}`)
+  }
+
+  return clauses.join(' and ')
 }
 
 function formatBugCategoryLabel(value: string) {

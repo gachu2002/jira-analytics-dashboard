@@ -1,6 +1,8 @@
 import { http } from '@/lib/http'
 
 import type {
+  BugTrackerBugCategory,
+  BugTrackerCustomJqlPackage,
   BugTrackerPackage,
   BugTrackerPackagePayload,
   BugTrackerProject,
@@ -18,6 +20,60 @@ function mapBugTrackerPackage(
     ...response,
     sync_status: null,
   }
+}
+
+type BugTrackerCustomJqlBugStatisticResponse = {
+  bug_category: BugTrackerBugCategory
+  number_of_bugs: number
+}
+
+type BugTrackerCustomJqlSprintStatisticResponse = {
+  sprint: PackageSprintStatistic['sprint']
+  resolved_bug: number
+  total_bug: number
+  new_bug: number
+  resolved_bug_velocity: number
+  target_bug_velocity: number
+  target_reopened_rate: number
+  resolved_bug_reopened: number
+  reopened_bug: number
+}
+
+function buildJqlQueryString(jql: string) {
+  return new URLSearchParams({ jql }).toString()
+}
+
+function mapCustomJqlBugStatistics(
+  response: BugTrackerCustomJqlBugStatisticResponse[],
+): PackageBugStatistic[] {
+  return response.map((item, index) => ({
+    id: item.bug_category.id || index + 1,
+    bug_category: item.bug_category,
+    number_of_bugs: item.number_of_bugs,
+    created_at: new Date(2026, 0, index + 1).toISOString(),
+    active: true,
+    package: 0,
+  }))
+}
+
+function mapCustomJqlSprintStatistics(
+  response: BugTrackerCustomJqlSprintStatisticResponse[],
+): PackageSprintStatistic[] {
+  return response.map((item, index) => ({
+    id: item.sprint.id || index + 1,
+    sprint: item.sprint,
+    resolved_bug: item.resolved_bug,
+    total_bug: item.total_bug,
+    new_bug: item.new_bug,
+    resolved_bug_velocity: item.resolved_bug_velocity,
+    target_bug_velocity: item.target_bug_velocity,
+    target_reopened_rate: item.target_reopened_rate,
+    resolved_bug_reopened: item.resolved_bug_reopened,
+    reopened_bug: item.reopened_bug,
+    created_at: new Date(`${item.sprint.end_date}T00:00:00.000Z`).toISOString(),
+    active: true,
+    package: 0,
+  }))
 }
 
 export async function getBugTrackerProjects() {
@@ -79,6 +135,27 @@ export async function getPackageSprintStatistics(packageId: number) {
     `/api/bug-tracker/packages/${packageId}/sprint-statistics/`,
   )
   return response.data
+}
+
+export async function getCustomJqlPackage(jql: string) {
+  const response = await http.get<BugTrackerCustomJqlPackage>(
+    `/api/bug-tracker/packages/jql/customize/?${buildJqlQueryString(jql)}`,
+  )
+  return response.data
+}
+
+export async function getCustomJqlBugStatistics(jql: string) {
+  const response = await http.get<BugTrackerCustomJqlBugStatisticResponse[]>(
+    `/api/bug-tracker/packages/jql/customize/bug-statistics/?${buildJqlQueryString(jql)}`,
+  )
+  return mapCustomJqlBugStatistics(response.data)
+}
+
+export async function getCustomJqlSprintStatistics(jql: string) {
+  const response = await http.get<BugTrackerCustomJqlSprintStatisticResponse[]>(
+    `/api/bug-tracker/packages/jql/customize/sprint-statistics/?${buildJqlQueryString(jql)}`,
+  )
+  return mapCustomJqlSprintStatistics(response.data)
 }
 
 export async function updateProjectPackage(

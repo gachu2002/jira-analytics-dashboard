@@ -737,8 +737,6 @@ const dashboardProjects = [
     description: 'Authentication, search, and release readiness workstreams.',
     members: 'lethanhnguyen, nguyenvannam, tranlinh, huypham',
     labels: 'cloud, auth, release',
-    pm: 101,
-    pl: 201,
   },
   {
     id: 2,
@@ -747,8 +745,6 @@ const dashboardProjects = [
     description: 'Console reliability, audit, and reporting delivery track.',
     members: 'quangpham, amyle, khanhtran, zoenguyen',
     labels: 'console, compliance, reporting',
-    pm: 102,
-    pl: 202,
   },
   {
     id: 3,
@@ -757,8 +753,6 @@ const dashboardProjects = [
     description: 'Mobile push and store-release milestone schedule.',
     members: 'trangpham, omarali, deepa',
     labels: 'mobile, release, notifications',
-    pm: 103,
-    pl: 203,
   },
 ]
 
@@ -1069,6 +1063,64 @@ function getPackage(currentPackageId) {
   return packages.find((item) => item.id === currentPackageId) ?? null
 }
 
+function getCustomJqlPackageTemplate(jql) {
+  const normalized = String(jql || '').trim()
+  const sourcePackages = packages.filter((item) => item.issues.length > 0)
+
+  if (!sourcePackages.length) return null
+
+  const hash = [...normalized].reduce(
+    (total, character) => total + character.charCodeAt(0),
+    0,
+  )
+
+  return sourcePackages[hash % sourcePackages.length]
+}
+
+function buildCustomJqlPackageResponse(jql) {
+  const packageRecord = getCustomJqlPackageTemplate(jql)
+  if (!packageRecord) return null
+
+  return {
+    keys: packageRecord.keys,
+    start_date: packageRecord.start_date,
+    end_date: packageRecord.end_date,
+    labels: packageRecord.labels,
+    assignees: packageRecord.members,
+    jql,
+    total_bug: packageRecord.total_bug,
+    resolved_bug: packageRecord.resolved_bug,
+    issues: cloneIssues(packageRecord.issues),
+  }
+}
+
+function buildCustomJqlBugStatisticsResponse(jql) {
+  const packageRecord = getCustomJqlPackageTemplate(jql)
+  if (!packageRecord) return []
+
+  return (packageBugStatistics[packageRecord.id] ?? []).map((item) => ({
+    bug_category: item.bug_category,
+    number_of_bugs: item.number_of_bugs,
+  }))
+}
+
+function buildCustomJqlSprintStatisticsResponse(jql) {
+  const packageRecord = getCustomJqlPackageTemplate(jql)
+  if (!packageRecord) return []
+
+  return (packageSprintStatistics[packageRecord.id] ?? []).map((item) => ({
+    sprint: item.sprint,
+    resolved_bug: item.resolved_bug,
+    total_bug: item.total_bug,
+    new_bug: item.new_bug,
+    resolved_bug_velocity: item.resolved_bug_velocity,
+    target_bug_velocity: item.target_bug_velocity,
+    target_reopened_rate: item.target_reopened_rate,
+    resolved_bug_reopened: item.resolved_bug_reopened,
+    reopened_bug: item.reopened_bug,
+  }))
+}
+
 function getDashboardProject(projectId) {
   return dashboardProjects.find((project) => project.id === projectId) ?? null
 }
@@ -1110,16 +1162,7 @@ function validatePackagePayload(payload) {
 
 function validateDashboardProjectPayload(payload) {
   const name = validateName(payload.name)
-  const pm = Number(payload.pm)
-  const pl = Number(payload.pl)
-
-  if (
-    !name ||
-    !Number.isInteger(pm) ||
-    pm < 0 ||
-    !Number.isInteger(pl) ||
-    pl < 0
-  ) {
+  if (!name) {
     return null
   }
 
@@ -1129,8 +1172,6 @@ function validateDashboardProjectPayload(payload) {
     description: String(payload.description || '').trim(),
     members: String(payload.members || '').trim(),
     labels: String(payload.labels || '').trim(),
-    pm,
-    pl,
   }
 }
 
@@ -1550,6 +1591,51 @@ const server = createServer(async (request, response) => {
         ? packages
         : packages.filter((item) => item.bug_tracker_project === projectId),
     )
+    return
+  }
+
+  if (
+    path === '/api/bug-tracker/packages/jql/customize/' &&
+    request.method === 'GET'
+  ) {
+    const jql = String(requestUrl.searchParams.get('jql') || '').trim()
+
+    if (!jql) {
+      sendJson(response, 400, { detail: 'jql is required.' })
+      return
+    }
+
+    sendJson(response, 200, buildCustomJqlPackageResponse(jql))
+    return
+  }
+
+  if (
+    path === '/api/bug-tracker/packages/jql/customize/bug-statistics/' &&
+    request.method === 'GET'
+  ) {
+    const jql = String(requestUrl.searchParams.get('jql') || '').trim()
+
+    if (!jql) {
+      sendJson(response, 400, { detail: 'jql is required.' })
+      return
+    }
+
+    sendJson(response, 200, buildCustomJqlBugStatisticsResponse(jql))
+    return
+  }
+
+  if (
+    path === '/api/bug-tracker/packages/jql/customize/sprint-statistics/' &&
+    request.method === 'GET'
+  ) {
+    const jql = String(requestUrl.searchParams.get('jql') || '').trim()
+
+    if (!jql) {
+      sendJson(response, 400, { detail: 'jql is required.' })
+      return
+    }
+
+    sendJson(response, 200, buildCustomJqlSprintStatisticsResponse(jql))
     return
   }
 
