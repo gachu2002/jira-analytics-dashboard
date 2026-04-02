@@ -29,6 +29,8 @@ export type BugTrackerPackage = {
   total_bug: number
   issues: BugTrackerIssue[]
   bug_tracker_project: number
+  task_id: string | null
+  sync_status?: string | null
 }
 
 export type BugTrackerIssue = TimelineIssue
@@ -49,6 +51,12 @@ export type PackageBugStatistic = {
 
 export type PackageSprintStatistic = {
   id: number
+  sprint: {
+    id: number
+    name: string
+    start_date: string
+    end_date: string
+  }
   resolved_bug: number
   total_bug: number
   new_bug: number
@@ -60,7 +68,6 @@ export type PackageSprintStatistic = {
   created_at: string
   active: boolean
   package: number
-  sprint: number
 }
 
 export type BugTrackerPackagePayload = {

@@ -842,6 +842,31 @@
     }
   }
 
+  .ops-loading-panel {
+    border: 1px solid color-mix(in srgb, var(--border) 64%, transparent);
+    background: color-mix(in srgb, var(--workspace-pane) 97%, transparent);
+  }
+
+  .ops-loading-spinner {
+    border: 2px solid
+      color-mix(in srgb, var(--muted-foreground) 16%, transparent);
+    border-top-color: var(--primary);
+    border-radius: 999px;
+    animation: ops-loading-spin 0.82s linear infinite;
+  }
+
+  @keyframes ops-loading-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ops-loading-spinner {
+      animation-duration: 1.6s;
+    }
+  }
+
   .ops-gantt-shell {
     background: var(--workspace-bg);
   }

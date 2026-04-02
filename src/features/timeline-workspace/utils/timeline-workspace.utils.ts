@@ -18,7 +18,45 @@ export function parseCommaList(value: string) {
 
 export function isIssueDoneStatus(status: string) {
   const normalized = status.toLowerCase()
-  return normalized === 'closed' || normalized === 'resolved'
+  return (
+    normalized === 'closed' ||
+    normalized === 'resolved' ||
+    normalized === 'verify' ||
+    normalized === 'verified'
+  )
+}
+
+function normalizePartnerMatchValue(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '')
+}
+
+export function resolveIssuePartner(assignee: string, members: string[]) {
+  const normalizedAssignee = normalizePartnerMatchValue(assignee)
+  if (!normalizedAssignee) return null
+
+  return [...new Set(members.map((member) => member.trim()).filter(Boolean))]
+    .sort((left, right) => {
+      const lengthDelta =
+        normalizePartnerMatchValue(right).length -
+        normalizePartnerMatchValue(left).length
+
+      if (lengthDelta !== 0) return lengthDelta
+      return left.localeCompare(right)
+    })
+    .find((member) => {
+      const normalizedMember = normalizePartnerMatchValue(member)
+      return normalizedMember.length > 0
+        ? normalizedAssignee.includes(normalizedMember)
+        : false
+    })
+}
+
+export function truncateChartAxisLabel(value: string, maxLength = 16) {
+  const trimmed = value.trim()
+  if (trimmed.length <= maxLength) return trimmed
+  if (maxLength <= 3) return trimmed.slice(0, maxLength)
+
+  return `${trimmed.slice(0, maxLength - 3).trimEnd()}...`
 }
 
 export function getIssueStatusTone(status: string) {
@@ -170,7 +208,7 @@ export function formatDayNumber(date: Date) {
 }
 
 export function formatWeekdayLabel(date: Date) {
-  return new Intl.DateTimeFormat('en', { weekday: 'short' }).format(date)
+  return new Intl.DateTimeFormat('en', { weekday: 'narrow' }).format(date)
 }
 
 export function formatMonthShortLabel(date: Date) {
@@ -181,10 +219,25 @@ export function formatQuarterLabel(date: Date) {
   return `Q${Math.floor(date.getMonth() / 3) + 1} ${date.getFullYear()}`
 }
 
+export function getTimelineViewportWidthRem(zoom: TimelineZoomLevel) {
+  if (zoom === 'quarter') return 54
+  return 56
+}
+
 export function getTimelineColumnWidthRem(zoom: TimelineZoomLevel) {
-  if (zoom === 'week') return 4.25
-  if (zoom === 'quarter') return 8.5
-  return 7.5
+  if (zoom === 'week') return 1.25
+  if (zoom === 'quarter') return 13
+  return 4.4
+}
+
+export function getTimelineTrackWidthRem(
+  zoom: TimelineZoomLevel,
+  columnCount: number,
+) {
+  return Math.max(
+    columnCount * getTimelineColumnWidthRem(zoom),
+    getTimelineViewportWidthRem(zoom),
+  )
 }
 
 export function getTodayOffsetPercent(weekColumns: WeekColumn[]) {

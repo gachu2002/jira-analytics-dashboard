@@ -5,6 +5,7 @@ import {
   useDashboardProjectsQuery,
 } from '@/features/milestones/api/milestone.queries'
 import { useMilestoneTimelineUiStore } from '@/features/milestones/stores/milestone-ui.store'
+import { useTimelineSyncStatus } from '@/features/timeline-workspace/hooks/use-timeline-sync-status'
 import { buildTimelineViewModel } from '@/features/timeline-workspace/model/build-timeline-view-model'
 
 export function useMilestoneTimelineQuery() {
@@ -12,6 +13,9 @@ export function useMilestoneTimelineQuery() {
   const search = useMilestoneTimelineUiStore((state) => state.search)
   const projectsQuery = useDashboardProjectsQuery()
   const milestonesQuery = useDashboardMilestonesQuery()
+  const syncStatusByTaskId = useTimelineSyncStatus(
+    (milestonesQuery.data ?? []).map((item) => item.task_id),
+  )
 
   const milestones = useMemo(() => {
     const projectsById = new Map(
@@ -26,9 +30,12 @@ export function useMilestoneTimelineQuery() {
         keys: project?.keys ?? '',
         labels: project?.labels ?? '',
         members: project?.members ?? '',
+        sync_status: milestone.task_id
+          ? (syncStatusByTaskId.get(milestone.task_id) ?? 'syncing')
+          : null,
       }
     })
-  }, [milestonesQuery.data, projectsQuery.data])
+  }, [milestonesQuery.data, projectsQuery.data, syncStatusByTaskId])
 
   const viewModel = useMemo(() => {
     return buildTimelineViewModel(

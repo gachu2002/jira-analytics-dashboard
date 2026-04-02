@@ -6,7 +6,6 @@ import {
   CartesianGrid,
   Cell,
   ComposedChart,
-  LabelList,
   Line,
   Pie,
   PieChart,
@@ -75,6 +74,7 @@ import {
   TimelineFormActions as FormActions,
   TimelineIssuesTable as PackageIssuesTable,
   TimelineMemberStatusSummary as PackageMemberStatusSummary,
+  TimelineSyncStatusPill,
   TimelineStatusSummary as PackageStatusSummary,
   TimelineTodayMarker as TodayMarker,
 } from '@/features/timeline-workspace/components/timeline-shared'
@@ -89,10 +89,11 @@ import {
   downloadDataUrl,
   getExportBackgroundColor,
   getGridStyle,
-  getTimelineColumnWidthRem,
+  getTimelineTrackWidthRem,
   getTodayOffsetPercent,
   parseCommaList,
   toInputDate,
+  truncateChartAxisLabel,
 } from '@/features/timeline-workspace/utils/timeline-workspace.utils'
 import {
   formatTimelineItemInspectorTitle,
@@ -183,7 +184,10 @@ export function BugTimelineScreen() {
     [effectiveFromDate, effectiveToDate, viewModel, zoom],
   )
 
-  const timelineMinWidth = `${Math.max(filteredViewModel.weekColumns.length * getTimelineColumnWidthRem(zoom), 44)}rem`
+  const timelineMinWidth = `${getTimelineTrackWidthRem(
+    zoom,
+    filteredViewModel.weekColumns.length,
+  )}rem`
   const todayOffset = getTodayOffsetPercent(filteredViewModel.weekColumns)
   const selectedProjectId =
     selectedEntity?.type === 'package'
@@ -398,14 +402,26 @@ export function BugTimelineScreen() {
                       {filteredViewModel.weekColumns.map((column, index) => (
                         <div
                           key={column.key}
-                          className="ops-gantt-week-cell ops-gantt-column px-2 py-2"
+                          className={`ops-gantt-week-cell ops-gantt-column ${zoom === 'week' ? 'px-0.5 py-1.5' : 'px-2 py-2'}`}
                           style={{ borderLeftWidth: index === 0 ? 0 : 1 }}
                         >
-                          <p className="text-[11px] font-semibold tracking-[-0.01em]">
+                          <p
+                            className={
+                              zoom === 'week'
+                                ? 'text-center text-[10px] font-semibold tracking-[-0.02em]'
+                                : 'text-[11px] font-semibold tracking-[-0.01em]'
+                            }
+                          >
                             {column.label}
                           </p>
                           {column.shortLabel ? (
-                            <p className="text-[10px] text-[color:var(--muted-foreground)]">
+                            <p
+                              className={
+                                zoom === 'week'
+                                  ? 'text-center text-[9px] text-[color:var(--muted-foreground)]'
+                                  : 'text-[10px] text-[color:var(--muted-foreground)]'
+                              }
+                            >
                               {column.shortLabel}
                             </p>
                           ) : null}
@@ -550,6 +566,13 @@ export function BugTimelineScreen() {
                   const created = await createPackage.mutateAsync({
                     payload: toPackagePayload(values),
                   })
+
+                  if (created.task_id) {
+                    handleCloseDrawer()
+                    toast.success('Package syncing with Jira')
+                    return
+                  }
+
                   handleSelectPackage(created.bug_tracker_project, created.id)
                   toast.success('Package created')
                 } catch {
@@ -568,10 +591,17 @@ export function BugTimelineScreen() {
               onSubmitUpdatePackage={async (values: PackageFormValues) => {
                 if (!selectedEntity || selectedEntity.type !== 'package') return
                 try {
-                  await updatePackage.mutateAsync({
+                  const updated = await updatePackage.mutateAsync({
                     packageId: selectedEntity.packageId,
                     payload: toPackagePayload(values),
                   })
+
+                  if (updated.task_id) {
+                    handleCloseDrawer()
+                    toast.success('Package syncing with Jira')
+                    return
+                  }
+
                   handleSelectPackage(
                     selectedEntity.projectId,
                     selectedEntity.packageId,
@@ -910,6 +940,13 @@ function PackageDetailPanel({
   return (
     <div className="p-4">
       <div ref={contentRef} className="grid gap-5">
+        {packageBar.isSyncing ? (
+          <div className="flex items-center gap-2 rounded-md border border-[color:var(--status-info)]/18 bg-[color:var(--status-info)]/6 px-3 py-2 text-sm text-[var(--muted-foreground)]">
+            <TimelineSyncStatusPill compact />
+            <span>Jira sync in progress.</span>
+          </div>
+        ) : null}
+
         <section className="grid gap-4">
           <PackageStatusSummary
             openCount={openBugCount}
@@ -920,6 +957,7 @@ function PackageDetailPanel({
             <PackageMemberStatusSummary
               issues={packageItem.issues}
               members={memberNames}
+              mode="partner"
             />
           </div>
         </section>
@@ -1023,7 +1061,10 @@ function PackageDetailPanel({
         </section>
 
         <section className="grid gap-3">
-          <PackageIssuesTable issues={packageItem.issues} />
+          <PackageIssuesTable
+            issues={packageItem.issues}
+            members={memberNames}
+          />
         </section>
       </div>
     </div>
@@ -1040,12 +1081,7 @@ function PackageBugStatisticsSection({
   statistics: PackageBugStatistic[]
 }) {
   if (isPending) {
-    return (
-      <LoadingPanel
-        title="Loading bug analysis"
-        detail="Preparing category distribution."
-      />
-    )
+    return <LoadingPanel title="Loading bug analysis" />
   }
 
   if (isError) {
@@ -1228,12 +1264,7 @@ function PackageSprintChartsSection({
   statistics: PackageSprintStatistic[]
 }) {
   if (isPending) {
-    return (
-      <LoadingPanel
-        title="Loading sprint metrics"
-        detail="Preparing velocity and reopen trends."
-      />
-    )
+    return <LoadingPanel title="Loading sprint metrics" />
   }
 
   if (isError) {
@@ -1300,6 +1331,7 @@ function SprintDefectFlowChart({ data }: { data: SprintChartDatum[] }) {
               dataKey="label"
               tickLine={false}
               axisLine={false}
+              tickFormatter={(value) => truncateChartAxisLabel(String(value))}
               tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
             />
             <YAxis
@@ -1335,9 +1367,16 @@ function SprintDefectFlowChart({ data }: { data: SprintChartDatum[] }) {
               radius={[6, 6, 0, 0]}
               maxBarSize={26}
               name="Remaining"
-            >
-              <LabelList content={<SprintNewBugMarker />} position="top" />
-            </Bar>
+            />
+            <Line
+              type="monotone"
+              dataKey="newBug"
+              stroke="#42526e"
+              strokeWidth={2}
+              dot={{ r: 2 }}
+              activeDot={{ r: 4 }}
+              name="New"
+            />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -1351,55 +1390,6 @@ function SprintDefectFlowChart({ data }: { data: SprintChartDatum[] }) {
         yLabel="Bugs"
       />
     </article>
-  )
-}
-
-function SprintNewBugMarker({
-  payload,
-  width,
-  x,
-  y,
-}: {
-  payload?: SprintChartDatum
-  width?: number
-  x?: number
-  y?: number
-}) {
-  const value = payload?.newBug ?? 0
-
-  if (!value || x === undefined || y === undefined || width === undefined) {
-    return null
-  }
-
-  const label = `+${value}`
-  const pillWidth = Math.max(28, label.length * 8 + 10)
-  const pillHeight = 18
-  const pillX = x + width / 2 - pillWidth / 2
-  const pillY = y - pillHeight - 6
-
-  return (
-    <g>
-      <rect
-        x={pillX}
-        y={pillY}
-        width={pillWidth}
-        height={pillHeight}
-        rx={9}
-        fill="#f59e0b"
-        stroke="#b45309"
-      />
-      <text
-        x={x + width / 2}
-        y={pillY + pillHeight / 2 + 0.5}
-        dominantBaseline="middle"
-        fill="#ffffff"
-        fontSize="10"
-        fontWeight="700"
-        textAnchor="middle"
-      >
-        {label}
-      </text>
-    </g>
   )
 }
 
@@ -1434,6 +1424,7 @@ function SprintVelocityChart({ data }: { data: SprintChartDatum[] }) {
               dataKey="label"
               tickLine={false}
               axisLine={false}
+              tickFormatter={(value) => truncateChartAxisLabel(String(value))}
               tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
             />
             <YAxis
@@ -1559,6 +1550,7 @@ function SprintReopenChart({ data }: { data: SprintChartDatum[] }) {
               dataKey="label"
               tickLine={false}
               axisLine={false}
+              tickFormatter={(value) => truncateChartAxisLabel(String(value))}
               tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
             />
             <YAxis
@@ -1684,12 +1676,10 @@ function ChartLegend({
 
 function SprintChartTooltip({
   active,
-  label,
   payload,
   rows,
 }: {
   active?: boolean
-  label?: string
   payload?: Array<{
     name?: string
     value?: number
@@ -1709,7 +1699,7 @@ function SprintChartTooltip({
 
   return (
     <div className="ops-bug-chart-tooltip rounded-md px-3 py-2 text-xs shadow-sm">
-      <div className="font-medium text-[var(--foreground)]">{label}</div>
+      <div className="font-medium text-[var(--foreground)]">{datum.label}</div>
       <div className="mt-2 grid gap-1.5 text-[var(--muted-foreground)]">
         {rows.map((row) => (
           <TooltipRow
@@ -1735,7 +1725,6 @@ function TooltipRow({ label, value }: { label: string; value: string }) {
 type SprintChartDatum = {
   id: number
   label: string
-  sprintNumber: number
   createdAt: number
   newBug: number
   resolvedBug: number
@@ -1755,14 +1744,14 @@ function buildSprintChartData(
   return [...statistics]
     .sort(
       (left, right) =>
-        left.sprint - right.sprint ||
+        new Date(left.sprint.start_date).getTime() -
+          new Date(right.sprint.start_date).getTime() ||
         new Date(left.created_at).getTime() -
           new Date(right.created_at).getTime(),
     )
     .map((item) => ({
       id: item.id,
-      label: `S${item.sprint}`,
-      sprintNumber: item.sprint,
+      label: item.sprint.name,
       createdAt: new Date(item.created_at).getTime(),
       newBug: item.new_bug,
       resolvedBug: item.resolved_bug,

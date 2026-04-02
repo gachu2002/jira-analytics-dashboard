@@ -43,6 +43,8 @@ export type DashboardMilestone = {
   keys: string
   labels: string
   members: string
+  task_id: string | null
+  sync_status?: string | null
 }
 
 export type DashboardIssue = TimelineIssue

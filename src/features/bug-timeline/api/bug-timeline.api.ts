@@ -9,6 +9,17 @@ import type {
   PackageSprintStatistic,
 } from '@/features/bug-timeline/types/bug-timeline.types'
 
+type BugTrackerPackageResponse = Omit<BugTrackerPackage, 'sync_status'>
+
+function mapBugTrackerPackage(
+  response: BugTrackerPackageResponse,
+): BugTrackerPackage {
+  return {
+    ...response,
+    sync_status: null,
+  }
+}
+
 export async function getBugTrackerProjects() {
   const response = await http.get<BugTrackerProject[]>(
     '/api/bug-tracker/projects/',
@@ -42,18 +53,18 @@ export async function deleteBugTrackerProject(projectId: number) {
 }
 
 export async function getAllProjectPackages() {
-  const response = await http.get<BugTrackerPackage[]>(
+  const response = await http.get<BugTrackerPackageResponse[]>(
     '/api/bug-tracker/packages/',
   )
-  return response.data
+  return response.data.map(mapBugTrackerPackage)
 }
 
 export async function createProjectPackage(payload: BugTrackerPackagePayload) {
-  const response = await http.post<BugTrackerPackage>(
+  const response = await http.post<BugTrackerPackageResponse>(
     '/api/bug-tracker/packages/',
     payload,
   )
-  return response.data
+  return mapBugTrackerPackage(response.data)
 }
 
 export async function getPackageBugStatistics(packageId: number) {
@@ -74,11 +85,11 @@ export async function updateProjectPackage(
   packageId: number,
   payload: Partial<BugTrackerPackagePayload>,
 ) {
-  const response = await http.patch<BugTrackerPackage>(
+  const response = await http.patch<BugTrackerPackageResponse>(
     `/api/bug-tracker/packages/${packageId}/`,
     payload,
   )
-  return response.data
+  return mapBugTrackerPackage(response.data)
 }
 
 export async function deleteProjectPackage(packageId: number) {

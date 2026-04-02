@@ -67,6 +67,7 @@ import {
   TimelineFormActions as FormActions,
   TimelineIssuesTable as MilestoneIssuesTable,
   TimelineMemberStatusSummary as MilestoneMemberStatusSummary,
+  TimelineSyncStatusPill,
   TimelineStatusSummary as MilestoneStatusSummary,
   TimelineTodayMarker as TodayMarker,
 } from '@/features/timeline-workspace/components/timeline-shared'
@@ -82,10 +83,11 @@ import {
   formatDateLabel,
   getExportBackgroundColor,
   getGridStyle,
-  getTimelineColumnWidthRem,
+  getTimelineTrackWidthRem,
   getTodayOffsetPercent,
   parseCommaList,
   toInputDate,
+  truncateChartAxisLabel,
 } from '@/features/timeline-workspace/utils/timeline-workspace.utils'
 import {
   formatTimelineItemInspectorTitle,
@@ -166,7 +168,10 @@ export function MilestoneScreen() {
     [effectiveFromDate, effectiveToDate, viewModel, zoom],
   )
 
-  const timelineMinWidth = `${Math.max(filteredViewModel.weekColumns.length * getTimelineColumnWidthRem(zoom), 44)}rem`
+  const timelineMinWidth = `${getTimelineTrackWidthRem(
+    zoom,
+    filteredViewModel.weekColumns.length,
+  )}rem`
   const todayOffset = getTodayOffsetPercent(filteredViewModel.weekColumns)
   const selectedProjectId =
     selectedEntity?.type === 'package'
@@ -381,14 +386,26 @@ export function MilestoneScreen() {
                       {filteredViewModel.weekColumns.map((column, index) => (
                         <div
                           key={column.key}
-                          className="ops-gantt-week-cell ops-gantt-column px-2 py-2"
+                          className={`ops-gantt-week-cell ops-gantt-column ${zoom === 'week' ? 'px-0.5 py-1.5' : 'px-2 py-2'}`}
                           style={{ borderLeftWidth: index === 0 ? 0 : 1 }}
                         >
-                          <p className="text-[11px] font-semibold tracking-[-0.01em]">
+                          <p
+                            className={
+                              zoom === 'week'
+                                ? 'text-center text-[10px] font-semibold tracking-[-0.02em]'
+                                : 'text-[11px] font-semibold tracking-[-0.01em]'
+                            }
+                          >
                             {column.label}
                           </p>
                           {column.shortLabel ? (
-                            <p className="text-[10px] text-[color:var(--muted-foreground)]">
+                            <p
+                              className={
+                                zoom === 'week'
+                                  ? 'text-center text-[9px] text-[color:var(--muted-foreground)]'
+                                  : 'text-[10px] text-[color:var(--muted-foreground)]'
+                              }
+                            >
                               {column.shortLabel}
                             </p>
                           ) : null}
@@ -536,6 +553,13 @@ export function MilestoneScreen() {
                   const created = await createPackage.mutateAsync({
                     payload: toMilestonePayload(values),
                   })
+
+                  if (created.task_id) {
+                    handleCloseDrawer()
+                    toast.success('Milestone syncing with Jira')
+                    return
+                  }
+
                   handleSelectMilestone(created.bug_tracker_project, created.id)
                   toast.success('Milestone created')
                 } catch {
@@ -556,10 +580,17 @@ export function MilestoneScreen() {
               onSubmitUpdateMilestone={async (values: MilestoneFormValues) => {
                 if (!selectedEntity || selectedEntity.type !== 'package') return
                 try {
-                  await updatePackage.mutateAsync({
+                  const updated = await updatePackage.mutateAsync({
                     packageId: selectedEntity.packageId,
                     payload: toMilestonePayload(values),
                   })
+
+                  if (updated.task_id) {
+                    handleCloseDrawer()
+                    toast.success('Milestone syncing with Jira')
+                    return
+                  }
+
                   handleSelectMilestone(
                     selectedEntity.projectId,
                     selectedEntity.packageId,
@@ -931,6 +962,13 @@ function MilestoneDetailPanel({
   return (
     <div className="p-4">
       <div ref={contentRef} className="grid gap-5">
+        {packageBar.isSyncing ? (
+          <div className="flex items-center gap-2 rounded-md border border-[color:var(--status-info)]/18 bg-[color:var(--status-info)]/6 px-3 py-2 text-sm text-[var(--muted-foreground)]">
+            <TimelineSyncStatusPill compact />
+            <span>Jira sync in progress.</span>
+          </div>
+        ) : null}
+
         <section className="grid gap-4">
           <MilestoneStatusSummary
             openCount={openBugCount}
@@ -943,23 +981,12 @@ function MilestoneDetailPanel({
             <MilestoneMemberStatusSummary
               issues={packageItem.issues}
               members={memberNames}
+              mode="assignee"
             />
           </div>
         </section>
 
         <section className="grid gap-3">
-          <div className="grid gap-3 xl:grid-cols-2">
-            <Field label="Description">
-              <div className="ops-bug-view-field min-h-24 rounded-md px-3 py-2.5 text-sm whitespace-pre-wrap">
-                {packageItem.description || '-'}
-              </div>
-            </Field>
-            <Field label="JQL">
-              <div className="ops-bug-view-field min-h-24 rounded-md px-3 py-2.5 font-mono text-xs whitespace-pre-wrap">
-                {packageItem.jql || '-'}
-              </div>
-            </Field>
-          </div>
           <MilestoneSprintDeliverySection
             isError={sprintStatisticsQuery.isError}
             isPending={sprintStatisticsQuery.isPending}
@@ -968,7 +995,10 @@ function MilestoneDetailPanel({
         </section>
 
         <section className="grid gap-3">
-          <MilestoneIssuesTable issues={packageItem.issues} />
+          <MilestoneIssuesTable
+            issues={packageItem.issues}
+            members={memberNames}
+          />
         </section>
       </div>
     </div>
@@ -985,13 +1015,7 @@ function MilestoneSprintDeliverySection({
   statistics: DashboardMilestoneSprintStatistic[]
 }) {
   if (isPending) {
-    return (
-      <LoadingPanel
-        title="Loading sprint delivery"
-        detail="Fetching completed and scoped points by sprint."
-        lines={4}
-      />
-    )
+    return <LoadingPanel title="Loading sprint delivery" lines={4} />
   }
 
   if (isError) {
@@ -1055,6 +1079,7 @@ function MilestoneSprintDeliverySection({
               dataKey="label"
               tickLine={false}
               axisLine={false}
+              tickFormatter={(value) => truncateChartAxisLabel(String(value))}
               tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
             />
             <YAxis
@@ -1067,12 +1092,8 @@ function MilestoneSprintDeliverySection({
               cursor={{
                 fill: 'color-mix(in srgb, var(--primary) 6%, transparent)',
               }}
-              content={({ active, payload, label }) => (
-                <MilestoneSprintTooltip
-                  active={active}
-                  label={String(label ?? '')}
-                  payload={payload}
-                />
+              content={({ active, payload }) => (
+                <MilestoneSprintTooltip active={active} payload={payload} />
               )}
             />
             <Bar
@@ -1111,13 +1132,12 @@ function MilestoneSprintDeliverySection({
 
 function MilestoneSprintTooltip({
   active,
-  label,
   payload,
 }: {
   active?: boolean
-  label: string
   payload?: ReadonlyArray<{
     payload?: {
+      label: string
       completedPoint: number
       scopePoint: number
       startDate: string
@@ -1131,7 +1151,7 @@ function MilestoneSprintTooltip({
 
   return (
     <div className="rounded-lg border border-[color:var(--border)] bg-[var(--workspace-pane)] px-3 py-2 text-xs shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
-      <p className="font-semibold text-[var(--foreground)]">{label}</p>
+      <p className="font-semibold text-[var(--foreground)]">{datum.label}</p>
       <div className="mt-2 grid gap-1.5">
         <TooltipMetricRow
           label="Completed"
@@ -1172,7 +1192,9 @@ function buildMilestoneSprintChartData(
     .sort(
       (left, right) =>
         new Date(left.sprint.start_date).getTime() -
-        new Date(right.sprint.start_date).getTime(),
+          new Date(right.sprint.start_date).getTime() ||
+        new Date(left.created_at).getTime() -
+          new Date(right.created_at).getTime(),
     )
     .map((item) => ({
       id: item.id,

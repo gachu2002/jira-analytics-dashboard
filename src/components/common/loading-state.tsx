@@ -10,37 +10,13 @@ type LoadingPanelProps = {
 }
 
 export function AppLoadingScreen({
-  title = 'Opening workspace',
-  detail = 'Loading routes and shared context.',
+  title = 'Loading workspace',
+  detail,
 }: LoadingScreenProps) {
   return (
-    <main className="ops-shell bg-background text-foreground flex min-h-screen items-center justify-center px-4">
-      <div className="ops-loading-screen ops-panel-strong w-full max-w-lg rounded-[28px] p-6 sm:p-8">
-        <div className="ops-loading-stage flex items-center gap-4">
-          <div className="ops-loading-core">
-            <span className="ops-loading-core-ring" />
-            <span className="ops-loading-core-dot" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="ops-kicker">Loading</p>
-            <h1 className="mt-2 text-xl font-semibold tracking-[-0.03em]">
-              {title}
-            </h1>
-            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-              {detail}
-            </p>
-          </div>
-        </div>
-        <div className="mt-6 grid gap-3">
-          <LoadingLine width="72%" />
-          <LoadingLine width="96%" />
-          <LoadingLine width="84%" />
-        </div>
-        <div className="mt-5 grid grid-cols-3 gap-3">
-          <LoadingTile />
-          <LoadingTile />
-          <LoadingTile />
-        </div>
+    <main className="ops-shell flex min-h-screen items-center justify-center bg-[var(--workspace-bg)] px-6 text-[var(--foreground)]">
+      <div className="ops-loading-panel w-full max-w-sm rounded-lg px-8 py-10">
+        <LoadingContent title={title} detail={detail} />
       </div>
     </main>
   )
@@ -52,90 +28,63 @@ export function LoadingPanel({
   lines = 3,
 }: LoadingPanelProps) {
   return (
-    <div className="ops-loading-panel rounded-xl p-4">
-      <div className="flex items-center gap-3">
-        <div className="ops-loading-dot" />
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold tracking-[-0.02em] text-[var(--foreground)]">
-            {title}
-          </div>
-          {detail ? (
-            <div className="mt-1 text-xs text-[var(--muted-foreground)]">
-              {detail}
-            </div>
-          ) : null}
-        </div>
+    <section
+      className="ops-loading-panel rounded-lg p-4"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <div
+        className="flex items-center justify-center"
+        style={{ minHeight: `${Math.max(lines, 3) * 1.75 + 7}rem` }}
+      >
+        <LoadingContent title={title} detail={detail} compact />
       </div>
-      <div className="mt-4 grid gap-2.5">
-        {Array.from({ length: lines }).map((_, index) => (
-          <LoadingLine
-            key={index}
-            width={
-              index === lines - 1 ? '68%' : index % 2 === 0 ? '94%' : '82%'
-            }
-          />
-        ))}
-      </div>
-    </div>
+    </section>
   )
 }
 
-export function TimelineWorkspaceLoading() {
+export function TimelineWorkspaceLoading({
+  title = 'Loading timeline',
+  detail,
+}: LoadingScreenProps) {
   return (
     <div className="flex flex-1 px-4 py-4 lg:px-5">
-      <div className="grid min-h-[32rem] w-full grid-cols-[18rem_minmax(0,1fr)] overflow-hidden rounded-xl border border-[color:var(--border)]/80 bg-[color:var(--workspace-pane)] shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]">
-        <div className="border-r border-[color:var(--border)]/75 bg-[color:var(--workspace-pane-muted)] p-4">
-          <div className="grid gap-3">
-            <LoadingLine width="40%" />
-            <LoadingLine width="90%" />
-            <LoadingLine width="74%" />
-          </div>
-          <div className="mt-5 grid gap-2.5">
-            {Array.from({ length: 7 }).map((_, index) => (
-              <div key={index} className="ops-loading-row rounded-lg px-3 py-3">
-                <LoadingLine width={index % 2 === 0 ? '72%' : '58%'} />
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="p-4">
-          <div className="grid gap-3">
-            <div className="grid grid-cols-4 gap-3">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <LoadingTile key={index} />
-              ))}
-            </div>
-            <div className="ops-loading-grid rounded-xl p-4">
-              <div className="grid grid-cols-6 gap-2">
-                {Array.from({ length: 18 }).map((_, index) => (
-                  <span
-                    key={index}
-                    className="ops-loading-cell h-8 rounded-md"
-                    style={{ animationDelay: `${index * 40}ms` }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="ops-loading-panel flex min-h-[28rem] w-full items-center justify-center rounded-lg px-6 py-10">
+        <LoadingContent title={title} detail={detail} />
       </div>
     </div>
   )
 }
 
-function LoadingTile() {
+function LoadingContent({
+  title,
+  detail,
+  compact = false,
+}: LoadingScreenProps & {
+  compact?: boolean
+}) {
   return (
-    <div className="ops-loading-tile rounded-xl p-3">
-      <LoadingLine width="44%" />
-      <div className="mt-3">
-        <LoadingLine width="78%" />
-      </div>
+    <div
+      className="flex flex-col items-center text-center"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <span
+        aria-hidden="true"
+        className={`ops-loading-spinner ${compact ? 'size-7' : 'size-9'}`}
+      />
+      <p
+        className={`mt-4 font-medium tracking-[-0.01em] text-[var(--foreground)] ${compact ? 'text-sm' : 'text-base'}`}
+      >
+        {title}
+      </p>
+      {detail ? (
+        <p className="mt-1 max-w-[20rem] text-xs leading-5 text-[var(--muted-foreground)]">
+          {detail}
+        </p>
+      ) : null}
     </div>
-  )
-}
-
-function LoadingLine({ width }: { width: string }) {
-  return (
-    <div className="ops-loading-line h-2.5 rounded-full" style={{ width }} />
   )
 }

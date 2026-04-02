@@ -4,6 +4,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppLoadingScreen } from '@/components/common/loading-state'
 import { useAuthStore } from '@/features/auth'
 import { AppLayout } from '@/layouts/app-layout'
+import { BugPage } from '@/pages/bug-page'
+import { MilestonePage } from '@/pages/milestone-page'
 
 const LoginPage = lazy(() =>
   import('@/pages/login-page').then((module) => ({
@@ -14,16 +16,6 @@ const LoginPage = lazy(() =>
 const ThemePreviewPage = lazy(() =>
   import('@/pages/theme-preview-page').then((module) => ({
     default: module.ThemePreviewPage,
-  })),
-)
-
-const BugPage = lazy(() =>
-  import('@/pages/bug-page').then((module) => ({ default: module.BugPage })),
-)
-
-const MilestonePage = lazy(() =>
-  import('@/pages/milestone-page').then((module) => ({
-    default: module.MilestonePage,
   })),
 )
 

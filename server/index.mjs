@@ -8,6 +8,7 @@ let projectIdCounter = 4
 let packageIdCounter = 12
 let dashboardProjectIdCounter = 4
 let dashboardMilestoneIdCounter = 7
+const syncJobs = new Map()
 
 const bugCategories = [
   'FPT.BUG.LACK_TEST',
@@ -45,7 +46,12 @@ function isDoneStatus(status) {
   const normalized = String(status || '')
     .trim()
     .toLowerCase()
-  return normalized === 'closed' || normalized === 'resolved'
+  return (
+    normalized === 'closed' ||
+    normalized === 'resolved' ||
+    normalized === 'verify' ||
+    normalized === 'verified'
+  )
 }
 
 function buildBugStatistics(packageId, counts) {
@@ -65,6 +71,12 @@ function buildBugStatistics(packageId, counts) {
 function buildSprintStatistics(packageId, sprints) {
   return sprints.map((item, index) => ({
     id: packageId * 1000 + index + 1,
+    sprint: {
+      id: packageId * 100 + index + 1,
+      name: item.name,
+      start_date: item.start_date,
+      end_date: item.end_date,
+    },
     resolved_bug: item.resolved_bug,
     total_bug: item.total_bug,
     new_bug: item.new_bug,
@@ -76,7 +88,6 @@ function buildSprintStatistics(packageId, sprints) {
     created_at: item.created_at,
     active: item.active ?? false,
     package: packageId,
-    sprint: item.sprint ?? index + 1,
   }))
 }
 
@@ -109,7 +120,7 @@ const packages = [
     name: 'Authentication hardening',
     keys: 'ATL-104, ATL-111, ATL-118, ATL-126, ATL-129',
     labels: 'auth, blocker',
-    members: 'Mai, Ben',
+    members: 'lethanhnguyen, nguyenvannam',
     start_date: '2026-03-05',
     end_date: '2026-04-03',
     resolved_bug: 18,
@@ -118,31 +129,31 @@ const packages = [
       buildIssue(
         'ATL-104',
         'Session refresh fails after long idle state.',
-        'Mai',
+        'nguyenlt lethanhnguyen',
         'Closed',
       ),
       buildIssue(
         'ATL-111',
         'MFA prompt overlaps settings drawer.',
-        'Ben',
+        'namlt nguyenvannam',
         'Resolved',
       ),
       buildIssue(
         'ATL-118',
         'Password reset email token expires too early.',
-        'Mai',
+        'nguyenlt lethanhnguyen',
         'Closed',
       ),
       buildIssue(
         'ATL-126',
         'Remember-device state is lost after token rotation.',
-        'Ben',
+        'namlt nguyenvannam',
         'In Progress',
       ),
       buildIssue(
         'ATL-129',
         'SAML logout leaves an orphaned admin session.',
-        'Mai',
+        'nguyenlt lethanhnguyen',
         'Open',
       ),
     ],
@@ -153,7 +164,7 @@ const packages = [
     name: 'Search stability',
     keys: 'ATL-132, ATL-136, ATL-141, ATL-147, ATL-149',
     labels: 'search, regression',
-    members: 'Linh, Huy',
+    members: 'tranlinh, huypham',
     start_date: '2026-04-02',
     end_date: '2026-05-04',
     resolved_bug: 11,
@@ -162,31 +173,31 @@ const packages = [
       buildIssue(
         'ATL-132',
         'Search query stalls on repeated filter changes.',
-        'Linh',
+        'linhtt tranlinh',
         'Open',
       ),
       buildIssue(
         'ATL-136',
         'Query cache mismatch after project switch.',
-        'Huy',
+        'huynt huypham',
         'In Progress',
       ),
       buildIssue(
         'ATL-141',
         'Stale count shown in bug grid summary.',
-        'Linh',
-        'Resolved',
+        'linhtt tranlinh',
+        'Verify',
       ),
       buildIssue(
         'ATL-147',
         'Saved search opens with an outdated project scope.',
-        'Huy',
+        'huynt huypham',
         'Open',
       ),
       buildIssue(
         'ATL-149',
         'Sort order resets after browser back navigation.',
-        'Linh',
+        'linhtt tranlinh',
         'In Progress',
       ),
     ],
@@ -197,7 +208,7 @@ const packages = [
     name: 'Audit trail fixes',
     keys: 'CON-21, CON-31, CON-34, CON-36',
     labels: 'audit, compliance',
-    members: 'Quang, Amy',
+    members: 'quangpham, amyle',
     start_date: '2026-03-12',
     end_date: '2026-04-18',
     resolved_bug: 8,
@@ -206,25 +217,25 @@ const packages = [
       buildIssue(
         'CON-21',
         'Audit trail omits impersonation action.',
-        'Quang',
+        'quangnt quangpham',
         'Closed',
       ),
       buildIssue(
         'CON-31',
         'Compliance export misses timezone details.',
-        'Amy',
+        'amynd amyle',
         'Resolved',
       ),
       buildIssue(
         'CON-34',
         'Deleted role assignments are missing from audit diffs.',
-        'Quang',
-        'Closed',
+        'quangnt quangpham',
+        'Verify',
       ),
       buildIssue(
         'CON-36',
         'Reviewer note changes are not captured in export history.',
-        'Amy',
+        'amynd amyle',
         'Open',
       ),
     ],
@@ -235,7 +246,7 @@ const packages = [
     name: 'Dashboard query tuning',
     keys: 'CON-55, CON-61, CON-74, CON-77, CON-82',
     labels: 'performance, query',
-    members: 'Khanh, Zoe',
+    members: 'khanhtran, zoenguyen',
     start_date: '2026-04-10',
     end_date: '2026-05-22',
     resolved_bug: 14,
@@ -244,31 +255,31 @@ const packages = [
       buildIssue(
         'CON-55',
         'Slow dashboard load on large account scope.',
-        'Khanh',
+        'khanhlt khanhtran',
         'In Progress',
       ),
       buildIssue(
         'CON-61',
         'Duplicate query request on tab restore.',
-        'Zoe',
+        'zoelt zoenguyen',
         'Closed',
       ),
       buildIssue(
         'CON-74',
         'Widget totals drift after live refresh.',
-        'Khanh',
+        'khanhlt khanhtran',
         'Open',
       ),
       buildIssue(
         'CON-77',
         'Dashboard export uses stale aggregate results.',
-        'Zoe',
+        'zoelt zoenguyen',
         'Resolved',
       ),
       buildIssue(
         'CON-82',
         'Drilldown query times out for accounts over 50k issues.',
-        'Khanh',
+        'khanhlt khanhtran',
         'Open',
       ),
     ],
@@ -279,7 +290,7 @@ const packages = [
     name: 'Push notification reliability',
     keys: 'MOB-13, MOB-18, MOB-21, MOB-27',
     labels: 'notification, ios, android',
-    members: 'Trang, Omar',
+    members: 'trangpham, omarali',
     start_date: '2026-03-01',
     end_date: '2026-03-29',
     resolved_bug: 7,
@@ -288,25 +299,25 @@ const packages = [
       buildIssue(
         'MOB-13',
         'Push token invalid after OS upgrade.',
-        'Trang',
+        'trangnt trangpham',
         'Closed',
       ),
       buildIssue(
         'MOB-18',
         'Android notifications delayed in background.',
-        'Omar',
+        'omarlh omarali',
         'Resolved',
       ),
       buildIssue(
         'MOB-21',
         'Notification permission prompt does not reappear after denial.',
-        'Trang',
+        'trangnt trangpham',
         'In Progress',
       ),
       buildIssue(
         'MOB-27',
         'Deep link payload is truncated on low-connectivity retry.',
-        'Omar',
+        'omarlh omarali',
         'Open',
       ),
     ],
@@ -317,7 +328,7 @@ const packages = [
     name: 'Crash analytics triage',
     keys: 'MOB-42, MOB-44, MOB-45, MOB-47, MOB-51',
     labels: 'crash, release',
-    members: 'Trang, Deepa',
+    members: 'trangpham, deepa',
     start_date: '2026-04-01',
     end_date: '2026-05-11',
     resolved_bug: 16,
@@ -326,31 +337,31 @@ const packages = [
       buildIssue(
         'MOB-42',
         'Crash dashboard groups iOS stack traces incorrectly.',
-        'Trang',
+        'trangnt trangpham',
         'Closed',
       ),
       buildIssue(
         'MOB-44',
         'Release alert does not include build number.',
-        'Deepa',
+        'deepapk deepa',
         'Closed',
       ),
       buildIssue(
         'MOB-45',
         'Crash bucket label mismatches store release.',
-        'Trang',
+        'trangnt trangpham',
         'Open',
       ),
       buildIssue(
         'MOB-47',
         'ANR reports are duplicated after app relaunch.',
-        'Deepa',
+        'deepapk deepa',
         'In Progress',
       ),
       buildIssue(
         'MOB-51',
         'Crash-free session metric drops after timezone rollover.',
-        'Trang',
+        'trangnt trangpham',
         'Resolved',
       ),
     ],
@@ -359,6 +370,7 @@ const packages = [
 ]
 
 for (const packageItem of packages) {
+  packageItem.task_id = null
   packageItem.total_bug = packageItem.issues.length
   packageItem.resolved_bug = packageItem.issues.filter((issue) =>
     isDoneStatus(issue.status),
@@ -377,7 +389,9 @@ const packageBugStatistics = {
 const packageSprintStatistics = {
   1: buildSprintStatistics(1, [
     {
-      sprint: 31,
+      name: 'Authentication Sprint 31',
+      start_date: '2026-02-09',
+      end_date: '2026-02-22',
       resolved_bug: 0,
       total_bug: 1,
       new_bug: 1,
@@ -389,7 +403,9 @@ const packageSprintStatistics = {
       created_at: '2026-02-12T09:00:00.000Z',
     },
     {
-      sprint: 32,
+      name: 'Authentication Sprint 32',
+      start_date: '2026-02-23',
+      end_date: '2026-03-08',
       resolved_bug: 1,
       total_bug: 3,
       new_bug: 2,
@@ -401,7 +417,9 @@ const packageSprintStatistics = {
       created_at: '2026-02-26T09:00:00.000Z',
     },
     {
-      sprint: 33,
+      name: 'Authentication Sprint 33',
+      start_date: '2026-03-09',
+      end_date: '2026-03-22',
       resolved_bug: 2,
       total_bug: 5,
       new_bug: 2,
@@ -413,7 +431,9 @@ const packageSprintStatistics = {
       created_at: '2026-03-12T09:00:00.000Z',
     },
     {
-      sprint: 34,
+      name: 'Authentication Sprint 34',
+      start_date: '2026-03-23',
+      end_date: '2026-04-05',
       resolved_bug: 3,
       total_bug: 5,
       new_bug: 0,
@@ -428,7 +448,9 @@ const packageSprintStatistics = {
   ]),
   2: buildSprintStatistics(2, [
     {
-      sprint: 35,
+      name: 'Search Stabilization Sprint 35',
+      start_date: '2026-03-16',
+      end_date: '2026-03-29',
       resolved_bug: 0,
       total_bug: 1,
       new_bug: 1,
@@ -440,7 +462,9 @@ const packageSprintStatistics = {
       created_at: '2026-03-20T09:00:00.000Z',
     },
     {
-      sprint: 36,
+      name: 'Search Stabilization Sprint 36',
+      start_date: '2026-03-30',
+      end_date: '2026-04-12',
       resolved_bug: 0,
       total_bug: 3,
       new_bug: 2,
@@ -452,7 +476,9 @@ const packageSprintStatistics = {
       created_at: '2026-04-03T09:00:00.000Z',
     },
     {
-      sprint: 37,
+      name: 'Search Stabilization Sprint 37',
+      start_date: '2026-04-13',
+      end_date: '2026-04-26',
       resolved_bug: 1,
       total_bug: 4,
       new_bug: 1,
@@ -464,7 +490,9 @@ const packageSprintStatistics = {
       created_at: '2026-04-17T09:00:00.000Z',
     },
     {
-      sprint: 38,
+      name: 'Search Stabilization Sprint 38',
+      start_date: '2026-04-27',
+      end_date: '2026-05-10',
       resolved_bug: 1,
       total_bug: 5,
       new_bug: 1,
@@ -479,7 +507,9 @@ const packageSprintStatistics = {
   ]),
   3: buildSprintStatistics(3, [
     {
-      sprint: 31,
+      name: 'Audit Trail Sprint 31',
+      start_date: '2026-03-02',
+      end_date: '2026-03-15',
       resolved_bug: 1,
       total_bug: 1,
       new_bug: 1,
@@ -491,7 +521,9 @@ const packageSprintStatistics = {
       created_at: '2026-03-05T09:00:00.000Z',
     },
     {
-      sprint: 32,
+      name: 'Audit Trail Sprint 32',
+      start_date: '2026-03-16',
+      end_date: '2026-03-29',
       resolved_bug: 2,
       total_bug: 2,
       new_bug: 1,
@@ -503,7 +535,9 @@ const packageSprintStatistics = {
       created_at: '2026-03-19T09:00:00.000Z',
     },
     {
-      sprint: 33,
+      name: 'Audit Trail Sprint 33',
+      start_date: '2026-03-30',
+      end_date: '2026-04-12',
       resolved_bug: 3,
       total_bug: 4,
       new_bug: 2,
@@ -518,7 +552,9 @@ const packageSprintStatistics = {
   ]),
   4: buildSprintStatistics(4, [
     {
-      sprint: 36,
+      name: 'Dashboard Performance Sprint 36',
+      start_date: '2026-04-06',
+      end_date: '2026-04-19',
       resolved_bug: 0,
       total_bug: 1,
       new_bug: 1,
@@ -530,7 +566,9 @@ const packageSprintStatistics = {
       created_at: '2026-04-10T09:00:00.000Z',
     },
     {
-      sprint: 37,
+      name: 'Dashboard Performance Sprint 37',
+      start_date: '2026-04-20',
+      end_date: '2026-05-03',
       resolved_bug: 1,
       total_bug: 3,
       new_bug: 2,
@@ -542,7 +580,9 @@ const packageSprintStatistics = {
       created_at: '2026-04-24T09:00:00.000Z',
     },
     {
-      sprint: 38,
+      name: 'Dashboard Performance Sprint 38',
+      start_date: '2026-05-04',
+      end_date: '2026-05-17',
       resolved_bug: 1,
       total_bug: 5,
       new_bug: 2,
@@ -554,7 +594,9 @@ const packageSprintStatistics = {
       created_at: '2026-05-08T09:00:00.000Z',
     },
     {
-      sprint: 39,
+      name: 'Dashboard Performance Sprint 39',
+      start_date: '2026-05-18',
+      end_date: '2026-05-31',
       resolved_bug: 2,
       total_bug: 5,
       new_bug: 0,
@@ -569,7 +611,9 @@ const packageSprintStatistics = {
   ]),
   5: buildSprintStatistics(5, [
     {
-      sprint: 29,
+      name: 'Mobile Notification Sprint 29',
+      start_date: '2026-03-02',
+      end_date: '2026-03-15',
       resolved_bug: 0,
       total_bug: 1,
       new_bug: 1,
@@ -581,7 +625,9 @@ const packageSprintStatistics = {
       created_at: '2026-03-01T09:00:00.000Z',
     },
     {
-      sprint: 30,
+      name: 'Mobile Notification Sprint 30',
+      start_date: '2026-03-16',
+      end_date: '2026-03-29',
       resolved_bug: 1,
       total_bug: 2,
       new_bug: 1,
@@ -593,7 +639,9 @@ const packageSprintStatistics = {
       created_at: '2026-03-15T09:00:00.000Z',
     },
     {
-      sprint: 31,
+      name: 'Mobile Notification Sprint 31',
+      start_date: '2026-03-30',
+      end_date: '2026-04-12',
       resolved_bug: 1,
       total_bug: 4,
       new_bug: 2,
@@ -605,7 +653,9 @@ const packageSprintStatistics = {
       created_at: '2026-03-29T09:00:00.000Z',
     },
     {
-      sprint: 32,
+      name: 'Mobile Notification Sprint 32',
+      start_date: '2026-04-13',
+      end_date: '2026-04-26',
       resolved_bug: 2,
       total_bug: 4,
       new_bug: 0,
@@ -620,7 +670,9 @@ const packageSprintStatistics = {
   ]),
   6: buildSprintStatistics(6, [
     {
-      sprint: 35,
+      name: 'Crash Analytics Sprint 35',
+      start_date: '2026-03-30',
+      end_date: '2026-04-12',
       resolved_bug: 1,
       total_bug: 2,
       new_bug: 2,
@@ -632,7 +684,9 @@ const packageSprintStatistics = {
       created_at: '2026-04-02T09:00:00.000Z',
     },
     {
-      sprint: 36,
+      name: 'Crash Analytics Sprint 36',
+      start_date: '2026-04-13',
+      end_date: '2026-04-26',
       resolved_bug: 2,
       total_bug: 3,
       new_bug: 1,
@@ -644,7 +698,9 @@ const packageSprintStatistics = {
       created_at: '2026-04-16T09:00:00.000Z',
     },
     {
-      sprint: 37,
+      name: 'Crash Analytics Sprint 37',
+      start_date: '2026-04-27',
+      end_date: '2026-05-10',
       resolved_bug: 2,
       total_bug: 5,
       new_bug: 2,
@@ -656,7 +712,9 @@ const packageSprintStatistics = {
       created_at: '2026-04-30T09:00:00.000Z',
     },
     {
-      sprint: 38,
+      name: 'Crash Analytics Sprint 38',
+      start_date: '2026-05-11',
+      end_date: '2026-05-24',
       resolved_bug: 3,
       total_bug: 5,
       new_bug: 0,
@@ -677,7 +735,7 @@ const dashboardProjects = [
     name: 'Atlas Cloud',
     keys: 'ATL, AUTH',
     description: 'Authentication, search, and release readiness workstreams.',
-    members: 'Mai, Ben, Linh, Huy',
+    members: 'lethanhnguyen, nguyenvannam, tranlinh, huypham',
     labels: 'cloud, auth, release',
     pm: 101,
     pl: 201,
@@ -687,7 +745,7 @@ const dashboardProjects = [
     name: 'Console Platform',
     keys: 'CON, OPS',
     description: 'Console reliability, audit, and reporting delivery track.',
-    members: 'Quang, Amy, Khanh, Zoe',
+    members: 'quangpham, amyle, khanhtran, zoenguyen',
     labels: 'console, compliance, reporting',
     pm: 102,
     pl: 202,
@@ -697,7 +755,7 @@ const dashboardProjects = [
     name: 'Mobile Release Train',
     keys: 'MOB, REL',
     description: 'Mobile push and store-release milestone schedule.',
-    members: 'Trang, Omar, Nia',
+    members: 'trangpham, omarali, deepa',
     labels: 'mobile, release, notifications',
     pm: 103,
     pl: 203,
@@ -778,6 +836,14 @@ const dashboardMilestones = [
     project: 3,
   },
 ]
+
+for (const milestone of dashboardMilestones) {
+  milestone.task_id = null
+  milestone.total_ticket = milestone.issues.length
+  milestone.closed_ticket = milestone.issues.filter((issue) =>
+    isDoneStatus(issue.status),
+  ).length
+}
 
 const dashboardMilestoneSprintStatistics = {
   1: buildDashboardMilestoneSprintStatistics(1, [
@@ -952,6 +1018,23 @@ function createToken(prefix, seed) {
     .digest('hex')
 
   return `${prefix}_${digest}`
+}
+
+function createSyncTask(taskType) {
+  const taskId = createToken(taskType, randomUUID())
+
+  syncJobs.set(taskId, {
+    readyAt: Date.now() + 5000,
+  })
+
+  return taskId
+}
+
+function getSyncTaskStatus(taskId) {
+  const job = syncJobs.get(taskId)
+  if (!job) return null
+
+  return Date.now() >= job.readyAt ? 'done' : 'syncing'
 }
 
 function readJsonBody(request) {
@@ -1142,6 +1225,21 @@ const server = createServer(async (request, response) => {
     }
   }
 
+  const jobStatusMatch = path.match(/^\/api\/job\/status\/([^/]+)\/$/)
+
+  if (jobStatusMatch && request.method === 'GET') {
+    const taskId = jobStatusMatch[1]
+    const status = getSyncTaskStatus(taskId)
+
+    if (!status) {
+      sendJson(response, 404, { detail: 'Task not found.' })
+      return
+    }
+
+    sendJson(response, 200, { status })
+    return
+  }
+
   if (path === '/api/dashboard/projects/' && request.method === 'GET') {
     sendJson(response, 200, dashboardProjects)
     return
@@ -1267,6 +1365,7 @@ const server = createServer(async (request, response) => {
         total_ticket: 0,
         jql: '',
         issues: [],
+        task_id: createSyncTask('milestone-sync'),
       }
 
       dashboardMilestones.push(milestone)
@@ -1337,6 +1436,7 @@ const server = createServer(async (request, response) => {
         }
 
         Object.assign(milestone, nextMilestone)
+        milestone.task_id = createSyncTask('milestone-sync')
         sendJson(response, 200, milestone)
         return
       } catch {
@@ -1474,6 +1574,7 @@ const server = createServer(async (request, response) => {
         resolved_bug: 0,
         total_bug: 0,
         issues: [],
+        task_id: createSyncTask('package-sync'),
       }
 
       packages.push(packageRecord)
@@ -1567,6 +1668,7 @@ const server = createServer(async (request, response) => {
         }
 
         Object.assign(packageRecord, nextPackage)
+        packageRecord.task_id = createSyncTask('package-sync')
         sendJson(response, 200, packageRecord)
         return
       } catch {

@@ -24,12 +24,16 @@ export function TimelineDrawerShell({
   if (!isOpen) return null
 
   return (
-    <div className="ops-side-drawer-backdrop fixed inset-0 z-40 flex justify-end">
+    <div
+      className="ops-side-drawer-backdrop fixed inset-0 z-40 flex justify-end"
+      onClick={onClose}
+    >
       <div
         className={cn(
           'ops-side-drawer-panel flex h-full w-full flex-col',
           isWide ? 'max-w-[min(72rem,calc(100vw-2rem))]' : 'max-w-[28rem]',
         )}
+        onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between border-b border-[color:var(--border)] px-4 py-4">
           <div>

@@ -8,22 +8,29 @@ import { cn } from '@/lib/utils'
 function TimelineRowActionButton({
   children,
   className,
+  disabled = false,
   label,
   onClick,
 }: {
   children: ReactNode
   className?: string
+  disabled?: boolean
   label: string
   onClick: () => void
 }) {
   return (
     <Button
+      disabled={disabled}
       size="icon-xs"
       variant="ghost"
-      className={cn('text-muted-foreground hover:text-foreground', className)}
+      className={cn(
+        'text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40',
+        className,
+      )}
       title={label}
       onClick={(event) => {
         event.stopPropagation()
+        if (disabled) return
         onClick()
       }}
     >
@@ -33,11 +40,13 @@ function TimelineRowActionButton({
 }
 
 export function TimelineRowMenu({
+  disabled = false,
   isOpen,
   items,
   onClose,
   onOpen,
 }: {
+  disabled?: boolean
   isOpen: boolean
   items: Array<{ label: string; icon: ReactNode; onSelect: () => void }>
   onClose: () => void
@@ -89,8 +98,18 @@ export function TimelineRowMenu({
           'opacity-0 transition-opacity group-focus-within/row:opacity-100 group-hover/row:opacity-100',
           isOpen && 'opacity-100',
         )}
+        disabled={disabled}
         label="More actions"
-        onClick={() => (isOpen ? onClose() : onOpen())}
+        onClick={() => {
+          if (disabled) return
+
+          if (isOpen) {
+            onClose()
+            return
+          }
+
+          onOpen()
+        }}
       >
         <Ellipsis className="size-3.5" />
       </TimelineRowActionButton>

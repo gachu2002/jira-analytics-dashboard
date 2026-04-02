@@ -17,9 +17,12 @@ export function TimelineDeleteDialog<TTarget extends TimelineDeleteTarget>({
   if (!isOpen || !target) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/28 px-4 backdrop-blur-[2px]">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/28 px-4 backdrop-blur-[2px]"
+      onClick={onCancel}
+    >
       <div className="w-full max-w-sm rounded-xl border border-[color:var(--border)] bg-[var(--workspace-pane)] p-0 shadow-[0_20px_56px_rgba(9,30,66,0.22)]">
-        <div className="p-5">
+        <div className="p-5" onClick={(event) => event.stopPropagation()}>
           <div className="rounded-xl border border-[color:var(--status-danger)]/18 bg-[color:var(--status-danger)]/5 p-4">
             <p className="text-sm font-semibold text-[var(--foreground)]">
               Delete {target.type}

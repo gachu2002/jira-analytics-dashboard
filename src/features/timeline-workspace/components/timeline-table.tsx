@@ -5,19 +5,34 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { TimelineIssueStatusBadge } from '@/features/timeline-workspace/components/timeline-status'
 import type { TimelineIssue } from '@/features/timeline-workspace/types/timeline-workspace.types'
+import { resolveIssuePartner } from '@/features/timeline-workspace/utils/timeline-workspace.utils'
 
-export function TimelineIssuesTable({ issues }: { issues: TimelineIssue[] }) {
+export function TimelineIssuesTable({
+  issues,
+  members = [],
+}: {
+  issues: TimelineIssue[]
+  members?: string[]
+}) {
   const [query, setQuery] = useState('')
+  const tableRows = useMemo(
+    () =>
+      issues.map((issue) => ({
+        issue,
+        partner: resolveIssuePartner(issue.assignee, members) ?? '-',
+      })),
+    [issues, members],
+  )
   const filteredIssues = useMemo(() => {
     const searchValue = query.trim().toLowerCase()
-    if (!searchValue) return issues
+    if (!searchValue) return tableRows
 
-    return issues.filter((issue) =>
-      `${issue.key} ${issue.summary} ${issue.assignee} ${issue.status}`
+    return tableRows.filter(({ issue, partner }) =>
+      `${issue.key} ${issue.summary} ${issue.assignee} ${partner} ${issue.status}`
         .toLowerCase()
         .includes(searchValue),
     )
-  }, [issues, query])
+  }, [query, tableRows])
 
   if (!issues.length) {
     return (
@@ -34,7 +49,7 @@ export function TimelineIssuesTable({ issues }: { issues: TimelineIssue[] }) {
           <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="ops-workspace-input h-9 rounded-md pl-9"
-            placeholder="Key, summary, assignee, status"
+            placeholder="Key, summary, assignee, partner, status"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -45,20 +60,23 @@ export function TimelineIssuesTable({ issues }: { issues: TimelineIssue[] }) {
           <table className="w-full border-collapse text-sm">
             <thead className="ops-bug-table-head sticky top-0 z-[1]">
               <tr>
-                <th className="w-[18%] px-3 py-2 text-left font-medium">Key</th>
-                <th className="w-[46%] px-3 py-2 text-left font-medium">
+                <th className="w-[14%] px-3 py-2 text-left font-medium">Key</th>
+                <th className="w-[38%] px-3 py-2 text-left font-medium">
                   Summary
                 </th>
-                <th className="w-[20%] px-3 py-2 text-left font-medium">
+                <th className="w-[18%] px-3 py-2 text-left font-medium">
                   Assignee
                 </th>
-                <th className="w-[16%] px-3 py-2 text-left font-medium">
+                <th className="w-[18%] px-3 py-2 text-left font-medium">
+                  Partner
+                </th>
+                <th className="w-[12%] px-3 py-2 text-left font-medium">
                   Status
                 </th>
               </tr>
             </thead>
             <tbody>
-              {filteredIssues.map((issue) => (
+              {filteredIssues.map(({ issue, partner }) => (
                 <tr key={issue.key} className="ops-bug-table-row align-top">
                   <td className="px-3 py-2.5">
                     <Badge
@@ -83,6 +101,11 @@ export function TimelineIssuesTable({ issues }: { issues: TimelineIssue[] }) {
                       {issue.assignee || 'Unassigned'}
                     </span>
                   </td>
+                  <td className="px-3 py-2.5 text-[var(--muted-foreground)]">
+                    <span className="truncate text-sm text-[var(--foreground)]">
+                      {partner}
+                    </span>
+                  </td>
                   <td className="px-3 py-2.5">
                     <TimelineIssueStatusBadge status={issue.status} />
                   </td>
@@ -91,7 +114,7 @@ export function TimelineIssuesTable({ issues }: { issues: TimelineIssue[] }) {
               {!filteredIssues.length ? (
                 <tr className="ops-bug-table-row">
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="px-3 py-8 text-center text-sm text-[var(--muted-foreground)]"
                   >
                     No results.

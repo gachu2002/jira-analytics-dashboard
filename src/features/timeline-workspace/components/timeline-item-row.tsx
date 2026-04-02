@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import {
   TimelineGrid,
   TimelineRowMenu,
+  TimelineSyncStatusPill,
   TimelineStatusPill,
 } from '@/features/timeline-workspace/components/timeline-shared'
 import type { TimelinePackageBar } from '@/features/timeline-workspace/types/timeline-workspace.types'
@@ -52,6 +53,7 @@ export function TimelineItemRow({
       className={cn(
         'ops-gantt-row grid border-b border-[color:var(--border)]/70',
         actionMenuId === menuId && 'z-30',
+        item.isSyncing && 'opacity-72',
       )}
       style={{ gridTemplateColumns: `${labelColumnWidth} minmax(0, 1fr)` }}
     >
@@ -64,8 +66,12 @@ export function TimelineItemRow({
         <div className="flex items-start justify-between gap-3">
           <button
             type="button"
+            disabled={item.isSyncing}
             onClick={onSelect}
-            className="ops-package-rail min-w-0 flex-1 text-left"
+            className={cn(
+              'ops-package-rail min-w-0 flex-1 text-left disabled:cursor-not-allowed',
+              item.isSyncing && 'opacity-85',
+            )}
           >
             <span className="ops-package-rail-line" aria-hidden="true" />
             <div className="ops-package-rail-content">
@@ -94,8 +100,13 @@ export function TimelineItemRow({
             </div>
           </button>
           <div className="flex shrink-0 items-start gap-1">
-            <TimelineStatusPill compact health={item.health} />
+            {item.isSyncing ? (
+              <TimelineSyncStatusPill compact />
+            ) : (
+              <TimelineStatusPill compact health={item.health} />
+            )}
             <TimelineRowMenu
+              disabled={item.isSyncing}
               isOpen={actionMenuId === menuId}
               items={menuItems}
               onClose={onCloseMenu}
@@ -109,9 +120,13 @@ export function TimelineItemRow({
         <TimelineGrid columns={columns} />
         <button
           type="button"
+          disabled={item.isSyncing}
           onClick={onSelect}
           className={cnSelected(
-            'ops-timeline-bar absolute top-1/2 flex h-8 min-w-[4.5rem] -translate-y-1/2 items-center rounded-md border px-2.5 text-left text-white transition-[box-shadow,filter] hover:brightness-[0.99]',
+            cn(
+              'ops-timeline-bar absolute top-1/2 flex h-8 min-w-[4.5rem] -translate-y-1/2 items-center rounded-md border px-2.5 text-left text-white transition-[box-shadow,filter] hover:brightness-[0.99] disabled:cursor-not-allowed disabled:hover:brightness-100',
+              item.isSyncing && 'saturate-[0.75]',
+            ),
             selected,
           )}
           style={{
@@ -133,8 +148,9 @@ export function TimelineItemRow({
                 {item.name}
               </div>
               <div className="mt-1 truncate text-[10px] font-semibold text-white/82">
-                {item.resolvedBug}/{item.totalBug} {progressLabel} ·{' '}
-                {Math.round(item.progress * 100)}%
+                {item.isSyncing
+                  ? 'Syncing with Jira'
+                  : `${item.resolvedBug}/${item.totalBug} ${progressLabel} · ${Math.round(item.progress * 100)}%`}
               </div>
             </div>
           </div>

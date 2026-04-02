@@ -26,6 +26,8 @@ export type TimelinePackageLike = {
   resolved_bug: number
   total_bug: number
   bug_tracker_project: number
+  task_id?: string | null
+  sync_status?: string | null
 }
 
 export type TimelinePackageBar = {
@@ -43,6 +45,9 @@ export type TimelinePackageBar = {
   labels: string[]
   keys: string[]
   health: TimelineHealth
+  taskId: string | null
+  syncStatus: string | null
+  isSyncing: boolean
 }
 
 export type TimelineProjectGroup = {

@@ -14,7 +14,7 @@ createRoot(document.getElementById('root')!).render(
       <App />
       <Toaster
         closeButton
-        position="top-right"
+        position="bottom-right"
         richColors
         toastOptions={{
           className: 'ops-toast',

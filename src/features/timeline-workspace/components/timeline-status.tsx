@@ -7,6 +7,7 @@ import {
   getIssueStatusTone,
   getMemberLoadTone,
   isIssueDoneStatus,
+  resolveIssuePartner,
 } from '@/features/timeline-workspace/utils/timeline-workspace.utils'
 import { cn } from '@/lib/utils'
 import { useMemo } from 'react'
@@ -58,53 +59,74 @@ export function TimelineStatusSummary({
 export function TimelineMemberStatusSummary({
   issues,
   members,
+  mode = 'assignee',
 }: {
   issues: TimelineIssue[]
-  members: string[]
+  members?: string[]
+  mode?: 'assignee' | 'partner'
 }) {
-  const membersWithCounts = useMemo(() => {
+  const groupsWithCounts = useMemo(() => {
     const openIssues = issues.filter(
       (issue) => !isIssueDoneStatus(issue.status),
     )
-    const issueCounts = new Map<string, number>()
+    const issueCounts = new Map<string, { label: string; openCount: number }>()
+    const uniqueMembers = [...new Set((members ?? []).filter(Boolean))]
+
+    if (mode === 'partner') {
+      for (const member of uniqueMembers) {
+        issueCounts.set(member.toLowerCase(), { label: member, openCount: 0 })
+      }
+
+      for (const issue of openIssues) {
+        const partner = resolveIssuePartner(issue.assignee, uniqueMembers)
+        const label = partner ?? (issue.assignee ? 'Unmapped' : 'Unassigned')
+        const key = label.toLowerCase()
+        const current = issueCounts.get(key)
+
+        issueCounts.set(key, {
+          label: current?.label ?? label,
+          openCount: (current?.openCount ?? 0) + 1,
+        })
+      }
+
+      return [...issueCounts.values()].sort(
+        (left, right) =>
+          right.openCount - left.openCount ||
+          left.label.localeCompare(right.label),
+      )
+    }
 
     for (const issue of openIssues) {
       const assignee = issue.assignee || 'Unassigned'
-      issueCounts.set(assignee, (issueCounts.get(assignee) ?? 0) + 1)
+      const key = assignee.toLowerCase()
+      const current = issueCounts.get(key)
+
+      issueCounts.set(key, {
+        label: current?.label ?? assignee,
+        openCount: (current?.openCount ?? 0) + 1,
+      })
     }
 
-    const orderedMembers = new Set([
-      ...members,
-      ...issueCounts.keys(),
-      ...(issueCounts.has('Unassigned') ? ['Unassigned'] : []),
-    ])
-
-    return [...orderedMembers]
-      .filter(Boolean)
-      .map((assignee) => ({
-        assignee,
-        openCount: issueCounts.get(assignee) ?? 0,
-      }))
-      .sort(
-        (left, right) =>
-          right.openCount - left.openCount ||
-          left.assignee.localeCompare(right.assignee),
-      )
-  }, [issues, members])
+    return [...issueCounts.values()].sort(
+      (left, right) =>
+        right.openCount - left.openCount ||
+        left.label.localeCompare(right.label),
+    )
+  }, [issues, members, mode])
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {membersWithCounts.length ? (
-        membersWithCounts.map((group) => (
+      {groupsWithCounts.length ? (
+        groupsWithCounts.map((group) => (
           <div
-            key={group.assignee}
+            key={group.label}
             className={cn(
               'inline-flex min-h-9 items-center gap-2.5 rounded-full border px-3 py-1.5 text-sm',
               getMemberLoadTone(group.openCount).chip,
             )}
           >
             <span className="truncate leading-none font-medium">
-              {group.assignee}
+              {group.label}
             </span>
             <span
               className={cn(
@@ -168,6 +190,30 @@ export function TimelineStatusPill({
         color,
       }}
     >
+      {label}
+    </span>
+  )
+}
+
+export function TimelineSyncStatusPill({
+  compact = false,
+  label = 'Syncing',
+}: {
+  compact?: boolean
+  label?: string
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-md font-semibold ${compact ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-[11px]'}`}
+      style={{
+        background: 'color-mix(in srgb, var(--status-info) 10%, transparent)',
+        color: 'var(--status-info)',
+      }}
+    >
+      <span
+        className="size-1.5 rounded-full"
+        style={{ background: 'var(--status-info)' }}
+      />
       {label}
     </span>
   )

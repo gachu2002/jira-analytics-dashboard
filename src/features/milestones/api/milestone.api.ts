@@ -1,4 +1,5 @@
 import { http } from '@/lib/http'
+import { isIssueDoneStatus } from '@/features/timeline-workspace/utils/timeline-workspace.utils'
 
 import type {
   DashboardMilestone,
@@ -19,18 +20,23 @@ type DashboardMilestoneResponse = {
   jql: string
   issues: DashboardMilestone['issues']
   project: number
+  task_id: string | null
 }
 
 function mapMilestone(
   response: DashboardMilestoneResponse,
 ): DashboardMilestone {
+  const resolvedCount = response.issues.length
+    ? response.issues.filter((issue) => isIssueDoneStatus(issue.status)).length
+    : response.closed_ticket
+
   return {
     id: response.id,
     name: response.name,
     description: response.description,
     start_date: response.start_date,
     end_date: response.end_date,
-    resolved_bug: response.closed_ticket,
+    resolved_bug: resolvedCount,
     total_bug: response.total_ticket,
     jql: response.jql,
     issues: response.issues,
@@ -38,6 +44,8 @@ function mapMilestone(
     keys: '',
     labels: '',
     members: '',
+    task_id: response.task_id,
+    sync_status: null,
   }
 }
 

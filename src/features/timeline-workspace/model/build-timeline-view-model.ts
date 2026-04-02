@@ -108,6 +108,11 @@ function mapProjectGroups(
                   .filter(Boolean)
               : [],
             health: getHealthFromProgress(item.resolved_bug, item.total_bug),
+            taskId: item.task_id ?? null,
+            syncStatus: item.sync_status ?? null,
+            isSyncing:
+              Boolean(item.task_id) &&
+              (item.sync_status ?? 'syncing') !== 'done',
           }
         })
 
