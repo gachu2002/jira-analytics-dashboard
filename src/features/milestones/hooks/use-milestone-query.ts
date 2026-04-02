@@ -31,7 +31,7 @@ export function useMilestoneTimelineQuery() {
         labels: project?.labels ?? '',
         members: project?.members ?? '',
         sync_status: milestone.task_id
-          ? (syncStatusByTaskId.get(milestone.task_id) ?? 'syncing')
+          ? (syncStatusByTaskId.get(milestone.task_id) ?? 'PROCESSING')
           : null,
       }
     })

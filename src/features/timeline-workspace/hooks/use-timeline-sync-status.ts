@@ -30,7 +30,7 @@ export function useTimelineSyncStatus(
       staleTime: 0,
       retry: false,
       refetchInterval: ({ state }: { state: { data?: string } }) =>
-        state.data === 'done' ? false : 10000,
+        state.data === 'SUCCESS' ? false : 10000,
     })),
   })
 
@@ -38,7 +38,7 @@ export function useTimelineSyncStatus(
     const statusByTaskId = new Map<string, string>()
 
     uniqueTaskIds.forEach((taskId, index) => {
-      statusByTaskId.set(taskId, results[index]?.data ?? 'syncing')
+      statusByTaskId.set(taskId, results[index]?.data ?? 'PROCESSING')
     })
 
     return statusByTaskId

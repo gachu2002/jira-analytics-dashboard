@@ -1034,7 +1034,7 @@ function getSyncTaskStatus(taskId) {
   const job = syncJobs.get(taskId)
   if (!job) return null
 
-  return Date.now() >= job.readyAt ? 'done' : 'syncing'
+  return Date.now() >= job.readyAt ? 'SUCCESS' : 'PROCESSING'
 }
 
 function readJsonBody(request) {

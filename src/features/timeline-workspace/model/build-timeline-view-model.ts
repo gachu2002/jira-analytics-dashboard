@@ -112,7 +112,7 @@ function mapProjectGroups(
             syncStatus: item.sync_status ?? null,
             isSyncing:
               Boolean(item.task_id) &&
-              (item.sync_status ?? 'syncing') !== 'done',
+              (item.sync_status ?? 'PROCESSING') !== 'SUCCESS',
           }
         })
 

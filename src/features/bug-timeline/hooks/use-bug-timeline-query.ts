@@ -22,7 +22,7 @@ export function useBugTimelineQuery() {
       (packagesQuery.data ?? []).map((item) => ({
         ...item,
         sync_status: item.task_id
-          ? (syncStatusByTaskId.get(item.task_id) ?? 'syncing')
+          ? (syncStatusByTaskId.get(item.task_id) ?? 'PROCESSING')
           : null,
       })),
     [packagesQuery.data, syncStatusByTaskId],
