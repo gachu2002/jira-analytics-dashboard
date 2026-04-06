@@ -7,6 +7,7 @@ export type TimelineIssue = {
   key: string
   summary: string
   assignee: string
+  partner?: string | null
   status: string
 }
 

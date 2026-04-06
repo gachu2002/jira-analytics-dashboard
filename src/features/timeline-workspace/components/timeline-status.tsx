@@ -7,7 +7,6 @@ import {
   getIssueStatusTone,
   getMemberLoadTone,
   isIssueDoneStatus,
-  resolveIssuePartner,
 } from '@/features/timeline-workspace/utils/timeline-workspace.utils'
 import { cn } from '@/lib/utils'
 import { useMemo } from 'react'
@@ -70,17 +69,18 @@ export function TimelineMemberStatusSummary({
       (issue) => !isIssueDoneStatus(issue.status),
     )
     const issueCounts = new Map<string, { label: string; openCount: number }>()
-    const uniqueMembers = [...new Set((members ?? []).filter(Boolean))]
 
     if (mode === 'partner') {
-      for (const member of uniqueMembers) {
-        issueCounts.set(member.toLowerCase(), { label: member, openCount: 0 })
+      for (const partner of [
+        ...new Set(
+          issues.map((issue) => issue.partner?.trim() || 'Unassigned'),
+        ),
+      ]) {
+        issueCounts.set(partner.toLowerCase(), { label: partner, openCount: 0 })
       }
 
       for (const issue of openIssues) {
-        const partner = resolveIssuePartner(issue.assignee, uniqueMembers)
-        if (!partner) continue
-
+        const partner = issue.partner?.trim() || 'Unassigned'
         const key = partner.toLowerCase()
         const current = issueCounts.get(key)
 
@@ -150,7 +150,7 @@ export function TimelineMemberStatusSummary({
         ))
       ) : (
         <div className="py-1 text-sm text-[var(--muted-foreground)]">
-          No members.
+          {mode === 'partner' ? 'No partners.' : 'No members.'}
         </div>
       )}
     </div>

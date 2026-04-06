@@ -19,7 +19,10 @@ export function TimelineIssuesTable({
     () =>
       issues.map((issue) => ({
         issue,
-        partner: resolveIssuePartner(issue.assignee, members) ?? '-',
+        partner:
+          issue.partner?.trim() ||
+          resolveIssuePartner(issue.assignee, members) ||
+          '-',
       })),
     [issues, members],
   )

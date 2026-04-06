@@ -109,19 +109,21 @@ const weekHeaderHeight = '3rem'
 const ganttHeaderHeight = `calc(${monthHeaderHeight} + ${weekHeaderHeight})`
 const BUG_CATEGORY_COLORS = [
   '#0c66e4',
-  '#22a06b',
-  '#f5a524',
-  '#e56910',
   '#c9372c',
   '#8f7ee7',
-  '#4b8bff',
-  '#579dff',
-  '#6b778c',
-  '#36b37e',
-  '#ff8b00',
-  '#ff5630',
-  '#6554c0',
+  '#22a06b',
+  '#e56910',
   '#00a3bf',
+  '#ae4787',
+  '#f5a524',
+  '#5e4db2',
+  '#216e4e',
+  '#b65c02',
+  '#7f5f01',
+  '#943d73',
+  '#44546f',
+  '#388bff',
+  '#36b37e',
   '#8777d9',
 ]
 
@@ -969,7 +971,6 @@ function PackageDetailPanel({
       bugStatisticsPending={statisticsQuery.isPending}
       contentRef={contentRef}
       issues={packageItem.issues}
-      membersText={packageItem.members}
       notice={
         packageBar.isSyncing ? (
           <div className="flex items-center gap-2 rounded-md border border-[color:var(--status-info)]/18 bg-[color:var(--status-info)]/6 px-3 py-2 text-sm text-[var(--muted-foreground)]">
@@ -1280,7 +1281,6 @@ function CustomJqlDrawer({
             bugStatisticsPending={customBugStatisticsQuery.isPending}
             contentRef={contentRef}
             issues={customPackage.issues}
-            membersText={customPackage.assignees}
             openCount={Math.max(
               customPackage.total_bug - customPackage.resolved_bug,
               0,
@@ -1302,7 +1302,6 @@ function BugDetailContent({
   bugStatisticsPending,
   contentRef,
   issues,
-  membersText,
   notice,
   openCount,
   resolvedCount,
@@ -1315,7 +1314,6 @@ function BugDetailContent({
   bugStatisticsPending: boolean
   contentRef: React.RefObject<HTMLDivElement | null>
   issues: BugTrackerPackage['issues']
-  membersText: string
   notice?: React.ReactNode
   openCount: number
   resolvedCount: number
@@ -1326,7 +1324,6 @@ function BugDetailContent({
   const [optionalCharts, setOptionalCharts] = useState<
     Array<'velocity' | 'reopen'>
   >([])
-  const memberNames = parseCommaList(membersText)
 
   return (
     <div className="p-4">
@@ -1340,11 +1337,7 @@ function BugDetailContent({
           />
 
           <div>
-            <PackageMemberStatusSummary
-              issues={issues}
-              members={memberNames}
-              mode="partner"
-            />
+            <PackageMemberStatusSummary issues={issues} mode="partner" />
           </div>
         </section>
 
@@ -1447,7 +1440,7 @@ function BugDetailContent({
         </section>
 
         <section className="grid gap-3">
-          <PackageIssuesTable issues={issues} members={memberNames} />
+          <PackageIssuesTable issues={issues} />
         </section>
       </div>
     </div>
@@ -1539,7 +1532,8 @@ function PackageBugStatisticsSection({
                   innerRadius={48}
                   outerRadius={72}
                   paddingAngle={chartData.length > 1 ? 2 : 0}
-                  stroke="none"
+                  stroke="color-mix(in srgb, var(--workspace-pane) 92%, white 8%)"
+                  strokeWidth={2}
                 >
                   {visibleChartData.map((entry) => (
                     <Cell key={entry.label} fill={entry.color} />
@@ -1752,7 +1746,7 @@ function SprintDefectFlowChart({ data }: { data: SprintChartDatum[] }) {
               name="Remaining"
             />
             <Line
-              type="monotone"
+              type="linear"
               dataKey="newBug"
               stroke="#42526e"
               strokeWidth={2}
@@ -1863,7 +1857,7 @@ function SprintVelocityChart({ data }: { data: SprintChartDatum[] }) {
             {hasTarget ? (
               <Line
                 yAxisId="count"
-                type="monotone"
+                type="linear"
                 dataKey="targetVelocity"
                 stroke="#f5a623"
                 strokeWidth={1.5}
@@ -1875,7 +1869,7 @@ function SprintVelocityChart({ data }: { data: SprintChartDatum[] }) {
             ) : null}
             <Line
               yAxisId="rate"
-              type="monotone"
+              type="linear"
               dataKey="resolutionRate"
               stroke="#0c66e4"
               strokeWidth={2}
@@ -1978,7 +1972,7 @@ function SprintReopenChart({ data }: { data: SprintChartDatum[] }) {
             {hasTarget ? (
               <Line
                 yAxisId="rate"
-                type="monotone"
+                type="linear"
                 dataKey="targetReopenedRate"
                 stroke="#f5a623"
                 strokeWidth={1.5}
@@ -1998,7 +1992,7 @@ function SprintReopenChart({ data }: { data: SprintChartDatum[] }) {
             />
             <Line
               yAxisId="rate"
-              type="monotone"
+              type="linear"
               dataKey="reopenedRate"
               stroke="#c9372c"
               strokeWidth={2}

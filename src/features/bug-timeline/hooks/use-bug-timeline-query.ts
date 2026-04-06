@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 
 import {
+  bugTimelineQueryKeys,
   useBugTrackerPackagesQuery,
   useBugTrackerProjectsQuery,
 } from '@/features/bug-timeline/api/bug-timeline.queries'
@@ -15,6 +16,9 @@ export function useBugTimelineQuery() {
   const packagesQuery = useBugTrackerPackagesQuery()
   const syncStatusByTaskId = useTimelineSyncStatus(
     (packagesQuery.data ?? []).map((item) => item.task_id),
+    {
+      invalidateQueryKey: bugTimelineQueryKeys.packages(),
+    },
   )
 
   const packages = useMemo(

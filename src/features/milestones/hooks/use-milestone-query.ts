@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 
 import {
+  milestoneTimelineQueryKeys,
   useDashboardMilestonesQuery,
   useDashboardProjectsQuery,
 } from '@/features/milestones/api/milestone.queries'
@@ -15,6 +16,9 @@ export function useMilestoneTimelineQuery() {
   const milestonesQuery = useDashboardMilestonesQuery()
   const syncStatusByTaskId = useTimelineSyncStatus(
     (milestonesQuery.data ?? []).map((item) => item.task_id),
+    {
+      invalidateQueryKey: milestoneTimelineQueryKeys.packages(),
+    },
   )
 
   const milestones = useMemo(() => {

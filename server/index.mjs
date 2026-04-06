@@ -28,12 +28,22 @@ const bugCategories = [
   'FPT.BUG.NO_DEVELOPMENT',
 ]
 
+function inferMockPartner(assignee) {
+  const tokens = String(assignee || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+
+  return tokens.at(-1) || ''
+}
+
 function buildIssue(key, summary, assignee, status) {
   return {
     url: `http://jira.lge.com/issue/browse/${key}`,
     key,
     summary,
     assignee,
+    partner: inferMockPartner(assignee),
     status,
   }
 }
