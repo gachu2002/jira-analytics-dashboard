@@ -1092,12 +1092,21 @@
     border: 1px solid color-mix(in srgb, var(--border) 94%, transparent);
     background: var(--workspace-pane);
     color: var(--foreground);
-    padding: 0.625rem 0.75rem;
     width: 100%;
+  }
+
+  .ops-bug-select {
+    line-height: 1.35;
+    padding-inline: 0.75rem;
+  }
+
+  .ops-bug-select option {
+    line-height: 1.35;
   }
 
   .ops-bug-textarea {
     min-height: 7rem;
+    padding: 0.625rem 0.75rem;
     resize: vertical;
   }
 

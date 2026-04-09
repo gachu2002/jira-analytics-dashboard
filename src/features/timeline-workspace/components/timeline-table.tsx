@@ -10,32 +10,35 @@ import { resolveIssuePartner } from '@/features/timeline-workspace/utils/timelin
 export function TimelineIssuesTable({
   issues,
   members = [],
+  showPartnerColumn = true,
 }: {
   issues: TimelineIssue[]
   members?: string[]
+  showPartnerColumn?: boolean
 }) {
   const [query, setQuery] = useState('')
   const tableRows = useMemo(
     () =>
       issues.map((issue) => ({
         issue,
-        partner:
-          issue.partner?.trim() ||
-          resolveIssuePartner(issue.assignee, members) ||
-          '-',
+        partner: showPartnerColumn
+          ? issue.partner?.trim() ||
+            resolveIssuePartner(issue.assignee, members) ||
+            '-'
+          : '-',
       })),
-    [issues, members],
+    [issues, members, showPartnerColumn],
   )
   const filteredIssues = useMemo(() => {
     const searchValue = query.trim().toLowerCase()
     if (!searchValue) return tableRows
 
     return tableRows.filter(({ issue, partner }) =>
-      `${issue.key} ${issue.summary} ${issue.assignee} ${partner} ${issue.status}`
+      `${issue.key} ${issue.summary} ${issue.assignee} ${showPartnerColumn ? `${partner} ` : ''}${issue.status}`
         .toLowerCase()
         .includes(searchValue),
     )
-  }, [query, tableRows])
+  }, [query, showPartnerColumn, tableRows])
 
   if (!issues.length) {
     return (
@@ -52,7 +55,11 @@ export function TimelineIssuesTable({
           <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="ops-workspace-input h-9 rounded-md pl-9"
-            placeholder="Key, summary, assignee, partner, status"
+            placeholder={
+              showPartnerColumn
+                ? 'Key, summary, assignee, partner, status'
+                : 'Key, summary, assignee, status'
+            }
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -67,13 +74,19 @@ export function TimelineIssuesTable({
                 <th className="w-[38%] px-3 py-2 text-left font-medium">
                   Summary
                 </th>
-                <th className="w-[18%] px-3 py-2 text-left font-medium">
+                <th
+                  className={`${showPartnerColumn ? 'w-[18%]' : 'w-[24%]'} px-3 py-2 text-left font-medium`}
+                >
                   Assignee
                 </th>
-                <th className="w-[18%] px-3 py-2 text-left font-medium">
-                  Partner
-                </th>
-                <th className="w-[12%] px-3 py-2 text-left font-medium">
+                {showPartnerColumn ? (
+                  <th className="w-[18%] px-3 py-2 text-left font-medium">
+                    Partner
+                  </th>
+                ) : null}
+                <th
+                  className={`${showPartnerColumn ? 'w-[12%]' : 'w-[24%]'} px-3 py-2 text-left font-medium`}
+                >
                   Status
                 </th>
               </tr>
@@ -104,11 +117,13 @@ export function TimelineIssuesTable({
                       {issue.assignee || 'Unassigned'}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 text-[var(--muted-foreground)]">
-                    <span className="truncate text-sm text-[var(--foreground)]">
-                      {partner}
-                    </span>
-                  </td>
+                  {showPartnerColumn ? (
+                    <td className="px-3 py-2.5 text-[var(--muted-foreground)]">
+                      <span className="truncate text-sm text-[var(--foreground)]">
+                        {partner}
+                      </span>
+                    </td>
+                  ) : null}
                   <td className="px-3 py-2.5">
                     <TimelineIssueStatusBadge status={issue.status} />
                   </td>
@@ -117,7 +132,7 @@ export function TimelineIssuesTable({
               {!filteredIssues.length ? (
                 <tr className="ops-bug-table-row">
                   <td
-                    colSpan={5}
+                    colSpan={showPartnerColumn ? 5 : 4}
                     className="px-3 py-8 text-center text-sm text-[var(--muted-foreground)]"
                   >
                     No results.

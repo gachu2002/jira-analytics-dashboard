@@ -57,13 +57,15 @@ export function TimelineStatusSummary({
 
 export function TimelineMemberStatusSummary({
   issues,
-  members,
+  members: _members,
   mode = 'assignee',
 }: {
   issues: TimelineIssue[]
   members?: string[]
   mode?: 'assignee' | 'partner'
 }) {
+  void _members
+
   const groupsWithCounts = useMemo(() => {
     const openIssues = issues.filter(
       (issue) => !isIssueDoneStatus(issue.status),
@@ -122,7 +124,7 @@ export function TimelineMemberStatusSummary({
         right.openCount - left.openCount ||
         left.label.localeCompare(right.label),
     )
-  }, [issues, members, mode])
+  }, [issues, mode])
 
   return (
     <div className="flex flex-wrap items-center gap-2">

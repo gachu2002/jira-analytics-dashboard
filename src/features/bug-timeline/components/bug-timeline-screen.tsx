@@ -91,6 +91,7 @@ import {
   buildTimelineItemExportFileName,
   captureTimelineExportSnapshot,
   downloadDataUrl,
+  formatDateLabel,
   getGridStyle,
   getTimelineTrackWidthRem,
   getTodayOffsetPercent,
@@ -2085,6 +2086,10 @@ function SprintChartTooltip({
             value={formatTooltipMetric(datum[row.key], row.format)}
           />
         ))}
+        <TooltipRow
+          label="Duration"
+          value={`${formatDateLabel(datum.startDate)} - ${formatDateLabel(datum.endDate)}`}
+        />
       </div>
     </div>
   )
@@ -2103,6 +2108,8 @@ type SprintChartDatum = {
   id: number
   label: string
   createdAt: number
+  startDate: string
+  endDate: string
   newBug: number
   resolvedBug: number
   remainingBug: number
@@ -2130,6 +2137,8 @@ function buildSprintChartData(
       id: item.id,
       label: item.sprint.name,
       createdAt: new Date(item.created_at).getTime(),
+      startDate: item.sprint.start_date,
+      endDate: item.sprint.end_date,
       newBug: item.new_bug,
       resolvedBug: item.resolved_bug,
       remainingBug: Math.max(item.total_bug - item.resolved_bug, 0),

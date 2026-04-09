@@ -2,8 +2,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import jsPDF from 'jspdf'
 import {
   Bar,
+  Cell,
   CartesianGrid,
   ComposedChart,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -41,6 +44,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { useCurrentUserQuery } from '@/features/auth/hooks/use-current-user-query'
 import { useMilestoneSprintStatisticsQuery } from '@/features/milestones/api/milestone.queries'
 import { useMilestoneTimelineQuery } from '@/features/milestones/hooks/use-milestone-query'
 import { useMilestoneTimelineMutations } from '@/features/milestones/hooks/use-milestone-mutations'
@@ -100,6 +104,8 @@ const ganttHeaderHeight = `calc(${monthHeaderHeight} + ${weekHeaderHeight})`
 export function MilestoneScreen() {
   const { projects, packages, viewModel, isPending, isError } =
     useMilestoneTimelineQuery()
+  const currentUserQuery = useCurrentUserQuery()
+  const currentUserId = currentUserQuery.data?.id ?? null
   const search = useMilestoneTimelineUiStore((state) => state.search)
   const setSearch = useMilestoneTimelineUiStore((state) => state.setSearch)
   const zoom = useMilestoneTimelineUiStore((state) => state.zoom)
@@ -566,9 +572,14 @@ export function MilestoneScreen() {
                 }
               }}
               onSubmitCreateProject={async (values: ProjectFormValues) => {
+                if (currentUserId === null) {
+                  toast.error('Current user unavailable')
+                  return
+                }
+
                 try {
                   const created = await createProject.mutateAsync(
-                    toProjectPayload(values),
+                    toProjectPayload(values, currentUserId),
                   )
                   openProjectView(created.id)
                   toast.success('Project created')
@@ -601,10 +612,15 @@ export function MilestoneScreen() {
               }}
               onSubmitUpdateProject={async (values: ProjectFormValues) => {
                 if (!selectedProject) return
+                if (currentUserId === null) {
+                  toast.error('Current user unavailable')
+                  return
+                }
+
                 try {
                   await updateProject.mutateAsync({
                     projectId: selectedProject.id,
-                    payload: toProjectPayload(values),
+                    payload: toProjectPayload(values, currentUserId),
                   })
                   openProjectView(selectedProject.id)
                   toast.success('Project updated')
@@ -974,7 +990,8 @@ function MilestoneDetailPanel({
           </div>
         </section>
 
-        <section className="grid gap-3">
+        <section className="grid gap-3 xl:grid-cols-2">
+          <MilestoneStatusAnalysisSection issues={packageItem.issues} />
           <MilestoneSprintDeliverySection
             isError={sprintStatisticsQuery.isError}
             isPending={sprintStatisticsQuery.isPending}
@@ -986,6 +1003,7 @@ function MilestoneDetailPanel({
           <MilestoneIssuesTable
             issues={packageItem.issues}
             members={memberNames}
+            showPartnerColumn={false}
           />
         </section>
       </div>
@@ -1118,6 +1136,177 @@ function MilestoneSprintDeliverySection({
   )
 }
 
+const MILESTONE_STATUS_STEPS = [
+  { label: 'Screen', color: '#8e7ea8', aliases: ['screen', 'open'] },
+  { label: 'Analysis', color: '#6f86b0', aliases: ['analysis'] },
+  {
+    label: 'Implementation',
+    color: '#7da0c9',
+    aliases: ['implementation', 'in progress'],
+  },
+  { label: 'Integration', color: '#d98b82', aliases: ['integration'] },
+  { label: 'Build', color: '#d7a0bb', aliases: ['build'] },
+  { label: 'Verify', color: '#e1be68', aliases: ['verify', 'verified'] },
+  { label: 'Closed', color: '#8faa58', aliases: ['closed'] },
+] as const
+
+function MilestoneStatusAnalysisSection({
+  issues,
+}: {
+  issues: DashboardMilestone['issues']
+}) {
+  const rawChartData = buildMilestoneStatusChartData(issues)
+  const total = rawChartData.reduce((sum, item) => sum + item.value, 0)
+  const completeCount = rawChartData
+    .filter((item) => item.isComplete)
+    .reduce((sum, item) => sum + item.value, 0)
+  const completionRate =
+    total > 0 ? Math.round((completeCount / total) * 100) : 0
+  const chartData = buildMilestoneStatusLegendData(rawChartData)
+  const visibleChartData = total
+    ? chartData.filter((item) => item.value > 0)
+    : [
+        {
+          id: 'empty',
+          label: 'No issues',
+          value: 1,
+          color: 'color-mix(in srgb, var(--border) 70%, transparent)',
+          isComplete: false,
+        },
+      ]
+
+  return (
+    <article className="ops-package-sprint-card ops-bug-chart-shell grid h-full gap-4 rounded-xl p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold tracking-[-0.02em]">
+            Status Analysis
+          </h4>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+            Distribution of issues by workflow status.
+          </p>
+        </div>
+        <Badge
+          variant="outline"
+          className="rounded-full px-2.5 py-0.5 text-[11px]"
+        >
+          {completionRate}% complete
+        </Badge>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[15rem_minmax(0,1fr)]">
+        <div className="grid content-start gap-3">
+          <div className="h-52 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={visibleChartData}
+                  dataKey="value"
+                  innerRadius={48}
+                  outerRadius={72}
+                  paddingAngle={visibleChartData.length > 1 ? 2 : 0}
+                  stroke="color-mix(in srgb, var(--workspace-pane) 92%, white 8%)"
+                  strokeWidth={2}
+                >
+                  {visibleChartData.map((entry) => (
+                    <Cell key={entry.id} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  content={<MilestoneStatusAnalysisTooltip total={total} />}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="grid min-w-0 content-start gap-2 self-start">
+          {chartData.map((item) => (
+            <div
+              key={item.id}
+              className="ops-bug-chart-legend-item flex items-center justify-between gap-3 rounded-md px-3 py-2"
+              title={
+                item.label === 'Other' && 'breakdown' in item
+                  ? item.breakdown
+                      .map((entry) => `${entry.label}: ${entry.value}`)
+                      .join('\n')
+                  : undefined
+              }
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <span
+                  className="size-2.5 shrink-0 rounded-full"
+                  style={{ background: item.color }}
+                />
+                <span className="truncate text-sm">{item.label}</span>
+              </div>
+              <div className="text-right text-xs text-[var(--muted-foreground)]">
+                <div className="font-medium text-[var(--foreground)]">
+                  {item.value}
+                </div>
+                <div>
+                  {total > 0
+                    ? `${Math.round((item.value / total) * 100)}%`
+                    : '0%'}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function MilestoneStatusAnalysisTooltip({
+  active,
+  payload,
+  total = 0,
+}: {
+  active?: boolean
+  payload?: Array<{
+    payload: {
+      label: string
+      value: number
+      isComplete: boolean
+      breakdown?: Array<{ label: string; value: number }>
+    }
+  }>
+  total?: number
+}) {
+  if (!active || !payload?.length) return null
+
+  const item = payload[0]?.payload
+  if (!item) return null
+
+  return (
+    <div className="ops-bug-chart-tooltip rounded-md px-3 py-2 text-xs shadow-sm">
+      <div className="font-medium text-[var(--foreground)]">{item.label}</div>
+      <div className="mt-1 text-[var(--muted-foreground)]">
+        {item.value} issues
+        {total > 0 ? ` (${Math.round((item.value / total) * 100)}%)` : ''}
+      </div>
+      {item.label === 'Other' && item.breakdown?.length ? (
+        <div className="mt-2 grid gap-1 border-t border-[color:var(--border)]/80 pt-2 text-[var(--muted-foreground)]">
+          {item.breakdown.map((entry) => (
+            <div
+              key={entry.label}
+              className="flex items-center justify-between gap-3"
+            >
+              <span className="truncate">{entry.label}</span>
+              <span>{entry.value}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-1 text-[var(--muted-foreground)]">
+          {item.isComplete ? 'Counts toward completion' : 'In progress'}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function MilestoneSprintTooltip({
   active,
   payload,
@@ -1156,7 +1345,7 @@ function MilestoneSprintTooltip({
           )}
         />
         <TooltipMetricRow
-          label="Window"
+          label="Duration"
           value={`${formatDateLabel(datum.startDate)} - ${formatDateLabel(datum.endDate)}`}
         />
       </div>
@@ -1171,6 +1360,74 @@ function TooltipMetricRow({ label, value }: { label: string; value: string }) {
       <span className="font-medium text-[var(--foreground)]">{value}</span>
     </div>
   )
+}
+
+function buildMilestoneStatusLegendData(
+  chartData: Array<{
+    id: string
+    label: string
+    value: number
+    color: string
+    isComplete: boolean
+  }>,
+) {
+  const nonZeroData = chartData.filter((item) => item.value > 0)
+
+  if (nonZeroData.length <= 4) {
+    return nonZeroData
+  }
+
+  const sortedData = [...nonZeroData].sort((left, right) => {
+    if (right.value !== left.value) return right.value - left.value
+    return left.label.localeCompare(right.label)
+  })
+  const primaryItems = sortedData.slice(0, 4)
+  const remainingItems = sortedData.slice(4)
+  const otherValue = remainingItems.reduce((sum, item) => sum + item.value, 0)
+
+  return [
+    ...primaryItems,
+    {
+      id: 'other',
+      label: 'Other',
+      value: otherValue,
+      color: '#7a869a',
+      isComplete: false,
+      breakdown: remainingItems.map((item) => ({
+        label: item.label,
+        value: item.value,
+      })),
+    },
+  ]
+}
+
+function buildMilestoneStatusChartData(issues: DashboardMilestone['issues']) {
+  const counts = new Map<string, number>()
+
+  for (const step of MILESTONE_STATUS_STEPS) {
+    counts.set(step.label, 0)
+  }
+
+  for (const issue of issues) {
+    const normalizedStatus = issue.status.trim().toLowerCase()
+    const matchedStep = MILESTONE_STATUS_STEPS.find((step) =>
+      step.aliases.some((alias) => alias === normalizedStatus),
+    )
+
+    if (!matchedStep) {
+      continue
+    }
+
+    counts.set(matchedStep.label, (counts.get(matchedStep.label) ?? 0) + 1)
+  }
+
+  return MILESTONE_STATUS_STEPS.map((step) => ({
+    id: step.label.toLowerCase(),
+    label: step.label,
+    value: counts.get(step.label) ?? 0,
+    color: step.color,
+    isComplete: step.label === 'Verify' || step.label === 'Closed',
+  }))
 }
 
 function buildMilestoneSprintChartData(
@@ -1371,12 +1628,14 @@ function toMilestonePayload(values: MilestoneFormValues) {
   }
 }
 
-function toProjectPayload(values: ProjectFormValues) {
+function toProjectPayload(values: ProjectFormValues, currentUserId: number) {
   return {
     name: values.name.trim(),
     keys: values.keys.trim(),
     description: values.description.trim(),
     members: values.members.trim(),
     labels: values.labels.trim(),
+    pm: currentUserId,
+    pl: currentUserId,
   }
 }

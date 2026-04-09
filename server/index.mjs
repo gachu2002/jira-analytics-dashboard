@@ -52,6 +52,167 @@ function cloneIssues(issues) {
   return issues.map((issue) => ({ ...issue }))
 }
 
+const milestoneWorkflowStatuses = [
+  'Screen',
+  'Analysis',
+  'Implementation',
+  'Integration',
+  'Build',
+  'Verify',
+  'Closed',
+]
+
+const milestoneOpenStatusWeights = [
+  { status: 'Screen', weight: 1 },
+  { status: 'Analysis', weight: 1.4 },
+  { status: 'Implementation', weight: 2.8 },
+  { status: 'Integration', weight: 2.2 },
+  { status: 'Build', weight: 1.8 },
+]
+
+const milestoneDoneStatusWeights = [
+  { status: 'Verify', weight: 1.1 },
+  { status: 'Closed', weight: 2.4 },
+]
+
+function buildMilestoneIssueKey(key, cycle) {
+  if (cycle === 0) return key
+
+  const match = String(key).match(/^([A-Z]+)-(\d+)$/)
+  if (!match) {
+    return `${key}-${cycle + 1}`
+  }
+
+  return `${match[1]}-${Number(match[2]) + cycle * 100}`
+}
+
+function distributeWeightedCount(total, buckets) {
+  if (total <= 0) {
+    return new Map(buckets.map((bucket) => [bucket.status, 0]))
+  }
+
+  const totalWeight = buckets.reduce((sum, bucket) => sum + bucket.weight, 0)
+  const counts = new Map(
+    buckets.map((bucket) => [
+      bucket.status,
+      Math.floor((bucket.weight / totalWeight) * total),
+    ]),
+  )
+  const remainders = buckets
+    .map((bucket) => ({
+      status: bucket.status,
+      remainder:
+        (bucket.weight / totalWeight) * total -
+        (counts.get(bucket.status) ?? 0),
+      weight: bucket.weight,
+    }))
+    .sort((left, right) => {
+      if (right.remainder !== left.remainder) {
+        return right.remainder - left.remainder
+      }
+
+      return right.weight - left.weight
+    })
+
+  let assigned = [...counts.values()].reduce((sum, value) => sum + value, 0)
+
+  for (let index = 0; assigned < total; index += 1) {
+    const bucket = remainders[index % remainders.length]
+    counts.set(bucket.status, (counts.get(bucket.status) ?? 0) + 1)
+    assigned += 1
+  }
+
+  return counts
+}
+
+function buildMilestoneStatusSequence(totalIssues, completedIssues) {
+  const total = Math.max(totalIssues, 0)
+  const doneCount = Math.min(Math.max(completedIssues, 0), total)
+  const openCount = total - doneCount
+  const counts = new Map(milestoneWorkflowStatuses.map((status) => [status, 0]))
+
+  for (const [status, count] of distributeWeightedCount(
+    openCount,
+    milestoneOpenStatusWeights,
+  )) {
+    counts.set(status, count)
+  }
+
+  for (const [status, count] of distributeWeightedCount(
+    doneCount,
+    milestoneDoneStatusWeights,
+  )) {
+    counts.set(status, count)
+  }
+
+  const sequence = []
+
+  while (sequence.length < total) {
+    let added = false
+
+    for (const status of milestoneWorkflowStatuses) {
+      const remaining = counts.get(status) ?? 0
+      if (remaining <= 0) continue
+
+      sequence.push(status)
+      counts.set(status, remaining - 1)
+      added = true
+
+      if (sequence.length >= total) {
+        break
+      }
+    }
+
+    if (!added) {
+      break
+    }
+  }
+
+  return sequence
+}
+
+function buildMilestoneIssues(issues, totalIssues, completedIssues) {
+  if (!issues.length) return []
+
+  return buildMilestoneStatusSequence(totalIssues, completedIssues).map(
+    (status, index) => {
+      const template = issues[index % issues.length]
+      const cycle = Math.floor(index / issues.length)
+      const key = buildMilestoneIssueKey(template.key, cycle)
+
+      return {
+        ...template,
+        key,
+        url: `http://jira.lge.com/issue/browse/${key}`,
+        summary:
+          cycle > 0
+            ? `${template.summary} Batch ${cycle + 1}`
+            : template.summary,
+        status,
+      }
+    },
+  )
+}
+
+function getMilestoneSnapshot(statistics, fallbackIssues) {
+  const activeSprint =
+    statistics.find((item) => item.active) ?? statistics.at(-1)
+
+  if (activeSprint) {
+    return {
+      totalTickets: activeSprint.scope_point,
+      completedTickets: activeSprint.completed_point,
+    }
+  }
+
+  return {
+    totalTickets: fallbackIssues.length,
+    completedTickets: fallbackIssues.filter((issue) =>
+      isDoneStatus(issue.status),
+    ).length,
+  }
+}
+
 function isDoneStatus(status) {
   const normalized = String(status || '')
     .trim()
@@ -747,6 +908,8 @@ const dashboardProjects = [
     description: 'Authentication, search, and release readiness workstreams.',
     members: 'lethanhnguyen, nguyenvannam, tranlinh, huypham',
     labels: 'cloud, auth, release',
+    pm: 101,
+    pl: 101,
   },
   {
     id: 2,
@@ -755,6 +918,8 @@ const dashboardProjects = [
     description: 'Console reliability, audit, and reporting delivery track.',
     members: 'quangpham, amyle, khanhtran, zoenguyen',
     labels: 'console, compliance, reporting',
+    pm: 101,
+    pl: 101,
   },
   {
     id: 3,
@@ -763,6 +928,8 @@ const dashboardProjects = [
     description: 'Mobile push and store-release milestone schedule.',
     members: 'trangpham, omarali, deepa',
     labels: 'mobile, release, notifications',
+    pm: 101,
+    pl: 101,
   },
 ]
 
@@ -840,14 +1007,6 @@ const dashboardMilestones = [
     project: 3,
   },
 ]
-
-for (const milestone of dashboardMilestones) {
-  milestone.task_id = null
-  milestone.total_ticket = milestone.issues.length
-  milestone.closed_ticket = milestone.issues.filter((issue) =>
-    isDoneStatus(issue.status),
-  ).length
-}
 
 const dashboardMilestoneSprintStatistics = {
   1: buildDashboardMilestoneSprintStatistics(1, [
@@ -1006,6 +1165,25 @@ const dashboardMilestoneSprintStatistics = {
   ]),
 }
 
+for (const milestone of dashboardMilestones) {
+  const sourceIssues = packages[milestone.id - 1]?.issues ?? []
+  const snapshot = getMilestoneSnapshot(
+    dashboardMilestoneSprintStatistics[milestone.id] ?? [],
+    sourceIssues,
+  )
+
+  milestone.task_id = null
+  milestone.issues = buildMilestoneIssues(
+    sourceIssues,
+    snapshot.totalTickets,
+    snapshot.completedTickets,
+  )
+  milestone.total_ticket = milestone.issues.length
+  milestone.closed_ticket = milestone.issues.filter((issue) =>
+    isDoneStatus(issue.status),
+  ).length
+}
+
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
     'Access-Control-Allow-Origin': allowedOrigin,
@@ -1039,6 +1217,23 @@ function getSyncTaskStatus(taskId) {
   if (!job) return null
 
   return Date.now() >= job.readyAt ? 'SUCCESS' : 'PROCESSING'
+}
+
+function buildCurrentUser() {
+  return {
+    id: 101,
+    username: 'demo.user',
+    email: 'user@example.com',
+    is_superuser: true,
+    is_staff: true,
+    is_active: true,
+    cn: 'Demo User',
+    name: 'Demo User',
+    display_name_printable: 'Demo User',
+    title: 'Program Manager',
+    department: 'Engineering',
+    desc: 'Local mock current user',
+  }
 }
 
 function readJsonBody(request) {
@@ -1172,7 +1367,14 @@ function validatePackagePayload(payload) {
 
 function validateDashboardProjectPayload(payload) {
   const name = validateName(payload.name)
+  const pm = Number(payload.pm)
+  const pl = Number(payload.pl)
+
   if (!name) {
+    return null
+  }
+
+  if (!Number.isInteger(pm) || pm < 0 || !Number.isInteger(pl) || pl < 0) {
     return null
   }
 
@@ -1182,6 +1384,8 @@ function validateDashboardProjectPayload(payload) {
     description: String(payload.description || '').trim(),
     members: String(payload.members || '').trim(),
     labels: String(payload.labels || '').trim(),
+    pm,
+    pl,
   }
 }
 
@@ -1274,6 +1478,11 @@ const server = createServer(async (request, response) => {
       sendJson(response, 400, { detail: 'Request body must be valid JSON.' })
       return
     }
+  }
+
+  if (path === '/api/accounts/users/' && request.method === 'GET') {
+    sendJson(response, 200, buildCurrentUser())
+    return
   }
 
   const jobStatusMatch = path.match(/^\/api\/job\/status\/([^/]+)\/$/)

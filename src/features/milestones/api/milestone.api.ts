@@ -9,6 +9,11 @@ import type {
   DashboardMilestoneSprintStatistic,
 } from '@/features/milestones/types/milestone.types'
 
+type DashboardProjectResponse = Omit<DashboardProject, 'pm' | 'pl'> & {
+  pm?: number | null
+  pl?: number | null
+}
+
 type DashboardMilestoneResponse = {
   id: number
   name: string
@@ -49,30 +54,40 @@ function mapMilestone(
   }
 }
 
+function mapDashboardProject(
+  response: DashboardProjectResponse,
+): DashboardProject {
+  return {
+    ...response,
+    pm: typeof response.pm === 'number' ? response.pm : null,
+    pl: typeof response.pl === 'number' ? response.pl : null,
+  }
+}
+
 export async function getDashboardProjects() {
-  const response = await http.get<DashboardProject[]>(
+  const response = await http.get<DashboardProjectResponse[]>(
     '/api/dashboard/projects/',
   )
-  return response.data
+  return response.data.map(mapDashboardProject)
 }
 
 export async function createDashboardProject(payload: DashboardProjectPayload) {
-  const response = await http.post<DashboardProject>(
+  const response = await http.post<DashboardProjectResponse>(
     '/api/dashboard/projects/',
     payload,
   )
-  return response.data
+  return mapDashboardProject(response.data)
 }
 
 export async function updateDashboardProject(
   projectId: number,
   payload: Partial<DashboardProjectPayload>,
 ) {
-  const response = await http.patch<DashboardProject>(
+  const response = await http.patch<DashboardProjectResponse>(
     `/api/dashboard/projects/${projectId}/`,
     payload,
   )
-  return response.data
+  return mapDashboardProject(response.data)
 }
 
 export async function deleteDashboardProject(projectId: number) {
