@@ -1,8 +1,8 @@
 import { http } from '@/lib/http'
 
-import type { CurrentUser } from '@/features/auth/types/account.types'
+import type { AccountUser } from '@/features/auth/types/account.types'
 
-export async function getCurrentUser() {
-  const response = await http.get<CurrentUser>('/api/accounts/users/')
+export async function getUsers() {
+  const response = await http.get<AccountUser[]>('/api/accounts/users/')
   return response.data
 }

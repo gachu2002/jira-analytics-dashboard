@@ -1,4 +1,4 @@
-export type CurrentUser = {
+export type AccountUser = {
   id: number
   username: string
   email: string

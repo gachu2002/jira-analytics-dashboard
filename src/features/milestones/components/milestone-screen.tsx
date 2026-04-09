@@ -44,7 +44,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { useCurrentUserQuery } from '@/features/auth/hooks/use-current-user-query'
+import { useUsersQuery } from '@/features/auth/hooks/use-current-user-query'
+import type { AccountUser } from '@/features/auth/types/account.types'
 import { useMilestoneSprintStatisticsQuery } from '@/features/milestones/api/milestone.queries'
 import { useMilestoneTimelineQuery } from '@/features/milestones/hooks/use-milestone-query'
 import { useMilestoneTimelineMutations } from '@/features/milestones/hooks/use-milestone-mutations'
@@ -104,8 +105,8 @@ const ganttHeaderHeight = `calc(${monthHeaderHeight} + ${weekHeaderHeight})`
 export function MilestoneScreen() {
   const { projects, packages, viewModel, isPending, isError } =
     useMilestoneTimelineQuery()
-  const currentUserQuery = useCurrentUserQuery()
-  const currentUserId = currentUserQuery.data?.id ?? null
+  const usersQuery = useUsersQuery()
+  const users = usersQuery.data ?? []
   const search = useMilestoneTimelineUiStore((state) => state.search)
   const setSearch = useMilestoneTimelineUiStore((state) => state.setSearch)
   const zoom = useMilestoneTimelineUiStore((state) => state.zoom)
@@ -550,6 +551,7 @@ export function MilestoneScreen() {
                 create: createProject,
                 update: updateProject,
               }}
+              users={users}
               selectedEntity={selectedEntity}
               selectedMilestone={selectedMilestone}
               onClose={handleCloseDrawer}
@@ -572,14 +574,14 @@ export function MilestoneScreen() {
                 }
               }}
               onSubmitCreateProject={async (values: ProjectFormValues) => {
-                if (currentUserId === null) {
-                  toast.error('Current user unavailable')
+                if (!users.length) {
+                  toast.error('User list unavailable')
                   return
                 }
 
                 try {
                   const created = await createProject.mutateAsync(
-                    toProjectPayload(values, currentUserId),
+                    toProjectPayload(values),
                   )
                   openProjectView(created.id)
                   toast.success('Project created')
@@ -612,15 +614,15 @@ export function MilestoneScreen() {
               }}
               onSubmitUpdateProject={async (values: ProjectFormValues) => {
                 if (!selectedProject) return
-                if (currentUserId === null) {
-                  toast.error('Current user unavailable')
+                if (!users.length) {
+                  toast.error('User list unavailable')
                   return
                 }
 
                 try {
                   await updateProject.mutateAsync({
                     projectId: selectedProject.id,
-                    payload: toProjectPayload(values, currentUserId),
+                    payload: toProjectPayload(values),
                   })
                   openProjectView(selectedProject.id)
                   toast.success('Project updated')
@@ -655,6 +657,7 @@ function CrudDrawer({
   projectOptions,
   project,
   projectMutationState,
+  users,
   selectedEntity,
   selectedMilestone,
   selectedMilestoneBar,
@@ -676,6 +679,7 @@ function CrudDrawer({
     create: { isPending: boolean }
     update: { isPending: boolean }
   }
+  users: AccountUser[]
   selectedEntity: MilestoneTimelineSelectedEntity | null
   selectedMilestone: DashboardMilestone | null
   selectedMilestoneBar: TimelineMilestoneBar | null
@@ -693,6 +697,8 @@ function CrudDrawer({
       description: project?.description ?? '',
       members: project?.members ?? '',
       labels: project?.labels ?? '',
+      pm: getProjectOwnerValue(users, project?.pm),
+      pl: getProjectOwnerValue(users, project?.pl),
     },
   })
   const milestoneForm = useForm<MilestoneFormValues>({
@@ -865,6 +871,7 @@ function CrudDrawer({
           form={projectForm}
           isPending={projectMutationState.create.isPending}
           submitLabel="Create project"
+          users={users}
           onCancel={onClose}
           onSubmit={onSubmitCreateProject}
         />
@@ -874,6 +881,7 @@ function CrudDrawer({
           form={projectForm}
           isPending={projectMutationState.update.isPending}
           submitLabel="Save"
+          users={users}
           onCancel={onClose}
           onSubmit={onSubmitUpdateProject}
         />
@@ -1137,17 +1145,17 @@ function MilestoneSprintDeliverySection({
 }
 
 const MILESTONE_STATUS_STEPS = [
-  { label: 'Screen', color: '#8e7ea8', aliases: ['screen', 'open'] },
-  { label: 'Analysis', color: '#6f86b0', aliases: ['analysis'] },
+  { label: 'Screen', color: '#e2c46f', aliases: ['screen', 'open'] },
+  { label: 'Analysis', color: '#6d85ac', aliases: ['analysis'] },
   {
     label: 'Implementation',
-    color: '#7da0c9',
+    color: '#d99088',
     aliases: ['implementation', 'in progress'],
   },
-  { label: 'Integration', color: '#d98b82', aliases: ['integration'] },
-  { label: 'Build', color: '#d7a0bb', aliases: ['build'] },
-  { label: 'Verify', color: '#e1be68', aliases: ['verify', 'verified'] },
-  { label: 'Closed', color: '#8faa58', aliases: ['closed'] },
+  { label: 'Integration', color: '#9d90b7', aliases: ['integration'] },
+  { label: 'Build', color: '#dca3bf', aliases: ['build'] },
+  { label: 'Verify', color: '#b4c96d', aliases: ['verify', 'verified'] },
+  { label: 'Closed', color: '#7f9fc6', aliases: ['closed'] },
 ] as const
 
 function MilestoneStatusAnalysisSection({
@@ -1463,12 +1471,14 @@ function ProjectFormPanel({
   form,
   isPending,
   submitLabel,
+  users,
   onCancel,
   onSubmit,
 }: {
   form: UseFormReturn<ProjectFormValues>
   isPending: boolean
   submitLabel: string
+  users: AccountUser[]
   onCancel: () => void
   onSubmit: (values: ProjectFormValues) => Promise<void>
 }) {
@@ -1508,6 +1518,40 @@ function ProjectFormPanel({
             {...form.register('labels')}
           />
         </Field>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="PM" error={form.formState.errors.pm?.message}>
+            <select
+              className="ops-bug-select h-10 rounded-md"
+              disabled={!users.length}
+              {...form.register('pm', {
+                setValueAs: (value) => Number(value),
+              })}
+            >
+              {!users.length ? <option value={0}>No users</option> : null}
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {formatAccountUserLabel(user)}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="PL" error={form.formState.errors.pl?.message}>
+            <select
+              className="ops-bug-select h-10 rounded-md"
+              disabled={!users.length}
+              {...form.register('pl', {
+                setValueAs: (value) => Number(value),
+              })}
+            >
+              {!users.length ? <option value={0}>No users</option> : null}
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {formatAccountUserLabel(user)}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
         <FormActions
           isPending={isPending}
           submitLabel={submitLabel}
@@ -1628,14 +1672,29 @@ function toMilestonePayload(values: MilestoneFormValues) {
   }
 }
 
-function toProjectPayload(values: ProjectFormValues, currentUserId: number) {
+function toProjectPayload(values: ProjectFormValues) {
   return {
     name: values.name.trim(),
     keys: values.keys.trim(),
     description: values.description.trim(),
     members: values.members.trim(),
     labels: values.labels.trim(),
-    pm: currentUserId,
-    pl: currentUserId,
+    pm: values.pm,
+    pl: values.pl,
   }
+}
+
+function getProjectOwnerValue(
+  users: AccountUser[],
+  preferredId?: number | null,
+) {
+  if (preferredId && users.some((user) => user.id === preferredId)) {
+    return preferredId
+  }
+
+  return users[0]?.id ?? 0
+}
+
+function formatAccountUserLabel(user: AccountUser) {
+  return user.display_name_printable || user.name || user.username
 }

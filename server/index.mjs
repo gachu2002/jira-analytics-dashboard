@@ -909,7 +909,7 @@ const dashboardProjects = [
     members: 'lethanhnguyen, nguyenvannam, tranlinh, huypham',
     labels: 'cloud, auth, release',
     pm: 101,
-    pl: 101,
+    pl: 102,
   },
   {
     id: 2,
@@ -918,8 +918,8 @@ const dashboardProjects = [
     description: 'Console reliability, audit, and reporting delivery track.',
     members: 'quangpham, amyle, khanhtran, zoenguyen',
     labels: 'console, compliance, reporting',
-    pm: 101,
-    pl: 101,
+    pm: 103,
+    pl: 104,
   },
   {
     id: 3,
@@ -928,8 +928,8 @@ const dashboardProjects = [
     description: 'Mobile push and store-release milestone schedule.',
     members: 'trangpham, omarali, deepa',
     labels: 'mobile, release, notifications',
-    pm: 101,
-    pl: 101,
+    pm: 105,
+    pl: 106,
   },
 ]
 
@@ -1219,21 +1219,93 @@ function getSyncTaskStatus(taskId) {
   return Date.now() >= job.readyAt ? 'SUCCESS' : 'PROCESSING'
 }
 
-function buildCurrentUser() {
-  return {
-    id: 101,
-    username: 'demo.user',
-    email: 'user@example.com',
-    is_superuser: true,
-    is_staff: true,
-    is_active: true,
-    cn: 'Demo User',
-    name: 'Demo User',
-    display_name_printable: 'Demo User',
-    title: 'Program Manager',
-    department: 'Engineering',
-    desc: 'Local mock current user',
-  }
+function buildAccountUsers() {
+  return [
+    {
+      id: 101,
+      username: 'demo.user',
+      email: 'user@example.com',
+      is_superuser: true,
+      is_staff: true,
+      is_active: true,
+      cn: 'Demo User',
+      name: 'Demo User',
+      display_name_printable: 'Demo User',
+      title: 'Program Manager',
+      department: 'Engineering',
+      desc: 'Local mock current user',
+    },
+    {
+      id: 102,
+      username: 'nam.nguyen',
+      email: 'nam.nguyen@example.com',
+      is_superuser: false,
+      is_staff: true,
+      is_active: true,
+      cn: 'Nam Nguyen',
+      name: 'Nam Nguyen',
+      display_name_printable: 'Nam Nguyen',
+      title: 'Project Lead',
+      department: 'Platform Delivery',
+      desc: 'Authentication and search delivery lead',
+    },
+    {
+      id: 103,
+      username: 'quang.pham',
+      email: 'quang.pham@example.com',
+      is_superuser: false,
+      is_staff: true,
+      is_active: true,
+      cn: 'Quang Pham',
+      name: 'Quang Pham',
+      display_name_printable: 'Quang Pham',
+      title: 'Program Manager',
+      department: 'Console Operations',
+      desc: 'Console portfolio owner',
+    },
+    {
+      id: 104,
+      username: 'zoe.nguyen',
+      email: 'zoe.nguyen@example.com',
+      is_superuser: false,
+      is_staff: true,
+      is_active: true,
+      cn: 'Zoe Nguyen',
+      name: 'Zoe Nguyen',
+      display_name_printable: 'Zoe Nguyen',
+      title: 'Project Lead',
+      department: 'Console Operations',
+      desc: 'Reporting and query lead',
+    },
+    {
+      id: 105,
+      username: 'trang.pham',
+      email: 'trang.pham@example.com',
+      is_superuser: false,
+      is_staff: true,
+      is_active: true,
+      cn: 'Trang Pham',
+      name: 'Trang Pham',
+      display_name_printable: 'Trang Pham',
+      title: 'Program Manager',
+      department: 'Mobile Engineering',
+      desc: 'Mobile release portfolio owner',
+    },
+    {
+      id: 106,
+      username: 'deepa.k',
+      email: 'deepa.k@example.com',
+      is_superuser: false,
+      is_staff: true,
+      is_active: true,
+      cn: 'Deepa K',
+      name: 'Deepa K',
+      display_name_printable: 'Deepa K',
+      title: 'Project Lead',
+      department: 'Mobile Engineering',
+      desc: 'Crash and store readiness lead',
+    },
+  ]
 }
 
 function readJsonBody(request) {
@@ -1481,7 +1553,7 @@ const server = createServer(async (request, response) => {
   }
 
   if (path === '/api/accounts/users/' && request.method === 'GET') {
-    sendJson(response, 200, buildCurrentUser())
+    sendJson(response, 200, buildAccountUsers())
     return
   }
 

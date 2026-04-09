@@ -1,5 +1,5 @@
 import { PanelRightClose } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -21,12 +21,33 @@ export function TimelineDrawerShell({
   title: string
   eyebrow: string
 }) {
+  const backdropPressStartedRef = useRef(false)
+
   if (!isOpen) return null
 
   return (
     <div
       className="ops-side-drawer-backdrop fixed inset-0 z-40 flex justify-end"
-      onClick={onClose}
+      onPointerCancel={() => {
+        backdropPressStartedRef.current = false
+      }}
+      onPointerDown={(event) => {
+        backdropPressStartedRef.current = event.target === event.currentTarget
+      }}
+      onPointerLeave={() => {
+        backdropPressStartedRef.current = false
+      }}
+      onPointerUp={(event) => {
+        const shouldClose =
+          backdropPressStartedRef.current &&
+          event.target === event.currentTarget
+
+        backdropPressStartedRef.current = false
+
+        if (shouldClose) {
+          onClose()
+        }
+      }}
     >
       <div
         className={cn(
