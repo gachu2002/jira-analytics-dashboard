@@ -1087,21 +1087,11 @@
     background: color-mix(in srgb, var(--workspace-pane) 99%, white 1%);
   }
 
-  .ops-bug-select,
   .ops-bug-textarea {
     border: 1px solid color-mix(in srgb, var(--border) 94%, transparent);
     background: var(--workspace-pane);
     color: var(--foreground);
     width: 100%;
-  }
-
-  .ops-bug-select {
-    line-height: 1.35;
-    padding-inline: 0.75rem;
-  }
-
-  .ops-bug-select option {
-    line-height: 1.35;
   }
 
   .ops-bug-textarea {

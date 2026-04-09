@@ -33,6 +33,7 @@ import {
   LoadingPanel,
   TimelineWorkspaceLoading,
 } from '@/components/common/loading-state'
+import { WorkspaceSelect } from '@/components/common/workspace-select'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -712,22 +713,15 @@ function CrudDrawer({
 }) {
   const projectForm = useForm<ProjectFormValues>({
     resolver: zodResolver(projectFormSchema),
-    values: { name: project?.name ?? '' },
+    defaultValues: { name: project?.name ?? '' },
   })
   const packageForm = useForm<PackageFormValues>({
     resolver: zodResolver(packageFormSchema),
-    values: {
-      projectId:
-        selectedEntity?.type === 'package'
-          ? selectedEntity.projectId
-          : (selectedEntity?.projectId ?? packageOptions[0]?.id ?? 0),
-      name: selectedPackage?.name ?? '',
-      keys: selectedPackage?.keys ?? '',
-      labels: selectedPackage?.labels ?? '',
-      members: selectedPackage?.members ?? '',
-      start_date: selectedPackage?.start_date ?? '',
-      end_date: selectedPackage?.end_date ?? '',
-    },
+    defaultValues: buildPackageFormValues(
+      selectedEntity,
+      selectedPackage,
+      packageOptions,
+    ),
   })
 
   useEffect(() => {
@@ -742,6 +736,39 @@ function CrudDrawer({
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, onClose])
+
+  useEffect(() => {
+    if (
+      !isOpen ||
+      (inspectorMode !== 'create-project' && inspectorMode !== 'edit-project')
+    ) {
+      return
+    }
+
+    projectForm.reset({ name: project?.name ?? '' })
+    projectForm.clearErrors()
+  }, [inspectorMode, isOpen, project, projectForm])
+
+  useEffect(() => {
+    if (
+      !isOpen ||
+      (inspectorMode !== 'create-package' && inspectorMode !== 'edit-package')
+    ) {
+      return
+    }
+
+    packageForm.reset(
+      buildPackageFormValues(selectedEntity, selectedPackage, packageOptions),
+    )
+    packageForm.clearErrors()
+  }, [
+    inspectorMode,
+    isOpen,
+    packageForm,
+    packageOptions,
+    selectedEntity,
+    selectedPackage,
+  ])
 
   const packageViewRef = useRef<HTMLDivElement | null>(null)
   const [exportFormat, setExportFormat] = useState<'png' | 'pdf' | null>(null)
@@ -2225,23 +2252,27 @@ function PackageFormPanel({
   onCancel: () => void
   onSubmit: (values: PackageFormValues) => Promise<void>
 }) {
+  const projectOptions = projects.map((project) => ({
+    value: String(project.id),
+    label: project.name,
+  }))
+
   return (
     <form className="p-4" onSubmit={form.handleSubmit(onSubmit)}>
       <div className="grid gap-4">
         <Field label="Project" error={form.formState.errors.projectId?.message}>
           {allowProjectChange ? (
-            <select
-              className="ops-bug-select h-10 rounded-md"
-              {...form.register('projectId', {
-                setValueAs: (value) => Number(value),
-              })}
-            >
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
+            <WorkspaceSelect
+              value={String(form.watch('projectId'))}
+              options={projectOptions}
+              placeholder="Select project"
+              onValueChange={(value) => {
+                form.setValue('projectId', Number(value), {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }}
+            />
           ) : (
             <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
               {projects.find(
@@ -2315,6 +2346,25 @@ function BugTimelineErrorState() {
       </div>
     </div>
   )
+}
+
+function buildPackageFormValues(
+  selectedEntity: BugTimelineSelectedEntity | null,
+  selectedPackage: BugTrackerPackage | null,
+  packageOptions: BugTrackerProject[],
+): PackageFormValues {
+  return {
+    projectId:
+      selectedEntity?.type === 'package'
+        ? selectedEntity.projectId
+        : (selectedEntity?.projectId ?? packageOptions[0]?.id ?? 0),
+    name: selectedPackage?.name ?? '',
+    keys: selectedPackage?.keys ?? '',
+    labels: selectedPackage?.labels ?? '',
+    members: selectedPackage?.members ?? '',
+    start_date: selectedPackage?.start_date ?? '',
+    end_date: selectedPackage?.end_date ?? '',
+  }
 }
 
 function toPackagePayload(values: PackageFormValues) {

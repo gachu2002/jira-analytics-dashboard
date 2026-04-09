@@ -1,4 +1,5 @@
 import { http } from '@/lib/http'
+import type { AccountUser } from '@/features/auth/types/account.types'
 import { isIssueDoneStatus } from '@/features/timeline-workspace/utils/timeline-workspace.utils'
 
 import type {
@@ -10,8 +11,20 @@ import type {
 } from '@/features/milestones/types/milestone.types'
 
 type DashboardProjectResponse = Omit<DashboardProject, 'pm' | 'pl'> & {
-  pm?: number | null
-  pl?: number | null
+  pm?: number | AccountUser | null
+  pl?: number | AccountUser | null
+}
+
+function getAccountUserId(value?: number | AccountUser | null) {
+  if (typeof value === 'number') {
+    return value
+  }
+
+  if (value && typeof value === 'object' && typeof value.id === 'number') {
+    return value.id
+  }
+
+  return null
 }
 
 type DashboardMilestoneResponse = {
@@ -59,8 +72,8 @@ function mapDashboardProject(
 ): DashboardProject {
   return {
     ...response,
-    pm: typeof response.pm === 'number' ? response.pm : null,
-    pl: typeof response.pl === 'number' ? response.pl : null,
+    pm: getAccountUserId(response.pm),
+    pl: getAccountUserId(response.pl),
   }
 }
 

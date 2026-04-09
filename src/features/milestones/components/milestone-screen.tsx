@@ -25,13 +25,14 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useForm, type UseFormReturn } from 'react-hook-form'
+import { Controller, useForm, type UseFormReturn } from 'react-hook-form'
 import { toast } from 'sonner'
 
 import {
   LoadingPanel,
   TimelineWorkspaceLoading,
 } from '@/components/common/loading-state'
+import { WorkspaceSelect } from '@/components/common/workspace-select'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -691,28 +692,19 @@ function CrudDrawer({
 }) {
   const projectForm = useForm<ProjectFormValues>({
     resolver: zodResolver(projectFormSchema),
-    values: {
-      name: project?.name ?? '',
-      keys: project?.keys ?? '',
-      description: project?.description ?? '',
-      members: project?.members ?? '',
-      labels: project?.labels ?? '',
-      pm: getProjectOwnerValue(users, project?.pm),
-      pl: getProjectOwnerValue(users, project?.pl),
-    },
+    defaultValues: buildProjectFormValues(
+      project,
+      users,
+      inspectorMode === 'create-project',
+    ),
   })
   const milestoneForm = useForm<MilestoneFormValues>({
     resolver: zodResolver(milestoneFormSchema),
-    values: {
-      projectId:
-        selectedEntity?.type === 'package'
-          ? selectedEntity.projectId
-          : (selectedEntity?.projectId ?? projectOptions[0]?.id ?? 0),
-      name: selectedMilestone?.name ?? '',
-      description: selectedMilestone?.description ?? '',
-      start_date: selectedMilestone?.start_date ?? '',
-      end_date: selectedMilestone?.end_date ?? '',
-    },
+    defaultValues: buildMilestoneFormValues(
+      selectedEntity,
+      selectedMilestone,
+      projectOptions,
+    ),
   })
 
   useEffect(() => {
@@ -727,6 +719,49 @@ function CrudDrawer({
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, onClose])
+
+  useEffect(() => {
+    if (
+      !isOpen ||
+      (inspectorMode !== 'create-project' && inspectorMode !== 'edit-project')
+    ) {
+      return
+    }
+
+    projectForm.reset(
+      buildProjectFormValues(
+        project,
+        users,
+        inspectorMode === 'create-project',
+      ),
+    )
+    projectForm.clearErrors()
+  }, [inspectorMode, isOpen, project, projectForm, users])
+
+  useEffect(() => {
+    if (
+      !isOpen ||
+      (inspectorMode !== 'create-package' && inspectorMode !== 'edit-package')
+    ) {
+      return
+    }
+
+    milestoneForm.reset(
+      buildMilestoneFormValues(
+        selectedEntity,
+        selectedMilestone,
+        projectOptions,
+      ),
+    )
+    milestoneForm.clearErrors()
+  }, [
+    inspectorMode,
+    isOpen,
+    milestoneForm,
+    projectOptions,
+    selectedEntity,
+    selectedMilestone,
+  ])
 
   const milestoneViewRef = useRef<HTMLDivElement | null>(null)
   const [exportFormat, setExportFormat] = useState<'png' | 'pdf' | null>(null)
@@ -854,7 +889,7 @@ function CrudDrawer({
       }
     >
       {inspectorMode === 'view-project' && project ? (
-        <ProjectViewPanel project={project} />
+        <ProjectViewPanel project={project} users={users} />
       ) : null}
       {inspectorMode === 'view-package' &&
       selectedMilestone &&
@@ -922,7 +957,13 @@ function CrudDrawer({
   )
 }
 
-function ProjectViewPanel({ project }: { project: DashboardProject }) {
+function ProjectViewPanel({
+  project,
+  users,
+}: {
+  project: DashboardProject
+  users: AccountUser[]
+}) {
   return (
     <div className="p-4">
       <div className="grid gap-4">
@@ -951,6 +992,18 @@ function ProjectViewPanel({ project }: { project: DashboardProject }) {
             {project.labels || '-'}
           </div>
         </Field>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="PM">
+            <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
+              {resolveAccountUserLabel(users, project.pm)}
+            </div>
+          </Field>
+          <Field label="PL">
+            <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
+              {resolveAccountUserLabel(users, project.pl)}
+            </div>
+          </Field>
+        </div>
       </div>
     </div>
   )
@@ -1482,6 +1535,11 @@ function ProjectFormPanel({
   onCancel: () => void
   onSubmit: (values: ProjectFormValues) => Promise<void>
 }) {
+  const selectedPmId = form.watch('pm')
+  const selectedPlId = form.watch('pl')
+  const pmOptions = buildProjectOwnerOptions(users, selectedPmId)
+  const plOptions = buildProjectOwnerOptions(users, selectedPlId)
+
   return (
     <form className="p-4" onSubmit={form.handleSubmit(onSubmit)}>
       <div className="grid gap-4">
@@ -1519,38 +1577,62 @@ function ProjectFormPanel({
           />
         </Field>
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="PM" error={form.formState.errors.pm?.message}>
-            <select
-              className="ops-bug-select h-10 rounded-md"
-              disabled={!users.length}
-              {...form.register('pm', {
-                setValueAs: (value) => Number(value),
-              })}
-            >
-              {!users.length ? <option value={0}>No users</option> : null}
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {formatAccountUserLabel(user)}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="PL" error={form.formState.errors.pl?.message}>
-            <select
-              className="ops-bug-select h-10 rounded-md"
-              disabled={!users.length}
-              {...form.register('pl', {
-                setValueAs: (value) => Number(value),
-              })}
-            >
-              {!users.length ? <option value={0}>No users</option> : null}
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {formatAccountUserLabel(user)}
-                </option>
-              ))}
-            </select>
-          </Field>
+          <Controller
+            control={form.control}
+            name="pm"
+            render={({ field, fieldState }) => (
+              <Field
+                label="PM"
+                error={
+                  fieldState.error &&
+                  (fieldState.isTouched || form.formState.isSubmitted)
+                    ? fieldState.error.message
+                    : undefined
+                }
+              >
+                <WorkspaceSelect
+                  disabled={!users.length}
+                  value={field.value > 0 ? String(field.value) : undefined}
+                  options={pmOptions.map((option) => ({
+                    value: String(option.id),
+                    label: option.label,
+                  }))}
+                  placeholder={users.length ? 'Select PM' : 'No users'}
+                  onValueChange={(value) => {
+                    field.onChange(Number(value))
+                  }}
+                />
+              </Field>
+            )}
+          />
+          <Controller
+            control={form.control}
+            name="pl"
+            render={({ field, fieldState }) => (
+              <Field
+                label="PL"
+                error={
+                  fieldState.error &&
+                  (fieldState.isTouched || form.formState.isSubmitted)
+                    ? fieldState.error.message
+                    : undefined
+                }
+              >
+                <WorkspaceSelect
+                  disabled={!users.length}
+                  value={field.value > 0 ? String(field.value) : undefined}
+                  options={plOptions.map((option) => ({
+                    value: String(option.id),
+                    label: option.label,
+                  }))}
+                  placeholder={users.length ? 'Select PL' : 'No users'}
+                  onValueChange={(value) => {
+                    field.onChange(Number(value))
+                  }}
+                />
+              </Field>
+            )}
+          />
         </div>
         <FormActions
           isPending={isPending}
@@ -1579,23 +1661,27 @@ function MilestoneFormPanel({
   onCancel: () => void
   onSubmit: (values: MilestoneFormValues) => Promise<void>
 }) {
+  const projectOptions = projects.map((project) => ({
+    value: String(project.id),
+    label: project.name,
+  }))
+
   return (
     <form className="p-4" onSubmit={form.handleSubmit(onSubmit)}>
       <div className="grid gap-4">
         <Field label="Project" error={form.formState.errors.projectId?.message}>
           {allowProjectChange ? (
-            <select
-              className="ops-bug-select h-10 rounded-md"
-              {...form.register('projectId', {
-                setValueAs: (value) => Number(value),
-              })}
-            >
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
+            <WorkspaceSelect
+              value={String(form.watch('projectId'))}
+              options={projectOptions}
+              placeholder="Select project"
+              onValueChange={(value) => {
+                form.setValue('projectId', Number(value), {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }}
+            />
           ) : (
             <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
               {projects.find(
@@ -1684,17 +1770,82 @@ function toProjectPayload(values: ProjectFormValues) {
   }
 }
 
+function buildProjectFormValues(
+  project: DashboardProject | null,
+  users: AccountUser[],
+  fallbackToFirst: boolean,
+): ProjectFormValues {
+  return {
+    name: project?.name ?? '',
+    keys: project?.keys ?? '',
+    description: project?.description ?? '',
+    members: project?.members ?? '',
+    labels: project?.labels ?? '',
+    pm: getProjectOwnerValue(users, project?.pm, fallbackToFirst),
+    pl: getProjectOwnerValue(users, project?.pl, fallbackToFirst),
+  }
+}
+
+function buildMilestoneFormValues(
+  selectedEntity: MilestoneTimelineSelectedEntity | null,
+  selectedMilestone: DashboardMilestone | null,
+  projectOptions: DashboardProject[],
+): MilestoneFormValues {
+  return {
+    projectId:
+      selectedEntity?.type === 'package'
+        ? selectedEntity.projectId
+        : (selectedEntity?.projectId ?? projectOptions[0]?.id ?? 0),
+    name: selectedMilestone?.name ?? '',
+    description: selectedMilestone?.description ?? '',
+    start_date: selectedMilestone?.start_date ?? '',
+    end_date: selectedMilestone?.end_date ?? '',
+  }
+}
+
 function getProjectOwnerValue(
   users: AccountUser[],
   preferredId?: number | null,
+  fallbackToFirst = false,
 ) {
   if (preferredId && users.some((user) => user.id === preferredId)) {
     return preferredId
   }
 
-  return users[0]?.id ?? 0
+  if (preferredId) {
+    return preferredId
+  }
+
+  return fallbackToFirst ? (users[0]?.id ?? 0) : 0
 }
 
 function formatAccountUserLabel(user: AccountUser) {
   return user.display_name_printable || user.name || user.username
+}
+
+function resolveAccountUserLabel(users: AccountUser[], userId?: number | null) {
+  if (!userId) {
+    return '-'
+  }
+
+  const matchedUser = users.find((user) => user.id === userId)
+  return matchedUser
+    ? formatAccountUserLabel(matchedUser)
+    : `Unknown user (#${userId})`
+}
+
+function buildProjectOwnerOptions(users: AccountUser[], selectedId: number) {
+  const options = users.map((user) => ({
+    id: user.id,
+    label: formatAccountUserLabel(user),
+  }))
+
+  if (selectedId > 0 && !options.some((option) => option.id === selectedId)) {
+    options.unshift({
+      id: selectedId,
+      label: `Unknown user (#${selectedId})`,
+    })
+  }
+
+  return options
 }

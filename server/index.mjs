@@ -1308,6 +1308,18 @@ function buildAccountUsers() {
   ]
 }
 
+function getAccountUser(userId) {
+  return buildAccountUsers().find((user) => user.id === userId) ?? null
+}
+
+function serializeDashboardProject(project) {
+  return {
+    ...project,
+    pm: getAccountUser(project.pm),
+    pl: getAccountUser(project.pl),
+  }
+}
+
 function readJsonBody(request) {
   return new Promise((resolve, reject) => {
     let body = ''
@@ -1573,7 +1585,7 @@ const server = createServer(async (request, response) => {
   }
 
   if (path === '/api/dashboard/projects/' && request.method === 'GET') {
-    sendJson(response, 200, dashboardProjects)
+    sendJson(response, 200, dashboardProjects.map(serializeDashboardProject))
     return
   }
 
@@ -1589,7 +1601,7 @@ const server = createServer(async (request, response) => {
 
       const nextProject = { id: dashboardProjectIdCounter++, ...project }
       dashboardProjects.push(nextProject)
-      sendJson(response, 201, nextProject)
+      sendJson(response, 201, serializeDashboardProject(nextProject))
       return
     } catch {
       sendJson(response, 400, { detail: 'Request body must be valid JSON.' })
@@ -1611,7 +1623,7 @@ const server = createServer(async (request, response) => {
     }
 
     if (request.method === 'GET') {
-      sendJson(response, 200, project)
+      sendJson(response, 200, serializeDashboardProject(project))
       return
     }
 
@@ -1629,7 +1641,7 @@ const server = createServer(async (request, response) => {
         }
 
         Object.assign(project, nextProject)
-        sendJson(response, 200, project)
+        sendJson(response, 200, serializeDashboardProject(project))
         return
       } catch {
         sendJson(response, 400, { detail: 'Request body must be valid JSON.' })
