@@ -63,7 +63,7 @@ function mapProjectGroups(
         .filter((item) => {
           if (!searchValue) return true
 
-          return `${project.name} ${item.name} ${item.keys} ${item.labels} ${item.members}`
+          return `${project.name} ${item.name} ${item.keys} ${item.labels} ${item.members} ${item.note ?? ''}`
             .toLowerCase()
             .includes(searchValue)
         })

@@ -66,7 +66,9 @@ import type {
   BugTimelineInspectorMode,
   BugTimelineSelectedEntity,
   BugTrackerPackage,
+  BugTrackerPackagePayload,
   BugTrackerProject,
+  BugTrackerProjectPayload,
   PackageBugStatistic,
   PackageSprintStatistic,
   TimelinePackageBar,
@@ -583,6 +585,17 @@ export function BugTimelineScreen() {
               }}
               selectedEntity={selectedEntity}
               selectedPackage={selectedPackage}
+              onOpenEditPackage={() => {
+                if (selectedEntity?.type !== 'package') return
+                openEditPackage(
+                  selectedEntity.projectId,
+                  selectedEntity.packageId,
+                )
+              }}
+              onOpenEditProject={() => {
+                if (!selectedProject) return
+                openEditProject(selectedProject.id)
+              }}
               onClose={handleCloseDrawer}
               onSubmitCreatePackage={async (values: PackageFormValues) => {
                 try {
@@ -611,15 +624,26 @@ export function BugTimelineScreen() {
                   toast.error('Create failed')
                 }
               }}
-              onSubmitUpdatePackage={async (values: PackageFormValues) => {
+              onSubmitUpdatePackage={async (
+                payload: Partial<BugTrackerPackagePayload>,
+              ) => {
                 if (!selectedEntity || selectedEntity.type !== 'package') return
+
+                if (!Object.keys(payload).length) {
+                  handleSelectPackage(
+                    selectedEntity.projectId,
+                    selectedEntity.packageId,
+                  )
+                  return
+                }
+
                 try {
                   const updated = await updatePackage.mutateAsync({
                     packageId: selectedEntity.packageId,
-                    payload: toPackagePayload(values),
+                    payload,
                   })
 
-                  if (updated.task_id) {
+                  if (hasSyncingPackageChanges(payload) && updated.task_id) {
                     handleCloseDrawer()
                     toast.success('Package syncing with Jira')
                     return
@@ -634,12 +658,20 @@ export function BugTimelineScreen() {
                   toast.error('Update failed')
                 }
               }}
-              onSubmitUpdateProject={async (values: ProjectFormValues) => {
+              onSubmitUpdateProject={async (
+                payload: Partial<BugTrackerProjectPayload>,
+              ) => {
                 if (!selectedProject) return
+
+                if (!Object.keys(payload).length) {
+                  openProjectView(selectedProject.id)
+                  return
+                }
+
                 try {
                   await updateProject.mutateAsync({
                     projectId: selectedProject.id,
-                    payload: values,
+                    payload,
                   })
                   openProjectView(selectedProject.id)
                   toast.success('Project updated')
@@ -684,6 +716,8 @@ function CrudDrawer({
   selectedEntity,
   selectedPackage,
   selectedPackageBar,
+  onOpenEditPackage,
+  onOpenEditProject,
   onClose,
   onSubmitCreatePackage,
   onSubmitCreateProject,
@@ -705,11 +739,17 @@ function CrudDrawer({
   selectedEntity: BugTimelineSelectedEntity | null
   selectedPackage: BugTrackerPackage | null
   selectedPackageBar: TimelinePackageBar | null
+  onOpenEditPackage: () => void
+  onOpenEditProject: () => void
   onClose: () => void
   onSubmitCreatePackage: (values: PackageFormValues) => Promise<void>
   onSubmitCreateProject: (values: ProjectFormValues) => Promise<void>
-  onSubmitUpdatePackage: (values: PackageFormValues) => Promise<void>
-  onSubmitUpdateProject: (values: ProjectFormValues) => Promise<void>
+  onSubmitUpdatePackage: (
+    payload: Partial<BugTrackerPackagePayload>,
+  ) => Promise<void>
+  onSubmitUpdateProject: (
+    payload: Partial<BugTrackerProjectPayload>,
+  ) => Promise<void>
 }) {
   const projectForm = useForm<ProjectFormValues>({
     resolver: zodResolver(projectFormSchema),
@@ -830,49 +870,62 @@ function CrudDrawer({
   return (
     <TimelineDrawerShell
       actions={
-        isPackageView ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                className="ops-package-export-trigger rounded-md"
-                disabled={exportFormat !== null}
-                size="sm"
-                variant="outline"
+        <>
+          {inspectorMode === 'view-package' && selectedPackage ? (
+            <Button size="sm" variant="outline" onClick={onOpenEditPackage}>
+              <Pencil className="size-4" />
+              Edit
+            </Button>
+          ) : inspectorMode === 'view-project' && project ? (
+            <Button size="sm" variant="outline" onClick={onOpenEditProject}>
+              <Pencil className="size-4" />
+              Edit
+            </Button>
+          ) : null}
+          {isPackageView ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="ops-package-export-trigger rounded-md"
+                  disabled={exportFormat !== null}
+                  size="sm"
+                  variant="outline"
+                >
+                  <Download className="size-4" />
+                  {exportFormat === null ? 'Export view' : 'Exporting...'}
+                  <ChevronDown className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="ops-bug-chart-menu-content w-44"
               >
-                <Download className="size-4" />
-                {exportFormat === null ? 'Export view' : 'Exporting...'}
-                <ChevronDown className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="ops-bug-chart-menu-content w-44"
-            >
-              <DropdownMenuLabel>Package view</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="ops-bug-chart-menu-item"
-                disabled={exportFormat !== null}
-                onSelect={() => {
-                  void handleExportPackageView('png')
-                }}
-              >
-                <FileImage className="size-4" />
-                Image (.png)
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="ops-bug-chart-menu-item"
-                disabled={exportFormat !== null}
-                onSelect={() => {
-                  void handleExportPackageView('pdf')
-                }}
-              >
-                <FileText className="size-4" />
-                PDF
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : null
+                <DropdownMenuLabel>Package view</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="ops-bug-chart-menu-item"
+                  disabled={exportFormat !== null}
+                  onSelect={() => {
+                    void handleExportPackageView('png')
+                  }}
+                >
+                  <FileImage className="size-4" />
+                  Image (.png)
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="ops-bug-chart-menu-item"
+                  disabled={exportFormat !== null}
+                  onSelect={() => {
+                    void handleExportPackageView('pdf')
+                  }}
+                >
+                  <FileText className="size-4" />
+                  PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+        </>
       }
       eyebrow={getInspectorEyebrow(inspectorMode)}
       isOpen={isOpen}
@@ -923,7 +976,14 @@ function CrudDrawer({
           isPending={projectMutationState.update.isPending}
           submitLabel="Save"
           onCancel={onClose}
-          onSubmit={onSubmitUpdateProject}
+          onSubmit={() =>
+            onSubmitUpdateProject(
+              toProjectPatchPayload(
+                projectForm.getValues(),
+                projectForm.formState.dirtyFields,
+              ),
+            )
+          }
         />
       ) : null}
       {inspectorMode === 'create-package' ? (
@@ -945,7 +1005,14 @@ function CrudDrawer({
           projects={packageOptions}
           submitLabel="Save"
           onCancel={onClose}
-          onSubmit={onSubmitUpdatePackage}
+          onSubmit={() =>
+            onSubmitUpdatePackage(
+              toPackagePatchPayload(
+                packageForm.getValues(),
+                packageForm.formState.dirtyFields,
+              ),
+            )
+          }
         />
       ) : null}
       {(inspectorMode === 'edit-package' && !selectedPackage) ||
@@ -1012,6 +1079,7 @@ function PackageDetailPanel({
       sprintStatistics={sprintStatisticsQuery.data ?? []}
       sprintStatisticsError={sprintStatisticsQuery.isError}
       sprintStatisticsPending={sprintStatisticsQuery.isPending}
+      note={packageItem.note}
     />
   )
 }
@@ -1331,6 +1399,7 @@ function BugDetailContent({
   contentRef,
   issues,
   notice,
+  note,
   openCount,
   resolvedCount,
   sprintStatistics,
@@ -1343,6 +1412,7 @@ function BugDetailContent({
   contentRef: React.RefObject<HTMLDivElement | null>
   issues: BugTrackerPackage['issues']
   notice?: React.ReactNode
+  note?: string
   openCount: number
   resolvedCount: number
   sprintStatistics: PackageSprintStatistic[]
@@ -1357,6 +1427,14 @@ function BugDetailContent({
     <div className="p-4">
       <div ref={contentRef} className="grid gap-5">
         {notice ?? null}
+
+        <section className="grid gap-3">
+          <Field label="Note">
+            <div className="ops-bug-view-field min-h-20 rounded-md px-3 py-2.5 text-sm whitespace-pre-wrap">
+              {note || '-'}
+            </div>
+          </Field>
+        </section>
 
         <section className="grid gap-4">
           <PackageStatusSummary
@@ -2324,6 +2402,12 @@ function PackageFormPanel({
             {...form.register('members')}
           />
         </Field>
+        <Field label="Note">
+          <Textarea
+            className="ops-workspace-input min-h-24 rounded-md"
+            {...form.register('note')}
+          />
+        </Field>
         <FormActions
           isPending={isPending}
           submitLabel={submitLabel}
@@ -2362,6 +2446,7 @@ function buildPackageFormValues(
     keys: selectedPackage?.keys ?? '',
     labels: selectedPackage?.labels ?? '',
     members: selectedPackage?.members ?? '',
+    note: selectedPackage?.note ?? '',
     start_date: selectedPackage?.start_date ?? '',
     end_date: selectedPackage?.end_date ?? '',
   }
@@ -2373,10 +2458,81 @@ function toPackagePayload(values: PackageFormValues) {
     keys: values.keys.trim(),
     labels: values.labels.trim(),
     members: values.members.trim(),
+    note: values.note.trim(),
     start_date: values.start_date,
     end_date: values.end_date,
     bug_tracker_project: values.projectId,
   }
+}
+
+type DirtyFormFields<T extends Record<string, unknown>> = Partial<
+  Record<keyof T, boolean | undefined>
+>
+
+function toProjectPatchPayload(
+  values: ProjectFormValues,
+  dirtyFields: DirtyFormFields<ProjectFormValues>,
+) {
+  const payload: Partial<BugTrackerProjectPayload> = {}
+
+  if (dirtyFields.name) {
+    payload.name = values.name.trim()
+  }
+
+  return payload
+}
+
+function toPackagePatchPayload(
+  values: PackageFormValues,
+  dirtyFields: DirtyFormFields<PackageFormValues>,
+) {
+  const payload: Partial<BugTrackerPackagePayload> = {}
+
+  if (dirtyFields.projectId) {
+    payload.bug_tracker_project = values.projectId
+  }
+
+  if (dirtyFields.name) {
+    payload.name = values.name.trim()
+  }
+
+  if (dirtyFields.keys) {
+    payload.keys = values.keys.trim()
+  }
+
+  if (dirtyFields.labels) {
+    payload.labels = values.labels.trim()
+  }
+
+  if (dirtyFields.members) {
+    payload.members = values.members.trim()
+  }
+
+  if (dirtyFields.note) {
+    payload.note = values.note.trim()
+  }
+
+  if (dirtyFields.start_date) {
+    payload.start_date = values.start_date
+  }
+
+  if (dirtyFields.end_date) {
+    payload.end_date = values.end_date
+  }
+
+  return payload
+}
+
+function hasSyncingPackageChanges(payload: Partial<BugTrackerPackagePayload>) {
+  return (
+    payload.name !== undefined ||
+    payload.keys !== undefined ||
+    payload.labels !== undefined ||
+    payload.members !== undefined ||
+    payload.start_date !== undefined ||
+    payload.end_date !== undefined ||
+    payload.bug_tracker_project !== undefined
+  )
 }
 
 function buildCustomBugJql({

@@ -22,6 +22,7 @@ export type TimelinePackageLike = {
   keys: string
   labels: string
   members: string
+  note?: string
   start_date: string
   end_date: string
   resolved_bug: number

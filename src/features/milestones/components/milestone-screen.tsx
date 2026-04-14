@@ -61,8 +61,10 @@ import type {
   MilestoneTimelineInspectorMode,
   MilestoneTimelineSelectedEntity,
   DashboardMilestone,
+  DashboardMilestonePayload,
   DashboardMilestoneSprintStatistic,
   DashboardProject,
+  DashboardProjectPayload,
   TimelineMilestoneBar,
 } from '@/features/milestones/types/milestone.types'
 import {
@@ -555,6 +557,17 @@ export function MilestoneScreen() {
               users={users}
               selectedEntity={selectedEntity}
               selectedMilestone={selectedMilestone}
+              onOpenEditMilestone={() => {
+                if (selectedEntity?.type !== 'package') return
+                openEditPackage(
+                  selectedEntity.projectId,
+                  selectedEntity.packageId,
+                )
+              }}
+              onOpenEditProject={() => {
+                if (!selectedProject) return
+                openEditProject(selectedProject.id)
+              }}
               onClose={handleCloseDrawer}
               onSubmitCreateMilestone={async (values: MilestoneFormValues) => {
                 try {
@@ -590,12 +603,23 @@ export function MilestoneScreen() {
                   toast.error('Create failed')
                 }
               }}
-              onSubmitUpdateMilestone={async (values: MilestoneFormValues) => {
+              onSubmitUpdateMilestone={async (
+                payload: Partial<DashboardMilestonePayload>,
+              ) => {
                 if (!selectedEntity || selectedEntity.type !== 'package') return
+
+                if (!Object.keys(payload).length) {
+                  handleSelectMilestone(
+                    selectedEntity.projectId,
+                    selectedEntity.packageId,
+                  )
+                  return
+                }
+
                 try {
                   const updated = await updatePackage.mutateAsync({
                     packageId: selectedEntity.packageId,
-                    payload: toMilestonePayload(values),
+                    payload,
                   })
 
                   if (updated.task_id) {
@@ -613,8 +637,16 @@ export function MilestoneScreen() {
                   toast.error('Update failed')
                 }
               }}
-              onSubmitUpdateProject={async (values: ProjectFormValues) => {
+              onSubmitUpdateProject={async (
+                payload: Partial<DashboardProjectPayload>,
+              ) => {
                 if (!selectedProject) return
+
+                if (!Object.keys(payload).length) {
+                  openProjectView(selectedProject.id)
+                  return
+                }
+
                 if (!users.length) {
                   toast.error('User list unavailable')
                   return
@@ -623,7 +655,7 @@ export function MilestoneScreen() {
                 try {
                   await updateProject.mutateAsync({
                     projectId: selectedProject.id,
-                    payload: toProjectPayload(values),
+                    payload,
                   })
                   openProjectView(selectedProject.id)
                   toast.success('Project updated')
@@ -662,6 +694,8 @@ function CrudDrawer({
   selectedEntity,
   selectedMilestone,
   selectedMilestoneBar,
+  onOpenEditMilestone,
+  onOpenEditProject,
   onClose,
   onSubmitCreateMilestone,
   onSubmitCreateProject,
@@ -684,11 +718,17 @@ function CrudDrawer({
   selectedEntity: MilestoneTimelineSelectedEntity | null
   selectedMilestone: DashboardMilestone | null
   selectedMilestoneBar: TimelineMilestoneBar | null
+  onOpenEditMilestone: () => void
+  onOpenEditProject: () => void
   onClose: () => void
   onSubmitCreateMilestone: (values: MilestoneFormValues) => Promise<void>
   onSubmitCreateProject: (values: ProjectFormValues) => Promise<void>
-  onSubmitUpdateMilestone: (values: MilestoneFormValues) => Promise<void>
-  onSubmitUpdateProject: (values: ProjectFormValues) => Promise<void>
+  onSubmitUpdateMilestone: (
+    payload: Partial<DashboardMilestonePayload>,
+  ) => Promise<void>
+  onSubmitUpdateProject: (
+    payload: Partial<DashboardProjectPayload>,
+  ) => Promise<void>
 }) {
   const projectForm = useForm<ProjectFormValues>({
     resolver: zodResolver(projectFormSchema),
@@ -823,49 +863,62 @@ function CrudDrawer({
   return (
     <TimelineDrawerShell
       actions={
-        isMilestoneView ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                className="ops-package-export-trigger rounded-md"
-                disabled={exportFormat !== null}
-                size="sm"
-                variant="outline"
+        <>
+          {inspectorMode === 'view-package' && selectedMilestone ? (
+            <Button size="sm" variant="outline" onClick={onOpenEditMilestone}>
+              <Pencil className="size-4" />
+              Edit
+            </Button>
+          ) : inspectorMode === 'view-project' && project ? (
+            <Button size="sm" variant="outline" onClick={onOpenEditProject}>
+              <Pencil className="size-4" />
+              Edit
+            </Button>
+          ) : null}
+          {isMilestoneView ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="ops-package-export-trigger rounded-md"
+                  disabled={exportFormat !== null}
+                  size="sm"
+                  variant="outline"
+                >
+                  <Download className="size-4" />
+                  {exportFormat === null ? 'Export view' : 'Exporting...'}
+                  <ChevronDown className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="ops-bug-chart-menu-content w-44"
               >
-                <Download className="size-4" />
-                {exportFormat === null ? 'Export view' : 'Exporting...'}
-                <ChevronDown className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="ops-bug-chart-menu-content w-44"
-            >
-              <DropdownMenuLabel>Milestone view</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="ops-bug-chart-menu-item"
-                disabled={exportFormat !== null}
-                onSelect={() => {
-                  void handleExportMilestoneView('png')
-                }}
-              >
-                <FileImage className="size-4" />
-                Image (.png)
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="ops-bug-chart-menu-item"
-                disabled={exportFormat !== null}
-                onSelect={() => {
-                  void handleExportMilestoneView('pdf')
-                }}
-              >
-                <FileText className="size-4" />
-                PDF
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : null
+                <DropdownMenuLabel>Milestone view</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="ops-bug-chart-menu-item"
+                  disabled={exportFormat !== null}
+                  onSelect={() => {
+                    void handleExportMilestoneView('png')
+                  }}
+                >
+                  <FileImage className="size-4" />
+                  Image (.png)
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="ops-bug-chart-menu-item"
+                  disabled={exportFormat !== null}
+                  onSelect={() => {
+                    void handleExportMilestoneView('pdf')
+                  }}
+                >
+                  <FileText className="size-4" />
+                  PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+        </>
       }
       eyebrow={getInspectorEyebrow(inspectorMode)}
       isOpen={isOpen}
@@ -918,7 +971,14 @@ function CrudDrawer({
           submitLabel="Save"
           users={users}
           onCancel={onClose}
-          onSubmit={onSubmitUpdateProject}
+          onSubmit={() =>
+            onSubmitUpdateProject(
+              toProjectPatchPayload(
+                projectForm.getValues(),
+                projectForm.formState.dirtyFields,
+              ),
+            )
+          }
         />
       ) : null}
       {inspectorMode === 'create-package' ? (
@@ -940,7 +1000,14 @@ function CrudDrawer({
           projects={projectOptions}
           submitLabel="Save"
           onCancel={onClose}
-          onSubmit={onSubmitUpdateMilestone}
+          onSubmit={() =>
+            onSubmitUpdateMilestone(
+              toMilestonePatchPayload(
+                milestoneForm.getValues(),
+                milestoneForm.formState.dirtyFields,
+              ),
+            )
+          }
         />
       ) : null}
       {(inspectorMode === 'edit-package' && !selectedMilestone) ||
@@ -1768,6 +1835,76 @@ function toProjectPayload(values: ProjectFormValues) {
     pm: values.pm,
     pl: values.pl,
   }
+}
+
+type DirtyFormFields<T extends Record<string, unknown>> = Partial<
+  Record<keyof T, boolean | undefined>
+>
+
+function toProjectPatchPayload(
+  values: ProjectFormValues,
+  dirtyFields: DirtyFormFields<ProjectFormValues>,
+) {
+  const payload: Partial<DashboardProjectPayload> = {}
+
+  if (dirtyFields.name) {
+    payload.name = values.name.trim()
+  }
+
+  if (dirtyFields.keys) {
+    payload.keys = values.keys.trim()
+  }
+
+  if (dirtyFields.description) {
+    payload.description = values.description.trim()
+  }
+
+  if (dirtyFields.members) {
+    payload.members = values.members.trim()
+  }
+
+  if (dirtyFields.labels) {
+    payload.labels = values.labels.trim()
+  }
+
+  if (dirtyFields.pm) {
+    payload.pm = values.pm
+  }
+
+  if (dirtyFields.pl) {
+    payload.pl = values.pl
+  }
+
+  return payload
+}
+
+function toMilestonePatchPayload(
+  values: MilestoneFormValues,
+  dirtyFields: DirtyFormFields<MilestoneFormValues>,
+) {
+  const payload: Partial<DashboardMilestonePayload> = {}
+
+  if (dirtyFields.projectId) {
+    payload.bug_tracker_project = values.projectId
+  }
+
+  if (dirtyFields.name) {
+    payload.name = values.name.trim()
+  }
+
+  if (dirtyFields.description) {
+    payload.description = values.description.trim()
+  }
+
+  if (dirtyFields.start_date) {
+    payload.start_date = values.start_date
+  }
+
+  if (dirtyFields.end_date) {
+    payload.end_date = values.end_date
+  }
+
+  return payload
 }
 
 function buildProjectFormValues(

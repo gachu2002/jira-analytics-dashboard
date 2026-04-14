@@ -11,6 +11,7 @@ export const packageFormSchema = z
     keys: z.string().trim(),
     labels: z.string().trim(),
     members: z.string().trim(),
+    note: z.string().trim(),
     start_date: z.string().min(1, 'Required'),
     end_date: z.string().min(1, 'Required'),
   })

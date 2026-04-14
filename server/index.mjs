@@ -292,6 +292,7 @@ const packages = [
     keys: 'ATL-104, ATL-111, ATL-118, ATL-126, ATL-129',
     labels: 'auth, blocker',
     members: 'lethanhnguyen, nguyenvannam',
+    note: 'Watch session timeout regressions during cross-team auth review.',
     start_date: '2026-03-05',
     end_date: '2026-04-03',
     resolved_bug: 18,
@@ -336,6 +337,7 @@ const packages = [
     keys: 'ATL-132, ATL-136, ATL-141, ATL-147, ATL-149',
     labels: 'search, regression',
     members: 'tranlinh, huypham',
+    note: 'Search bugs spike after saved-filter migrations.',
     start_date: '2026-04-02',
     end_date: '2026-05-04',
     resolved_bug: 11,
@@ -380,6 +382,7 @@ const packages = [
     keys: 'CON-21, CON-31, CON-34, CON-36',
     labels: 'audit, compliance',
     members: 'quangpham, amyle',
+    note: 'Compliance reviewers need the export sample before sign-off.',
     start_date: '2026-03-12',
     end_date: '2026-04-18',
     resolved_bug: 8,
@@ -418,6 +421,7 @@ const packages = [
     keys: 'CON-55, CON-61, CON-74, CON-77, CON-82',
     labels: 'performance, query',
     members: 'khanhtran, zoenguyen',
+    note: '',
     start_date: '2026-04-10',
     end_date: '2026-05-22',
     resolved_bug: 14,
@@ -462,6 +466,7 @@ const packages = [
     keys: 'MOB-13, MOB-18, MOB-21, MOB-27',
     labels: 'notification, ios, android',
     members: 'trangpham, omarali',
+    note: 'Monitor token churn after the next iOS beta rollout.',
     start_date: '2026-03-01',
     end_date: '2026-03-29',
     resolved_bug: 7,
@@ -500,6 +505,7 @@ const packages = [
     keys: 'MOB-42, MOB-44, MOB-45, MOB-47, MOB-51',
     labels: 'crash, release',
     members: 'trangpham, deepa',
+    note: '',
     start_date: '2026-04-01',
     end_date: '2026-05-11',
     resolved_bug: 16,
@@ -1422,19 +1428,37 @@ function validateName(value) {
   return String(value || '').trim()
 }
 
+function hasOwnField(payload, field) {
+  return Object.prototype.hasOwnProperty.call(payload, field)
+}
+
+function isRecordPayload(payload) {
+  return (
+    typeof payload === 'object' && payload !== null && !Array.isArray(payload)
+  )
+}
+
+function validateInteger(value, minimum = 0) {
+  const numericValue = Number(value)
+
+  if (!Number.isInteger(numericValue) || numericValue < minimum) {
+    return null
+  }
+
+  return numericValue
+}
+
 function validatePackagePayload(payload) {
+  if (!isRecordPayload(payload)) {
+    return null
+  }
+
   const name = validateName(payload.name)
   const startDate = String(payload.start_date || '').trim()
   const endDate = String(payload.end_date || '').trim()
-  const projectId = Number(payload.bug_tracker_project)
+  const projectId = validateInteger(payload.bug_tracker_project, 1)
 
-  if (
-    !name ||
-    !startDate ||
-    !endDate ||
-    !Number.isInteger(projectId) ||
-    projectId < 1
-  ) {
+  if (!name || !startDate || !endDate || projectId === null) {
     return null
   }
 
@@ -1443,22 +1467,77 @@ function validatePackagePayload(payload) {
     keys: String(payload.keys || '').trim(),
     labels: String(payload.labels || '').trim(),
     members: String(payload.members || '').trim(),
+    note: String(payload.note || '').trim(),
     start_date: startDate,
     end_date: endDate,
     bug_tracker_project: projectId,
   }
 }
 
+function validatePackagePatchPayload(payload) {
+  if (!isRecordPayload(payload)) {
+    return null
+  }
+
+  const nextPackage = {}
+
+  if (hasOwnField(payload, 'name')) {
+    const name = validateName(payload.name)
+    if (!name) return null
+    nextPackage.name = name
+  }
+
+  if (hasOwnField(payload, 'keys')) {
+    nextPackage.keys = String(payload.keys || '').trim()
+  }
+
+  if (hasOwnField(payload, 'labels')) {
+    nextPackage.labels = String(payload.labels || '').trim()
+  }
+
+  if (hasOwnField(payload, 'members')) {
+    nextPackage.members = String(payload.members || '').trim()
+  }
+
+  if (hasOwnField(payload, 'note')) {
+    nextPackage.note = String(payload.note || '').trim()
+  }
+
+  if (hasOwnField(payload, 'start_date')) {
+    const startDate = String(payload.start_date || '').trim()
+    if (!startDate) return null
+    nextPackage.start_date = startDate
+  }
+
+  if (hasOwnField(payload, 'end_date')) {
+    const endDate = String(payload.end_date || '').trim()
+    if (!endDate) return null
+    nextPackage.end_date = endDate
+  }
+
+  if (hasOwnField(payload, 'bug_tracker_project')) {
+    const projectId = validateInteger(payload.bug_tracker_project, 1)
+    if (projectId === null) return null
+    nextPackage.bug_tracker_project = projectId
+  }
+
+  return nextPackage
+}
+
 function validateDashboardProjectPayload(payload) {
+  if (!isRecordPayload(payload)) {
+    return null
+  }
+
   const name = validateName(payload.name)
-  const pm = Number(payload.pm)
-  const pl = Number(payload.pl)
+  const pm = validateInteger(payload.pm)
+  const pl = validateInteger(payload.pl)
 
   if (!name) {
     return null
   }
 
-  if (!Number.isInteger(pm) || pm < 0 || !Number.isInteger(pl) || pl < 0) {
+  if (pm === null || pl === null) {
     return null
   }
 
@@ -1473,19 +1552,61 @@ function validateDashboardProjectPayload(payload) {
   }
 }
 
+function validateDashboardProjectPatchPayload(payload) {
+  if (!isRecordPayload(payload)) {
+    return null
+  }
+
+  const nextProject = {}
+
+  if (hasOwnField(payload, 'name')) {
+    const name = validateName(payload.name)
+    if (!name) return null
+    nextProject.name = name
+  }
+
+  if (hasOwnField(payload, 'keys')) {
+    nextProject.keys = String(payload.keys || '').trim()
+  }
+
+  if (hasOwnField(payload, 'description')) {
+    nextProject.description = String(payload.description || '').trim()
+  }
+
+  if (hasOwnField(payload, 'members')) {
+    nextProject.members = String(payload.members || '').trim()
+  }
+
+  if (hasOwnField(payload, 'labels')) {
+    nextProject.labels = String(payload.labels || '').trim()
+  }
+
+  if (hasOwnField(payload, 'pm')) {
+    const pm = validateInteger(payload.pm)
+    if (pm === null) return null
+    nextProject.pm = pm
+  }
+
+  if (hasOwnField(payload, 'pl')) {
+    const pl = validateInteger(payload.pl)
+    if (pl === null) return null
+    nextProject.pl = pl
+  }
+
+  return nextProject
+}
+
 function validateDashboardMilestonePayload(payload) {
+  if (!isRecordPayload(payload)) {
+    return null
+  }
+
   const name = validateName(payload.name)
   const startDate = String(payload.start_date || '').trim()
   const endDate = String(payload.end_date || '').trim()
-  const projectId = Number(payload.project)
+  const projectId = validateInteger(payload.project, 1)
 
-  if (
-    !name ||
-    !startDate ||
-    !endDate ||
-    !Number.isInteger(projectId) ||
-    projectId < 1
-  ) {
+  if (!name || !startDate || !endDate || projectId === null) {
     return null
   }
 
@@ -1496,6 +1617,44 @@ function validateDashboardMilestonePayload(payload) {
     end_date: endDate,
     project: projectId,
   }
+}
+
+function validateDashboardMilestonePatchPayload(payload) {
+  if (!isRecordPayload(payload)) {
+    return null
+  }
+
+  const nextMilestone = {}
+
+  if (hasOwnField(payload, 'name')) {
+    const name = validateName(payload.name)
+    if (!name) return null
+    nextMilestone.name = name
+  }
+
+  if (hasOwnField(payload, 'description')) {
+    nextMilestone.description = String(payload.description || '').trim()
+  }
+
+  if (hasOwnField(payload, 'start_date')) {
+    const startDate = String(payload.start_date || '').trim()
+    if (!startDate) return null
+    nextMilestone.start_date = startDate
+  }
+
+  if (hasOwnField(payload, 'end_date')) {
+    const endDate = String(payload.end_date || '').trim()
+    if (!endDate) return null
+    nextMilestone.end_date = endDate
+  }
+
+  if (hasOwnField(payload, 'project')) {
+    const projectId = validateInteger(payload.project, 1)
+    if (projectId === null) return null
+    nextMilestone.project = projectId
+  }
+
+  return nextMilestone
 }
 
 const server = createServer(async (request, response) => {
@@ -1630,10 +1789,7 @@ const server = createServer(async (request, response) => {
     if (request.method === 'PATCH') {
       try {
         const payload = await readJsonBody(request)
-        const nextProject = validateDashboardProjectPayload({
-          ...project,
-          ...payload,
-        })
+        const nextProject = validateDashboardProjectPatchPayload(payload)
 
         if (!nextProject) {
           sendJson(response, 400, { detail: 'Project payload is incomplete.' })
@@ -1762,10 +1918,7 @@ const server = createServer(async (request, response) => {
     if (request.method === 'PATCH') {
       try {
         const payload = await readJsonBody(request)
-        const nextMilestone = validateDashboardMilestonePayload({
-          ...milestone,
-          ...payload,
-        })
+        const nextMilestone = validateDashboardMilestonePatchPayload(payload)
 
         if (!nextMilestone) {
           sendJson(response, 400, {
@@ -1774,13 +1927,22 @@ const server = createServer(async (request, response) => {
           return
         }
 
-        if (!getDashboardProject(nextMilestone.project)) {
+        if (
+          nextMilestone.project !== undefined &&
+          !getDashboardProject(nextMilestone.project)
+        ) {
           sendJson(response, 404, { detail: 'Project not found.' })
           return
         }
 
+        const hasMilestoneChanges = Object.keys(nextMilestone).length > 0
+
         Object.assign(milestone, nextMilestone)
-        milestone.task_id = createSyncTask('milestone-sync')
+
+        if (hasMilestoneChanges) {
+          milestone.task_id = createSyncTask('milestone-sync')
+        }
+
         sendJson(response, 200, milestone)
         return
       } catch {
@@ -1843,6 +2005,16 @@ const server = createServer(async (request, response) => {
     if (request.method === 'PATCH') {
       try {
         const payload = await readJsonBody(request)
+        if (!isRecordPayload(payload)) {
+          sendJson(response, 400, { detail: 'Project payload is incomplete.' })
+          return
+        }
+
+        if (!hasOwnField(payload, 'name')) {
+          sendJson(response, 200, project)
+          return
+        }
+
         const name = validateName(payload.name)
 
         if (!name) {
@@ -2041,23 +2213,37 @@ const server = createServer(async (request, response) => {
     if (request.method === 'PATCH') {
       try {
         const payload = await readJsonBody(request)
-        const nextPackage = validatePackagePayload({
-          ...packageRecord,
-          ...payload,
-        })
+        const nextPackage = validatePackagePatchPayload(payload)
 
         if (!nextPackage) {
           sendJson(response, 400, { detail: 'Package payload is incomplete.' })
           return
         }
 
-        if (!getProject(nextPackage.bug_tracker_project)) {
+        if (
+          nextPackage.bug_tracker_project !== undefined &&
+          !getProject(nextPackage.bug_tracker_project)
+        ) {
           sendJson(response, 404, { detail: 'Project not found.' })
           return
         }
 
+        const shouldSync = [
+          'name',
+          'keys',
+          'labels',
+          'members',
+          'start_date',
+          'end_date',
+          'bug_tracker_project',
+        ].some((field) => hasOwnField(nextPackage, field))
+
         Object.assign(packageRecord, nextPackage)
-        packageRecord.task_id = createSyncTask('package-sync')
+
+        if (shouldSync) {
+          packageRecord.task_id = createSyncTask('package-sync')
+        }
+
         sendJson(response, 200, packageRecord)
         return
       } catch {
