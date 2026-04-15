@@ -1422,19 +1422,51 @@ function BugDetailContent({
   const [optionalCharts, setOptionalCharts] = useState<
     Array<'velocity' | 'reopen'>
   >([])
+  const trimmedNote = note?.trim() ?? ''
+  const hasNote = Boolean(trimmedNote)
+  const [isNoteExpanded, setIsNoteExpanded] = useState(false)
 
   return (
     <div className="p-4">
       <div ref={contentRef} className="grid gap-5">
         {notice ?? null}
 
-        <section className="grid gap-3">
-          <Field label="Note">
-            <div className="ops-bug-view-field min-h-20 rounded-md px-3 py-2.5 text-sm whitespace-pre-wrap">
-              {note || '-'}
-            </div>
-          </Field>
-        </section>
+        {note !== undefined ? (
+          <section className="grid gap-2 border-b border-[color:var(--border)]/70 pb-4">
+            <button
+              className={`flex items-center justify-between gap-4 rounded-none px-0 py-0.5 text-left ${hasNote ? 'cursor-pointer' : 'cursor-default'}`}
+              disabled={!hasNote}
+              type="button"
+              onClick={() => setIsNoteExpanded((current) => !current)}
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="text-sm font-bold tracking-[0.02em] text-[color:var(--foreground)] uppercase">
+                  Note
+                </span>
+                {!hasNote ? (
+                  <span className="text-xs text-[color:var(--muted-foreground)]">
+                    Empty
+                  </span>
+                ) : null}
+              </div>
+              {hasNote ? (
+                <ChevronDown
+                  className={`size-4 shrink-0 text-[color:var(--muted-foreground)] transition-transform ${isNoteExpanded ? 'rotate-180' : ''}`}
+                />
+              ) : null}
+            </button>
+
+            {hasNote && isNoteExpanded ? (
+              <div className="pr-7 text-sm leading-6 whitespace-pre-wrap text-[color:color-mix(in_srgb,var(--primary)_22%,var(--foreground))]">
+                {trimmedNote}
+              </div>
+            ) : !hasNote ? (
+              <div className="pr-7 text-sm leading-6 text-[color:var(--muted-foreground)]">
+                -
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         <section className="grid gap-4">
           <PackageStatusSummary

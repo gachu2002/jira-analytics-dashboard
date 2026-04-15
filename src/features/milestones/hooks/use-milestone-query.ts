@@ -22,24 +22,15 @@ export function useMilestoneTimelineQuery() {
   )
 
   const milestones = useMemo(() => {
-    const projectsById = new Map(
-      (projectsQuery.data ?? []).map((project) => [project.id, project]),
-    )
-
     return (milestonesQuery.data ?? []).map((milestone) => {
-      const project = projectsById.get(milestone.bug_tracker_project)
-
       return {
         ...milestone,
-        keys: project?.keys ?? '',
-        labels: project?.labels ?? '',
-        members: project?.members ?? '',
         sync_status: milestone.task_id
           ? (syncStatusByTaskId.get(milestone.task_id) ?? 'PROCESSING')
           : null,
       }
     })
-  }, [milestonesQuery.data, projectsQuery.data, syncStatusByTaskId])
+  }, [milestonesQuery.data, syncStatusByTaskId])
 
   const viewModel = useMemo(() => {
     return buildTimelineViewModel(

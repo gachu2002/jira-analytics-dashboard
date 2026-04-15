@@ -37,6 +37,9 @@ type DashboardMilestoneResponse = {
   total_ticket: number
   jql: string
   issues: DashboardMilestone['issues']
+  keys: string
+  labels: string
+  members: string
   project: number
   task_id: string | null
 }
@@ -59,9 +62,9 @@ function mapMilestone(
     jql: response.jql,
     issues: response.issues,
     bug_tracker_project: response.project,
-    keys: '',
-    labels: '',
-    members: '',
+    keys: response.keys,
+    labels: response.labels,
+    members: response.members,
     task_id: response.task_id,
     sync_status: null,
   }
@@ -124,6 +127,9 @@ export async function createProjectMilestone(
       description: payload.description,
       start_date: payload.start_date,
       end_date: payload.end_date,
+      keys: payload.keys,
+      labels: payload.labels,
+      members: payload.members,
       project: payload.bug_tracker_project,
     },
   )
@@ -154,6 +160,9 @@ export async function updateProjectMilestone(
       ...(payload.end_date !== undefined
         ? { end_date: payload.end_date }
         : null),
+      ...(payload.keys !== undefined ? { keys: payload.keys } : null),
+      ...(payload.labels !== undefined ? { labels: payload.labels } : null),
+      ...(payload.members !== undefined ? { members: payload.members } : null),
       ...(payload.bug_tracker_project !== undefined
         ? { project: payload.bug_tracker_project }
         : null),

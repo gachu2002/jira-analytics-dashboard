@@ -2,10 +2,7 @@ import { z } from 'zod'
 
 export const projectFormSchema = z.object({
   name: z.string().trim().min(1, 'Required'),
-  keys: z.string().trim(),
   description: z.string().trim(),
-  members: z.string().trim(),
-  labels: z.string().trim(),
   pm: z.number().int().positive('Required'),
   pl: z.number().int().positive('Required'),
 })
@@ -15,6 +12,9 @@ export const milestoneFormSchema = z
     projectId: z.number().int().positive('Required'),
     name: z.string().trim().min(1, 'Required'),
     description: z.string().trim(),
+    keys: z.string().trim(),
+    labels: z.string().trim(),
+    members: z.string().trim(),
     start_date: z.string().min(1, 'Required'),
     end_date: z.string().min(1, 'Required'),
   })

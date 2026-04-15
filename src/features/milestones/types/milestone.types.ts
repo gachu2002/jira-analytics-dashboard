@@ -11,20 +11,14 @@ import type {
 export type DashboardProject = {
   id: number
   name: string
-  keys: string
   description: string
-  members: string
-  labels: string
   pm: number | null
   pl: number | null
 }
 
 export type DashboardProjectPayload = {
   name: string
-  keys: string
   description: string
-  members: string
-  labels: string
   pm: number
   pl: number
 }
@@ -54,6 +48,9 @@ export type DashboardMilestonePayload = {
   description: string
   start_date: string
   end_date: string
+  keys: string
+  labels: string
+  members: string
   bug_tracker_project: number
 }
 

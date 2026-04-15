@@ -1039,24 +1039,9 @@ function ProjectViewPanel({
             {project.name}
           </div>
         </Field>
-        <Field label="Keys">
-          <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
-            {project.keys || '-'}
-          </div>
-        </Field>
         <Field label="Description">
           <div className="ops-bug-view-field min-h-20 rounded-md px-3 py-2.5 text-sm font-medium whitespace-pre-wrap">
             {project.description || '-'}
-          </div>
-        </Field>
-        <Field label="Members">
-          <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
-            {project.members || '-'}
-          </div>
-        </Field>
-        <Field label="Labels">
-          <div className="ops-bug-view-field rounded-md px-3 py-2.5 text-sm font-medium">
-            {project.labels || '-'}
           </div>
         </Field>
         <div className="grid gap-4 md:grid-cols-2">
@@ -1616,12 +1601,6 @@ function ProjectFormPanel({
             {...form.register('name')}
           />
         </Field>
-        <Field label="Keys" error={form.formState.errors.keys?.message}>
-          <Input
-            className="ops-workspace-input h-10 rounded-md"
-            {...form.register('keys')}
-          />
-        </Field>
         <Field
           label="Description"
           error={form.formState.errors.description?.message}
@@ -1629,18 +1608,6 @@ function ProjectFormPanel({
           <Textarea
             className="ops-workspace-input min-h-24 rounded-md"
             {...form.register('description')}
-          />
-        </Field>
-        <Field label="Members" error={form.formState.errors.members?.message}>
-          <Input
-            className="ops-workspace-input h-10 rounded-md"
-            {...form.register('members')}
-          />
-        </Field>
-        <Field label="Labels" error={form.formState.errors.labels?.message}>
-          <Input
-            className="ops-workspace-input h-10 rounded-md"
-            {...form.register('labels')}
           />
         </Field>
         <div className="grid gap-4 md:grid-cols-2">
@@ -1772,6 +1739,24 @@ function MilestoneFormPanel({
             {...form.register('description')}
           />
         </Field>
+        <Field label="Keys" error={form.formState.errors.keys?.message}>
+          <Input
+            className="ops-workspace-input h-10 rounded-md"
+            {...form.register('keys')}
+          />
+        </Field>
+        <Field label="Labels" error={form.formState.errors.labels?.message}>
+          <Input
+            className="ops-workspace-input h-10 rounded-md"
+            {...form.register('labels')}
+          />
+        </Field>
+        <Field label="Members" error={form.formState.errors.members?.message}>
+          <Input
+            className="ops-workspace-input h-10 rounded-md"
+            {...form.register('members')}
+          />
+        </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field
             label="Start"
@@ -1821,6 +1806,9 @@ function toMilestonePayload(values: MilestoneFormValues) {
     description: values.description.trim(),
     start_date: values.start_date,
     end_date: values.end_date,
+    keys: values.keys.trim(),
+    labels: values.labels.trim(),
+    members: values.members.trim(),
     bug_tracker_project: values.projectId,
   }
 }
@@ -1828,10 +1816,7 @@ function toMilestonePayload(values: MilestoneFormValues) {
 function toProjectPayload(values: ProjectFormValues) {
   return {
     name: values.name.trim(),
-    keys: values.keys.trim(),
     description: values.description.trim(),
-    members: values.members.trim(),
-    labels: values.labels.trim(),
     pm: values.pm,
     pl: values.pl,
   }
@@ -1851,20 +1836,8 @@ function toProjectPatchPayload(
     payload.name = values.name.trim()
   }
 
-  if (dirtyFields.keys) {
-    payload.keys = values.keys.trim()
-  }
-
   if (dirtyFields.description) {
     payload.description = values.description.trim()
-  }
-
-  if (dirtyFields.members) {
-    payload.members = values.members.trim()
-  }
-
-  if (dirtyFields.labels) {
-    payload.labels = values.labels.trim()
   }
 
   if (dirtyFields.pm) {
@@ -1896,6 +1869,18 @@ function toMilestonePatchPayload(
     payload.description = values.description.trim()
   }
 
+  if (dirtyFields.keys) {
+    payload.keys = values.keys.trim()
+  }
+
+  if (dirtyFields.labels) {
+    payload.labels = values.labels.trim()
+  }
+
+  if (dirtyFields.members) {
+    payload.members = values.members.trim()
+  }
+
   if (dirtyFields.start_date) {
     payload.start_date = values.start_date
   }
@@ -1914,10 +1899,7 @@ function buildProjectFormValues(
 ): ProjectFormValues {
   return {
     name: project?.name ?? '',
-    keys: project?.keys ?? '',
     description: project?.description ?? '',
-    members: project?.members ?? '',
-    labels: project?.labels ?? '',
     pm: getProjectOwnerValue(users, project?.pm, fallbackToFirst),
     pl: getProjectOwnerValue(users, project?.pl, fallbackToFirst),
   }
@@ -1935,6 +1917,9 @@ function buildMilestoneFormValues(
         : (selectedEntity?.projectId ?? projectOptions[0]?.id ?? 0),
     name: selectedMilestone?.name ?? '',
     description: selectedMilestone?.description ?? '',
+    keys: selectedMilestone?.keys ?? '',
+    labels: selectedMilestone?.labels ?? '',
+    members: selectedMilestone?.members ?? '',
     start_date: selectedMilestone?.start_date ?? '',
     end_date: selectedMilestone?.end_date ?? '',
   }

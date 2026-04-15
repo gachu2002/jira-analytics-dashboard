@@ -910,30 +910,21 @@ const dashboardProjects = [
   {
     id: 1,
     name: 'Atlas Cloud',
-    keys: 'ATL, AUTH',
     description: 'Authentication, search, and release readiness workstreams.',
-    members: 'lethanhnguyen, nguyenvannam, tranlinh, huypham',
-    labels: 'cloud, auth, release',
     pm: 101,
     pl: 102,
   },
   {
     id: 2,
     name: 'Console Platform',
-    keys: 'CON, OPS',
     description: 'Console reliability, audit, and reporting delivery track.',
-    members: 'quangpham, amyle, khanhtran, zoenguyen',
-    labels: 'console, compliance, reporting',
     pm: 103,
     pl: 104,
   },
   {
     id: 3,
     name: 'Mobile Release Train',
-    keys: 'MOB, REL',
     description: 'Mobile push and store-release milestone schedule.',
-    members: 'trangpham, omarali, deepa',
-    labels: 'mobile, release, notifications',
     pm: 105,
     pl: 106,
   },
@@ -950,6 +941,9 @@ const dashboardMilestones = [
     total_ticket: 24,
     jql: 'project = ATL AND labels in (auth, blocker) AND sprint in openSprints()',
     issues: cloneIssues(packages[0].issues),
+    keys: packages[0].keys,
+    members: packages[0].members,
+    labels: packages[0].labels,
     project: 1,
   },
   {
@@ -962,6 +956,9 @@ const dashboardMilestones = [
     total_ticket: 26,
     jql: 'project = ATL AND labels in (search, regression)',
     issues: cloneIssues(packages[1].issues),
+    keys: packages[1].keys,
+    members: packages[1].members,
+    labels: packages[1].labels,
     project: 1,
   },
   {
@@ -974,6 +971,9 @@ const dashboardMilestones = [
     total_ticket: 9,
     jql: 'project = CON AND labels in (audit, compliance)',
     issues: cloneIssues(packages[2].issues),
+    keys: packages[2].keys,
+    members: packages[2].members,
+    labels: packages[2].labels,
     project: 2,
   },
   {
@@ -986,6 +986,9 @@ const dashboardMilestones = [
     total_ticket: 20,
     jql: 'project = CON AND labels in (performance, query)',
     issues: cloneIssues(packages[3].issues),
+    keys: packages[3].keys,
+    members: packages[3].members,
+    labels: packages[3].labels,
     project: 2,
   },
   {
@@ -998,6 +1001,9 @@ const dashboardMilestones = [
     total_ticket: 13,
     jql: 'project = MOB AND labels in (notification, ios, android)',
     issues: cloneIssues(packages[4].issues),
+    keys: packages[4].keys,
+    members: packages[4].members,
+    labels: packages[4].labels,
     project: 3,
   },
   {
@@ -1010,6 +1016,9 @@ const dashboardMilestones = [
     total_ticket: 11,
     jql: 'project = MOB AND labels in (release, store)',
     issues: cloneIssues(packages[5].issues),
+    keys: packages[5].keys,
+    members: packages[5].members,
+    labels: packages[5].labels,
     project: 3,
   },
 ]
@@ -1314,18 +1323,6 @@ function buildAccountUsers() {
   ]
 }
 
-function getAccountUser(userId) {
-  return buildAccountUsers().find((user) => user.id === userId) ?? null
-}
-
-function serializeDashboardProject(project) {
-  return {
-    ...project,
-    pm: getAccountUser(project.pm),
-    pl: getAccountUser(project.pl),
-  }
-}
-
 function readJsonBody(request) {
   return new Promise((resolve, reject) => {
     let body = ''
@@ -1543,10 +1540,7 @@ function validateDashboardProjectPayload(payload) {
 
   return {
     name,
-    keys: String(payload.keys || '').trim(),
     description: String(payload.description || '').trim(),
-    members: String(payload.members || '').trim(),
-    labels: String(payload.labels || '').trim(),
     pm,
     pl,
   }
@@ -1565,20 +1559,8 @@ function validateDashboardProjectPatchPayload(payload) {
     nextProject.name = name
   }
 
-  if (hasOwnField(payload, 'keys')) {
-    nextProject.keys = String(payload.keys || '').trim()
-  }
-
   if (hasOwnField(payload, 'description')) {
     nextProject.description = String(payload.description || '').trim()
-  }
-
-  if (hasOwnField(payload, 'members')) {
-    nextProject.members = String(payload.members || '').trim()
-  }
-
-  if (hasOwnField(payload, 'labels')) {
-    nextProject.labels = String(payload.labels || '').trim()
   }
 
   if (hasOwnField(payload, 'pm')) {
@@ -1615,6 +1597,9 @@ function validateDashboardMilestonePayload(payload) {
     description: String(payload.description || '').trim(),
     start_date: startDate,
     end_date: endDate,
+    keys: String(payload.keys || '').trim(),
+    labels: String(payload.labels || '').trim(),
+    members: String(payload.members || '').trim(),
     project: projectId,
   }
 }
@@ -1634,6 +1619,18 @@ function validateDashboardMilestonePatchPayload(payload) {
 
   if (hasOwnField(payload, 'description')) {
     nextMilestone.description = String(payload.description || '').trim()
+  }
+
+  if (hasOwnField(payload, 'keys')) {
+    nextMilestone.keys = String(payload.keys || '').trim()
+  }
+
+  if (hasOwnField(payload, 'labels')) {
+    nextMilestone.labels = String(payload.labels || '').trim()
+  }
+
+  if (hasOwnField(payload, 'members')) {
+    nextMilestone.members = String(payload.members || '').trim()
   }
 
   if (hasOwnField(payload, 'start_date')) {
@@ -1744,7 +1741,7 @@ const server = createServer(async (request, response) => {
   }
 
   if (path === '/api/dashboard/projects/' && request.method === 'GET') {
-    sendJson(response, 200, dashboardProjects.map(serializeDashboardProject))
+    sendJson(response, 200, dashboardProjects)
     return
   }
 
@@ -1760,7 +1757,7 @@ const server = createServer(async (request, response) => {
 
       const nextProject = { id: dashboardProjectIdCounter++, ...project }
       dashboardProjects.push(nextProject)
-      sendJson(response, 201, serializeDashboardProject(nextProject))
+      sendJson(response, 201, nextProject)
       return
     } catch {
       sendJson(response, 400, { detail: 'Request body must be valid JSON.' })
@@ -1782,7 +1779,7 @@ const server = createServer(async (request, response) => {
     }
 
     if (request.method === 'GET') {
-      sendJson(response, 200, serializeDashboardProject(project))
+      sendJson(response, 200, project)
       return
     }
 
@@ -1797,7 +1794,7 @@ const server = createServer(async (request, response) => {
         }
 
         Object.assign(project, nextProject)
-        sendJson(response, 200, serializeDashboardProject(project))
+        sendJson(response, 200, project)
         return
       } catch {
         sendJson(response, 400, { detail: 'Request body must be valid JSON.' })
