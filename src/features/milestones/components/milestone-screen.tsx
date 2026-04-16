@@ -5,6 +5,8 @@ import {
   Cell,
   CartesianGrid,
   ComposedChart,
+  Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -92,6 +94,7 @@ import {
   getGridStyle,
   getTimelineTrackWidthRem,
   getTodayOffsetPercent,
+  isIssueDoneStatus,
   parseCommaList,
   toInputDate,
   truncateChartAxisLabel,
@@ -805,11 +808,42 @@ function CrudDrawer({
 
   const milestoneViewRef = useRef<HTMLDivElement | null>(null)
   const [exportFormat, setExportFormat] = useState<'png' | 'pdf' | null>(null)
+  const [selectedSprintId, setSelectedSprintId] = useState('all')
+  const isMilestoneView =
+    inspectorMode === 'view-package' && Boolean(selectedMilestone)
+  const milestoneSprintStatisticsQuery = useMilestoneSprintStatisticsQuery(
+    selectedMilestone?.id ?? 0,
+    isOpen && isMilestoneView,
+  )
+  const milestoneSprintStatistics = useMemo(
+    () =>
+      [...(milestoneSprintStatisticsQuery.data ?? [])].sort(
+        (left, right) =>
+          new Date(left.sprint.start_date).getTime() -
+            new Date(right.sprint.start_date).getTime() ||
+          new Date(left.created_at).getTime() -
+            new Date(right.created_at).getTime(),
+      ),
+    [milestoneSprintStatisticsQuery.data],
+  )
+  const sprintSelectOptions = useMemo(
+    () => [
+      { value: 'all', label: 'All sprints' },
+      ...milestoneSprintStatistics.map((item) => ({
+        value: String(item.sprint.id),
+        label: item.sprint.name,
+      })),
+    ],
+    [milestoneSprintStatistics],
+  )
+  const activeSprintId = sprintSelectOptions.some(
+    (option) => option.value === selectedSprintId,
+  )
+    ? selectedSprintId
+    : 'all'
 
   if (!isOpen) return null
 
-  const isMilestoneView =
-    inspectorMode === 'view-package' && Boolean(selectedMilestone)
   const selectedMilestoneProjectName = selectedMilestone
     ? (projectOptions.find(
         (item) => item.id === selectedMilestone.bug_tracker_project,
@@ -921,6 +955,18 @@ function CrudDrawer({
         </>
       }
       eyebrow={getInspectorEyebrow(inspectorMode)}
+      titleAccessory={
+        isMilestoneView ? (
+          <div className="w-44">
+            <WorkspaceSelect
+              options={sprintSelectOptions}
+              placeholder="All sprints"
+              value={activeSprintId}
+              onValueChange={setSelectedSprintId}
+            />
+          </div>
+        ) : null
+      }
       isOpen={isOpen}
       isWide={isMilestoneView}
       onClose={onClose}
@@ -952,6 +998,10 @@ function CrudDrawer({
           contentRef={milestoneViewRef}
           packageItem={selectedMilestone}
           packageBar={selectedMilestoneBar}
+          selectedSprintId={activeSprintId}
+          sprintStatistics={milestoneSprintStatistics}
+          sprintStatisticsError={milestoneSprintStatisticsQuery.isError}
+          sprintStatisticsPending={milestoneSprintStatisticsQuery.isPending}
         />
       ) : null}
       {inspectorMode === 'create-project' ? (
@@ -1065,16 +1115,41 @@ function MilestoneDetailPanel({
   contentRef,
   packageBar,
   packageItem,
+  selectedSprintId,
+  sprintStatistics,
+  sprintStatisticsError,
+  sprintStatisticsPending,
 }: {
   contentRef: React.RefObject<HTMLDivElement | null>
   packageBar: TimelineMilestoneBar
   packageItem: DashboardMilestone
+  selectedSprintId: string
+  sprintStatistics: DashboardMilestoneSprintStatistic[]
+  sprintStatisticsError: boolean
+  sprintStatisticsPending: boolean
 }) {
-  const openBugCount = packageBar.totalBug - packageBar.resolvedBug
   const memberNames = parseCommaList(packageItem.members)
-  const sprintStatisticsQuery = useMilestoneSprintStatisticsQuery(
-    packageItem.id,
+  const selectedSprintStatistic = useMemo(
+    () =>
+      selectedSprintId === 'all'
+        ? null
+        : (sprintStatistics.find(
+            (item) => String(item.sprint.id) === selectedSprintId,
+          ) ?? null),
+    [selectedSprintId, sprintStatistics],
   )
+  const selectedSprint = selectedSprintStatistic?.sprint ?? null
+  const visibleIssues = useMemo(
+    () =>
+      selectedSprint
+        ? filterMilestoneIssuesBySprint(packageItem.issues, selectedSprint)
+        : packageItem.issues,
+    [packageItem.issues, selectedSprint],
+  )
+  const resolvedCount = visibleIssues.filter((issue) =>
+    isIssueDoneStatus(issue.status),
+  ).length
+  const openCount = Math.max(visibleIssues.length - resolvedCount, 0)
 
   return (
     <div className="p-4">
@@ -1088,15 +1163,15 @@ function MilestoneDetailPanel({
 
         <section className="grid gap-4">
           <MilestoneStatusSummary
-            openCount={openBugCount}
-            resolvedCount={packageBar.resolvedBug}
+            openCount={openCount}
+            resolvedCount={resolvedCount}
             openLabel="Open"
             resolvedLabel="Closed"
           />
 
           <div>
             <MilestoneMemberStatusSummary
-              issues={packageItem.issues}
+              issues={visibleIssues}
               members={memberNames}
               mode="assignee"
             />
@@ -1104,17 +1179,24 @@ function MilestoneDetailPanel({
         </section>
 
         <section className="grid gap-3 xl:grid-cols-2">
-          <MilestoneStatusAnalysisSection issues={packageItem.issues} />
-          <MilestoneSprintDeliverySection
-            isError={sprintStatisticsQuery.isError}
-            isPending={sprintStatisticsQuery.isPending}
-            statistics={sprintStatisticsQuery.data ?? []}
-          />
+          <MilestoneStatusAnalysisSection issues={visibleIssues} />
+          {selectedSprint ? (
+            <MilestoneSprintBurndownSection
+              issues={visibleIssues}
+              sprint={selectedSprint}
+            />
+          ) : (
+            <MilestoneSprintDeliverySection
+              isError={sprintStatisticsError}
+              isPending={sprintStatisticsPending}
+              statistics={sprintStatistics}
+            />
+          )}
         </section>
 
         <section className="grid gap-3">
           <MilestoneIssuesTable
-            issues={packageItem.issues}
+            issues={visibleIssues}
             members={memberNames}
             showPartnerColumn={false}
           />
@@ -1246,6 +1328,154 @@ function MilestoneSprintDeliverySection({
         </div>
       </div>
     </article>
+  )
+}
+
+function MilestoneSprintBurndownSection({
+  issues,
+  sprint,
+}: {
+  issues: DashboardMilestone['issues']
+  sprint: DashboardMilestoneSprintStatistic['sprint']
+}) {
+  if (!issues.length) {
+    return (
+      <article className="ops-package-sprint-card ops-bug-chart-shell grid gap-2 rounded-xl p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h4 className="text-sm font-semibold tracking-[-0.02em]">
+              Ticket Burndown
+            </h4>
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+              Tracking remaining tickets over the sprint duration.
+            </p>
+          </div>
+          <Badge
+            variant="outline"
+            className="rounded-full px-2.5 py-0.5 text-[11px]"
+          >
+            {sprint.name}
+          </Badge>
+        </div>
+        <div className="flex min-h-52 items-center justify-center rounded-lg border border-dashed border-[color:var(--border)]/80 bg-[color:color-mix(in_srgb,var(--workspace-pane)_92%,white_8%)] px-4 py-8 text-sm text-[var(--muted-foreground)]">
+          No tickets scheduled in this sprint.
+        </div>
+      </article>
+    )
+  }
+
+  const chartData = buildMilestoneSprintBurndownChartData(issues, sprint)
+  const visibleSeries = getVisibleBurndownSeries(chartData)
+
+  return (
+    <article className="ops-package-sprint-card ops-bug-chart-shell grid gap-3 rounded-xl p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold tracking-[-0.02em]">
+            Ticket Burndown
+          </h4>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+            Tracking remaining tickets over the sprint duration.
+          </p>
+        </div>
+        <Badge
+          variant="outline"
+          className="rounded-full px-2.5 py-0.5 text-[11px]"
+        >
+          {issues.length} tickets
+        </Badge>
+      </div>
+
+      <div className="flex flex-wrap gap-x-4 gap-y-2 px-1 text-xs text-[var(--muted-foreground)]">
+        {visibleSeries.map((series) => (
+          <BurndownLegendItem
+            key={series.key}
+            color={series.color}
+            dashed={series.dashed}
+            label={series.label}
+          />
+        ))}
+      </div>
+
+      <div className="h-60 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={chartData}
+            margin={{ top: 18, right: 10, bottom: 0, left: -14 }}
+          >
+            <CartesianGrid
+              vertical={false}
+              stroke="var(--border)"
+              strokeDasharray="3 3"
+            />
+            <XAxis
+              dataKey="label"
+              axisLine={false}
+              minTickGap={14}
+              tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+              tickLine={false}
+            />
+            <YAxis
+              allowDecimals={false}
+              axisLine={false}
+              tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+              tickLine={false}
+              width={40}
+            />
+            <Tooltip
+              cursor={{
+                stroke: 'color-mix(in srgb, var(--primary) 18%, transparent)',
+                strokeDasharray: '3 3',
+              }}
+              content={({ active, payload }) => (
+                <MilestoneSprintBurndownTooltip
+                  active={active}
+                  payload={payload}
+                  series={visibleSeries}
+                />
+              )}
+            />
+            {visibleSeries.map((series) => (
+              <Line
+                key={series.key}
+                connectNulls={series.connectNulls}
+                dataKey={series.key}
+                dot={series.dot}
+                name={series.label}
+                stroke={series.color}
+                strokeDasharray={series.strokeDasharray}
+                strokeWidth={series.strokeWidth}
+                type="linear"
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </article>
+  )
+}
+
+function BurndownLegendItem({
+  color,
+  dashed = false,
+  label,
+}: {
+  color: string
+  dashed?: boolean
+  label: string
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span
+        className="inline-block h-0.5 w-4 shrink-0 rounded-full"
+        style={{
+          background: dashed
+            ? `repeating-linear-gradient(to right, ${color}, ${color} 4px, transparent 4px, transparent 7px)`
+            : color,
+        }}
+      />
+      <span>{label}</span>
+    </div>
   )
 }
 
@@ -1466,6 +1696,111 @@ function MilestoneSprintTooltip({
   )
 }
 
+function MilestoneSprintBurndownTooltip({
+  active,
+  payload,
+  series,
+}: {
+  active?: boolean
+  payload?: ReadonlyArray<{
+    dataKey?: string
+    value?: number | null
+    payload?: {
+      date: string
+    }
+  }>
+  series: BurndownSeriesConfig[]
+}) {
+  const datum = payload?.[0]?.payload
+
+  if (!active || !datum) return null
+
+  const seriesValues = new Map(
+    (payload ?? []).map((entry) => [entry.dataKey, entry.value ?? null]),
+  )
+
+  return (
+    <div className="rounded-lg border border-[color:var(--border)] bg-[var(--workspace-pane)] px-3 py-2 text-xs shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+      <p className="font-semibold text-[var(--foreground)]">
+        {formatDateLabel(datum.date)}
+      </p>
+      <div className="mt-2 grid gap-1.5">
+        {series
+          .filter((item) => seriesValues.get(item.key) !== null)
+          .map((item) => (
+            <TooltipMetricRow
+              key={item.key}
+              label={item.label}
+              value={formatBurndownMetric(seriesValues.get(item.key))}
+            />
+          ))}
+      </div>
+    </div>
+  )
+}
+
+type BurndownSeriesKey = 'actual' | 'forecast' | 'idealBurn' | 'planned'
+
+type BurndownChartPoint = {
+  date: string
+  label: string
+  actual: number | null
+  forecast: number | null
+  idealBurn: number
+  planned: number
+}
+
+type BurndownSeriesConfig = {
+  key: BurndownSeriesKey
+  label: string
+  color: string
+  dashed?: boolean
+  connectNulls: boolean
+  dot: boolean | { fill: string; r: number; strokeWidth: number }
+  strokeDasharray?: string
+  strokeWidth: number
+}
+
+const BURNDOWN_SERIES_CONFIG: Record<BurndownSeriesKey, BurndownSeriesConfig> =
+  {
+    actual: {
+      key: 'actual',
+      label: 'Actual',
+      color: '#22a06b',
+      connectNulls: false,
+      dot: { fill: '#22a06b', r: 3, strokeWidth: 0 },
+      strokeWidth: 2.5,
+    },
+    forecast: {
+      key: 'forecast',
+      label: 'Forecast',
+      color: '#53c79f',
+      dashed: true,
+      connectNulls: false,
+      dot: false,
+      strokeDasharray: '5 5',
+      strokeWidth: 2,
+    },
+    idealBurn: {
+      key: 'idealBurn',
+      label: 'Ideal Burn',
+      color: '#a5adba',
+      dashed: true,
+      connectNulls: true,
+      dot: false,
+      strokeDasharray: '4 4',
+      strokeWidth: 1.5,
+    },
+    planned: {
+      key: 'planned',
+      label: 'Planned',
+      color: '#388bff',
+      connectNulls: true,
+      dot: { fill: '#388bff', r: 3, strokeWidth: 0 },
+      strokeWidth: 2.5,
+    },
+  }
+
 function TooltipMetricRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4">
@@ -1563,6 +1898,140 @@ function buildMilestoneSprintChartData(
       startDate: item.sprint.start_date,
       endDate: item.sprint.end_date,
     }))
+}
+
+function buildMilestoneSprintBurndownChartData(
+  issues: DashboardMilestone['issues'],
+  sprint: DashboardMilestoneSprintStatistic['sprint'],
+): BurndownChartPoint[] {
+  const dates = buildDateSeries(sprint.start_date, sprint.end_date)
+  const totalTickets = issues.length
+  const plannedDueCounts = buildDueDateCountMap(issues)
+  const actualDueCounts = buildDueDateCountMap(
+    issues.filter((issue) => isIssueDoneStatus(issue.status)),
+  )
+  const lastDoneDueDate = issues
+    .filter((issue) => isIssueDoneStatus(issue.status) && issue.duedate)
+    .map((issue) => issue.duedate as string)
+    .sort()
+    .at(-1)
+  const lastActualIndex = lastDoneDueDate
+    ? dates.findIndex((date) => date === lastDoneDueDate)
+    : -1
+
+  let plannedRemaining = totalTickets
+  let actualRemaining = totalTickets
+
+  const plannedSeries = dates.map((date) => {
+    plannedRemaining = Math.max(
+      plannedRemaining - (plannedDueCounts.get(date) ?? 0),
+      0,
+    )
+    return plannedRemaining
+  })
+  const actualSeries = dates.map((date) => {
+    actualRemaining = Math.max(
+      actualRemaining - (actualDueCounts.get(date) ?? 0),
+      0,
+    )
+    return actualRemaining
+  })
+  const forecastStartValue =
+    lastActualIndex >= 0
+      ? (actualSeries[lastActualIndex] ?? totalTickets)
+      : null
+  const forecastSpan = Math.max(dates.length - 1 - lastActualIndex, 0)
+  const idealDivisor = Math.max(dates.length - 1, 1)
+
+  return dates.map((date, index) => ({
+    date,
+    label: formatDateLabel(date),
+    planned: plannedSeries[index],
+    actual: index <= lastActualIndex ? actualSeries[index] : null,
+    forecast:
+      forecastStartValue !== null &&
+      forecastStartValue > 0 &&
+      index > lastActualIndex &&
+      forecastSpan > 0
+        ? roundBurndownValue(
+            forecastStartValue * (1 - (index - lastActualIndex) / forecastSpan),
+          )
+        : null,
+    idealBurn: roundBurndownValue(
+      totalTickets - (totalTickets * index) / idealDivisor,
+    ),
+  }))
+}
+
+function getVisibleBurndownSeries(chartData: BurndownChartPoint[]) {
+  const orderedKeys: BurndownSeriesKey[] = [
+    'actual',
+    'forecast',
+    'idealBurn',
+    'planned',
+  ]
+
+  return orderedKeys
+    .filter((key) => {
+      if (key === 'planned' || key === 'idealBurn') return true
+
+      return chartData.some((point) => point[key] !== null)
+    })
+    .map((key) => BURNDOWN_SERIES_CONFIG[key])
+}
+
+function buildDateSeries(startDate: string, endDate: string) {
+  const dates: string[] = []
+
+  for (
+    let current = new Date(`${startDate}T00:00:00`),
+      end = new Date(`${endDate}T00:00:00`);
+    current <= end;
+    current = addDays(current, 1)
+  ) {
+    dates.push(current.toISOString().slice(0, 10))
+  }
+
+  return dates
+}
+
+function buildDueDateCountMap(issues: DashboardMilestone['issues']) {
+  const counts = new Map<string, number>()
+
+  for (const issue of issues) {
+    const dueDate = issue.duedate?.trim()
+
+    if (!dueDate) continue
+
+    counts.set(dueDate, (counts.get(dueDate) ?? 0) + 1)
+  }
+
+  return counts
+}
+
+function roundBurndownValue(value: number) {
+  return Math.max(Number(value.toFixed(1)), 0)
+}
+
+function formatBurndownMetric(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return '-'
+  }
+
+  return Number.isInteger(value) ? String(value) : value.toFixed(1)
+}
+
+function filterMilestoneIssuesBySprint(
+  issues: DashboardMilestone['issues'],
+  sprint: DashboardMilestoneSprintStatistic['sprint'],
+) {
+  return issues.filter((issue) => {
+    const dueDate = issue.duedate?.trim()
+
+    return dueDate
+      ? dueDate >= sprint.start_date && dueDate <= sprint.end_date
+      : false
+  })
 }
 
 function formatCompactMetric(value: number) {

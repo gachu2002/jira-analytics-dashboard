@@ -9,6 +9,8 @@ export type TimelineIssue = {
   assignee: string
   partner?: string | null
   status: string
+  duedate?: string | null
+  story_points?: number | null
 }
 
 export type TimelineProjectLike = {

@@ -33,7 +33,7 @@ export function WorkspaceSelect({
         align="start"
         className="rounded-lg border-[color:color-mix(in_srgb,var(--border)_92%,transparent)] bg-[var(--workspace-pane)] text-[var(--foreground)] shadow-[0_14px_32px_rgba(15,23,42,0.14)]"
         position="popper"
-        sideOffset={6}
+        sideOffset={2}
       >
         {options.map((option) => (
           <SelectItem key={option.value} value={option.value}>

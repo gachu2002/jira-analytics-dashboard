@@ -1,7 +1,6 @@
 import { Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { TimelineIssueStatusBadge } from '@/features/timeline-workspace/components/timeline-status'
 import type { TimelineIssue } from '@/features/timeline-workspace/types/timeline-workspace.types'
@@ -95,22 +94,19 @@ export function TimelineIssuesTable({
               {filteredIssues.map(({ issue, partner }) => (
                 <tr key={issue.key} className="ops-bug-table-row align-top">
                   <td className="px-3 py-2.5">
-                    <Badge
-                      variant="outline"
-                      className="ops-bug-key-badge rounded-md px-2 py-0.5 font-semibold"
-                    >
-                      {issue.key}
-                    </Badge>
-                  </td>
-                  <td className="px-3 py-2.5">
                     <a
-                      className="ops-bug-summary line-clamp-2 min-w-0 text-[var(--foreground)] hover:text-[var(--primary)] hover:underline"
+                      className="inline-flex font-semibold text-[var(--primary)] hover:underline"
                       href={issue.url}
                       rel="noreferrer"
                       target="_blank"
                     >
-                      {issue.summary}
+                      {issue.key}
                     </a>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="ops-bug-summary line-clamp-2 min-w-0 text-[var(--foreground)]">
+                      {issue.summary}
+                    </div>
                   </td>
                   <td className="px-3 py-2.5 text-[var(--muted-foreground)]">
                     <span className="truncate text-sm text-[var(--foreground)]">

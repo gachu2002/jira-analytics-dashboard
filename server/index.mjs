@@ -48,6 +48,14 @@ function buildIssue(key, summary, assignee, status) {
   }
 }
 
+function formatDateString(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
 function cloneIssues(issues) {
   return issues.map((issue) => ({ ...issue }))
 }
@@ -125,6 +133,51 @@ function distributeWeightedCount(total, buckets) {
   return counts
 }
 
+function distributeCountByWeights(total, weights) {
+  if (!weights.length) return []
+  if (total <= 0) return weights.map(() => 0)
+
+  const normalizedWeights = weights.map((weight) => Math.max(weight, 0))
+  const totalWeight = normalizedWeights.reduce((sum, weight) => sum + weight, 0)
+
+  if (totalWeight <= 0) {
+    const counts = normalizedWeights.map(() => 0)
+
+    for (let index = 0; index < total; index += 1) {
+      counts[index % counts.length] += 1
+    }
+
+    return counts
+  }
+
+  const counts = normalizedWeights.map((weight) =>
+    Math.floor((weight / totalWeight) * total),
+  )
+  const remainders = normalizedWeights
+    .map((weight, index) => ({
+      index,
+      remainder: (weight / totalWeight) * total - counts[index],
+      weight,
+    }))
+    .sort((left, right) => {
+      if (right.remainder !== left.remainder) {
+        return right.remainder - left.remainder
+      }
+
+      return right.weight - left.weight
+    })
+
+  let assigned = counts.reduce((sum, value) => sum + value, 0)
+
+  for (let index = 0; assigned < total; index += 1) {
+    const bucket = remainders[index % remainders.length]
+    counts[bucket.index] += 1
+    assigned += 1
+  }
+
+  return counts
+}
+
 function buildMilestoneStatusSequence(totalIssues, completedIssues) {
   const total = Math.max(totalIssues, 0)
   const doneCount = Math.min(Math.max(completedIssues, 0), total)
@@ -171,16 +224,160 @@ function buildMilestoneStatusSequence(totalIssues, completedIssues) {
   return sequence
 }
 
-function buildMilestoneIssues(issues, totalIssues, completedIssues) {
-  if (!issues.length) return []
+function buildSprintCompletedIssueCounts(
+  totalCompleted,
+  sprintIssueCounts,
+  sprintStatistics,
+) {
+  if (!sprintIssueCounts.length) return []
 
-  return buildMilestoneStatusSequence(totalIssues, completedIssues).map(
-    (status, index) => {
-      const template = issues[index % issues.length]
-      const cycle = Math.floor(index / issues.length)
+  const safeTotal = Math.min(
+    Math.max(totalCompleted, 0),
+    sprintIssueCounts.reduce((sum, count) => sum + count, 0),
+  )
+  const counts = distributeCountByWeights(
+    safeTotal,
+    sprintStatistics.map((item, index) =>
+      item.completed_point > 0
+        ? item.completed_point
+        : item.active
+          ? 1
+          : sprintIssueCounts[index],
+    ),
+  )
+
+  let overflow = 0
+
+  for (let index = 0; index < counts.length; index += 1) {
+    const capacity = sprintIssueCounts[index] ?? 0
+    if (counts[index] <= capacity) continue
+
+    overflow += counts[index] - capacity
+    counts[index] = capacity
+  }
+
+  if (overflow <= 0) {
+    return counts
+  }
+
+  const candidates = sprintIssueCounts
+    .map((capacity, index) => ({
+      index,
+      capacity,
+      weight: sprintStatistics[index]?.completed_point ?? 0,
+    }))
+    .sort((left, right) => {
+      const leftRemaining = left.capacity - counts[left.index]
+      const rightRemaining = right.capacity - counts[right.index]
+
+      if (rightRemaining !== leftRemaining) {
+        return rightRemaining - leftRemaining
+      }
+
+      return right.weight - left.weight
+    })
+
+  for (let index = 0; overflow > 0 && candidates.length > 0; index += 1) {
+    const candidate = candidates[index % candidates.length]
+    if (counts[candidate.index] >= candidate.capacity) continue
+
+    counts[candidate.index] += 1
+    overflow -= 1
+  }
+
+  return counts
+}
+
+function getSprintIssueDueDate(sprint, index, total) {
+  const start = new Date(`${sprint.start_date}T00:00:00`)
+  const end = new Date(`${sprint.end_date}T00:00:00`)
+  const spanInDays = Math.max(
+    Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)),
+    0,
+  )
+
+  if (spanInDays === 0 || total <= 1) {
+    return formatDateString(end)
+  }
+
+  const dueDate = new Date(start)
+  dueDate.setDate(
+    start.getDate() + Math.round((spanInDays * index) / (total - 1)),
+  )
+
+  return formatDateString(dueDate)
+}
+
+const milestoneStoryPointSequence = [1, 2, 3, 5, 8]
+
+function buildMilestoneIssues(
+  issues,
+  totalIssues,
+  completedIssues,
+  sprintStatistics = [],
+) {
+  if (!issues.length || totalIssues <= 0) return []
+
+  const orderedSprintStatistics = [...sprintStatistics].sort(
+    (left, right) =>
+      new Date(left.sprint.start_date).getTime() -
+        new Date(right.sprint.start_date).getTime() ||
+      new Date(left.created_at).getTime() -
+        new Date(right.created_at).getTime(),
+  )
+
+  if (!orderedSprintStatistics.length) {
+    return buildMilestoneStatusSequence(totalIssues, completedIssues).map(
+      (status, index) => {
+        const template = issues[index % issues.length]
+        const cycle = Math.floor(index / issues.length)
+        const key = buildMilestoneIssueKey(template.key, cycle)
+
+        return {
+          ...template,
+          key,
+          url: `http://jira.lge.com/issue/browse/${key}`,
+          summary:
+            cycle > 0
+              ? `${template.summary} Batch ${cycle + 1}`
+              : template.summary,
+          status,
+          duedate: null,
+          story_points:
+            milestoneStoryPointSequence[
+              index % milestoneStoryPointSequence.length
+            ],
+        }
+      },
+    )
+  }
+
+  const sprintIssueCounts = distributeCountByWeights(
+    totalIssues,
+    orderedSprintStatistics.map((item) => item.scope_point),
+  )
+  const sprintCompletedCounts = buildSprintCompletedIssueCounts(
+    completedIssues,
+    sprintIssueCounts,
+    orderedSprintStatistics,
+  )
+  const timelineIssues = []
+  let issueIndex = 0
+
+  orderedSprintStatistics.forEach((item, sprintIndex) => {
+    const issueCount = sprintIssueCounts[sprintIndex] ?? 0
+    const completedCount = sprintCompletedCounts[sprintIndex] ?? 0
+    const statusSequence = buildMilestoneStatusSequence(
+      issueCount,
+      completedCount,
+    )
+
+    for (let index = 0; index < issueCount; index += 1) {
+      const template = issues[issueIndex % issues.length]
+      const cycle = Math.floor(issueIndex / issues.length)
       const key = buildMilestoneIssueKey(template.key, cycle)
 
-      return {
+      timelineIssues.push({
         ...template,
         key,
         url: `http://jira.lge.com/issue/browse/${key}`,
@@ -188,10 +385,18 @@ function buildMilestoneIssues(issues, totalIssues, completedIssues) {
           cycle > 0
             ? `${template.summary} Batch ${cycle + 1}`
             : template.summary,
-        status,
-      }
-    },
-  )
+        status: statusSequence[index],
+        duedate: getSprintIssueDueDate(item.sprint, index, issueCount),
+        story_points:
+          milestoneStoryPointSequence[
+            issueIndex % milestoneStoryPointSequence.length
+          ],
+      })
+      issueIndex += 1
+    }
+  })
+
+  return timelineIssues
 }
 
 function getMilestoneSnapshot(statistics, fallbackIssues) {
@@ -1192,6 +1397,7 @@ for (const milestone of dashboardMilestones) {
     sourceIssues,
     snapshot.totalTickets,
     snapshot.completedTickets,
+    dashboardMilestoneSprintStatistics[milestone.id] ?? [],
   )
   milestone.total_ticket = milestone.issues.length
   milestone.closed_ticket = milestone.issues.filter((issue) =>

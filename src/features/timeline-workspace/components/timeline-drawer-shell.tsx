@@ -7,18 +7,22 @@ import { cn } from '@/lib/utils'
 export function TimelineDrawerShell({
   actions,
   children,
+  headerContent,
   isOpen,
   isWide,
   onClose,
   title,
+  titleAccessory,
   eyebrow,
 }: {
   actions?: ReactNode
   children: ReactNode
+  headerContent?: ReactNode
   isOpen: boolean
   isWide: boolean
   onClose: () => void
   title: string
+  titleAccessory?: ReactNode
   eyebrow: string
 }) {
   const backdropPressStartedRef = useRef(false)
@@ -57,13 +61,19 @@ export function TimelineDrawerShell({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between border-b border-[color:var(--border)] px-4 py-4">
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="ops-inspector-label">{eyebrow}</p>
-            <p className="mt-1 text-base font-semibold tracking-[-0.02em]">
-              {title}
-            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              <p className="min-w-0 text-base font-semibold tracking-[-0.02em]">
+                {title}
+              </p>
+              {titleAccessory ? (
+                <div className="min-w-0 flex-shrink-0">{titleAccessory}</div>
+              ) : null}
+            </div>
+            {headerContent ? <div className="mt-3">{headerContent}</div> : null}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="ml-3 flex shrink-0 items-center gap-2">
             {actions}
             <Button
               className="size-8 rounded-md px-0"

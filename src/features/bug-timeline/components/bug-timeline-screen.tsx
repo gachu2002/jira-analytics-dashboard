@@ -658,6 +658,29 @@ export function BugTimelineScreen() {
                   toast.error('Update failed')
                 }
               }}
+              onSubmitUpdatePackageNote={async (note: string) => {
+                if (!selectedEntity || selectedEntity.type !== 'package') {
+                  throw new Error('Package not selected')
+                }
+
+                const trimmedNote = note.trim()
+
+                if ((selectedPackage?.note ?? '') === trimmedNote) {
+                  return trimmedNote
+                }
+
+                try {
+                  const updated = await updatePackage.mutateAsync({
+                    packageId: selectedEntity.packageId,
+                    payload: { note: trimmedNote },
+                  })
+                  toast.success('Note updated')
+                  return updated.note
+                } catch {
+                  toast.error('Update failed')
+                  throw new Error('Package note update failed')
+                }
+              }}
               onSubmitUpdateProject={async (
                 payload: Partial<BugTrackerProjectPayload>,
               ) => {
@@ -722,6 +745,7 @@ function CrudDrawer({
   onSubmitCreatePackage,
   onSubmitCreateProject,
   onSubmitUpdatePackage,
+  onSubmitUpdatePackageNote,
   onSubmitUpdateProject,
 }: {
   inspectorMode: BugTimelineInspectorMode
@@ -747,6 +771,7 @@ function CrudDrawer({
   onSubmitUpdatePackage: (
     payload: Partial<BugTrackerPackagePayload>,
   ) => Promise<void>
+  onSubmitUpdatePackageNote: (note: string) => Promise<string>
   onSubmitUpdateProject: (
     payload: Partial<BugTrackerProjectPayload>,
   ) => Promise<void>
@@ -957,8 +982,10 @@ function CrudDrawer({
         <PackageDetailPanel
           key={selectedPackage.id}
           contentRef={packageViewRef}
+          isUpdatingNote={packageMutationState.update.isPending}
           packageItem={selectedPackage}
           packageBar={selectedPackageBar}
+          onSubmitUpdateNote={onSubmitUpdatePackageNote}
         />
       ) : null}
       {inspectorMode === 'create-project' ? (
@@ -1045,12 +1072,16 @@ function ProjectViewPanel({ project }: { project: BugTrackerProject }) {
 
 function PackageDetailPanel({
   contentRef,
+  isUpdatingNote,
   packageBar,
   packageItem,
+  onSubmitUpdateNote,
 }: {
   contentRef: React.RefObject<HTMLDivElement | null>
+  isUpdatingNote: boolean
   packageBar: TimelinePackageBar
   packageItem: BugTrackerPackage
+  onSubmitUpdateNote: (note: string) => Promise<string>
 }) {
   const openBugCount = packageBar.totalBug - packageBar.resolvedBug
   const statisticsQuery = usePackageBugStatisticsQuery(packageItem.id, true)
@@ -1065,6 +1096,7 @@ function PackageDetailPanel({
       bugStatisticsError={statisticsQuery.isError}
       bugStatisticsPending={statisticsQuery.isPending}
       contentRef={contentRef}
+      isUpdatingNote={isUpdatingNote}
       issues={packageItem.issues}
       notice={
         packageBar.isSyncing ? (
@@ -1080,6 +1112,7 @@ function PackageDetailPanel({
       sprintStatisticsError={sprintStatisticsQuery.isError}
       sprintStatisticsPending={sprintStatisticsQuery.isPending}
       note={packageItem.note}
+      onSubmitUpdateNote={onSubmitUpdateNote}
     />
   )
 }
@@ -1397,9 +1430,11 @@ function BugDetailContent({
   bugStatisticsError,
   bugStatisticsPending,
   contentRef,
+  isUpdatingNote = false,
   issues,
   notice,
   note,
+  onSubmitUpdateNote,
   openCount,
   resolvedCount,
   sprintStatistics,
@@ -1410,9 +1445,11 @@ function BugDetailContent({
   bugStatisticsError: boolean
   bugStatisticsPending: boolean
   contentRef: React.RefObject<HTMLDivElement | null>
+  isUpdatingNote?: boolean
   issues: BugTrackerPackage['issues']
   notice?: React.ReactNode
   note?: string
+  onSubmitUpdateNote?: (note: string) => Promise<string>
   openCount: number
   resolvedCount: number
   sprintStatistics: PackageSprintStatistic[]
@@ -1422,9 +1459,6 @@ function BugDetailContent({
   const [optionalCharts, setOptionalCharts] = useState<
     Array<'velocity' | 'reopen'>
   >([])
-  const trimmedNote = note?.trim() ?? ''
-  const hasNote = Boolean(trimmedNote)
-  const [isNoteExpanded, setIsNoteExpanded] = useState(false)
 
   return (
     <div className="p-4">
@@ -1432,40 +1466,11 @@ function BugDetailContent({
         {notice ?? null}
 
         {note !== undefined ? (
-          <section className="grid gap-2 border-b border-[color:var(--border)]/70 pb-4">
-            <button
-              className={`flex items-center justify-between gap-4 rounded-none px-0 py-0.5 text-left ${hasNote ? 'cursor-pointer' : 'cursor-default'}`}
-              disabled={!hasNote}
-              type="button"
-              onClick={() => setIsNoteExpanded((current) => !current)}
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="text-sm font-bold tracking-[0.02em] text-[color:var(--foreground)] uppercase">
-                  Note
-                </span>
-                {!hasNote ? (
-                  <span className="text-xs text-[color:var(--muted-foreground)]">
-                    Empty
-                  </span>
-                ) : null}
-              </div>
-              {hasNote ? (
-                <ChevronDown
-                  className={`size-4 shrink-0 text-[color:var(--muted-foreground)] transition-transform ${isNoteExpanded ? 'rotate-180' : ''}`}
-                />
-              ) : null}
-            </button>
-
-            {hasNote && isNoteExpanded ? (
-              <div className="pr-7 text-sm leading-6 whitespace-pre-wrap text-[color:color-mix(in_srgb,var(--primary)_22%,var(--foreground))]">
-                {trimmedNote}
-              </div>
-            ) : !hasNote ? (
-              <div className="pr-7 text-sm leading-6 text-[color:var(--muted-foreground)]">
-                -
-              </div>
-            ) : null}
-          </section>
+          <PackageNoteSection
+            isUpdatingNote={isUpdatingNote}
+            note={note}
+            onSubmitUpdateNote={onSubmitUpdateNote}
+          />
         ) : null}
 
         <section className="grid gap-4">
@@ -1582,6 +1587,121 @@ function BugDetailContent({
         </section>
       </div>
     </div>
+  )
+}
+
+function PackageNoteSection({
+  isUpdatingNote,
+  note,
+  onSubmitUpdateNote,
+}: {
+  isUpdatingNote: boolean
+  note: string
+  onSubmitUpdateNote?: (note: string) => Promise<string>
+}) {
+  const normalizedPropNote = note.trim()
+  const noteExpandedBeforeEditRef = useRef(true)
+  const [isEditingNote, setIsEditingNote] = useState(false)
+  const [isNoteExpanded, setIsNoteExpanded] = useState(true)
+  const [draftNote, setDraftNote] = useState(normalizedPropNote)
+  const [savedNote, setSavedNote] = useState(normalizedPropNote)
+  const hasNote = Boolean(savedNote)
+
+  async function handleSaveNote() {
+    if (!onSubmitUpdateNote) return
+
+    const nextNote = await onSubmitUpdateNote(draftNote)
+    const trimmedNote = nextNote.trim()
+
+    setSavedNote(trimmedNote)
+    setDraftNote(trimmedNote)
+    setIsEditingNote(false)
+    setIsNoteExpanded(noteExpandedBeforeEditRef.current)
+  }
+
+  return (
+    <section className="grid gap-3 border-b border-[color:var(--border)]/70 pb-4">
+      <div className="flex items-center justify-between gap-4">
+        <button
+          className="flex min-w-0 items-center gap-3 text-left"
+          disabled={isEditingNote}
+          type="button"
+          onClick={() => setIsNoteExpanded((current) => !current)}
+        >
+          <span className="text-sm font-bold tracking-[0.02em] text-[color:var(--foreground)] uppercase">
+            Note
+          </span>
+          {!hasNote ? (
+            <span className="text-xs text-[color:var(--muted-foreground)]">
+              Empty
+            </span>
+          ) : null}
+          <ChevronDown
+            className={`size-4 shrink-0 text-[color:var(--muted-foreground)] transition-transform ${isNoteExpanded ? 'rotate-180' : ''}`}
+          />
+        </button>
+        {onSubmitUpdateNote && !isEditingNote ? (
+          <Button
+            aria-label="Edit note"
+            disabled={isUpdatingNote}
+            size="icon-xs"
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              noteExpandedBeforeEditRef.current = isNoteExpanded
+              setDraftNote(savedNote)
+              setIsEditingNote(true)
+              setIsNoteExpanded(true)
+            }}
+          >
+            <Pencil className="size-3.5" />
+          </Button>
+        ) : null}
+      </div>
+
+      {isEditingNote ? (
+        <div className="grid gap-3">
+          <Textarea
+            className="ops-workspace-input min-h-28 rounded-md"
+            value={draftNote}
+            onChange={(event) => setDraftNote(event.target.value)}
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              disabled={isUpdatingNote}
+              size="sm"
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setDraftNote(savedNote)
+                setIsEditingNote(false)
+                setIsNoteExpanded(noteExpandedBeforeEditRef.current)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={isUpdatingNote}
+              size="sm"
+              type="button"
+              onClick={() => {
+                void handleSaveNote()
+              }}
+            >
+              {isUpdatingNote ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      ) : isNoteExpanded && hasNote ? (
+        <div className="pr-7 text-sm leading-6 whitespace-pre-wrap text-[color:color-mix(in_srgb,var(--primary)_22%,var(--foreground))]">
+          {savedNote}
+        </div>
+      ) : isNoteExpanded && !hasNote ? (
+        <div className="pr-7 text-sm leading-6 text-[color:var(--muted-foreground)]">
+          -
+        </div>
+      ) : null}
+    </section>
   )
 }
 
