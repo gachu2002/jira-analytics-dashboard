@@ -418,6 +418,56 @@ function getMilestoneSnapshot(statistics, fallbackIssues) {
   }
 }
 
+function isIssueScheduledInSprint(issue, sprint) {
+  const dueDate = String(issue.duedate || '').trim()
+
+  return Boolean(
+    dueDate && dueDate >= sprint.start_date && dueDate <= sprint.end_date,
+  )
+}
+
+function syncDashboardMilestoneData(milestone, sourceIssues) {
+  const sprintStatistics =
+    dashboardMilestoneSprintStatistics[milestone.id] ?? []
+  const orderedSprintStatistics = [...sprintStatistics].sort(
+    (left, right) =>
+      new Date(left.sprint.start_date).getTime() -
+        new Date(right.sprint.start_date).getTime() ||
+      new Date(left.created_at).getTime() -
+        new Date(right.created_at).getTime(),
+  )
+
+  if (orderedSprintStatistics.length) {
+    milestone.start_date = orderedSprintStatistics[0].sprint.start_date
+    milestone.end_date = orderedSprintStatistics.at(-1).sprint.end_date
+  }
+
+  const snapshot = getMilestoneSnapshot(orderedSprintStatistics, sourceIssues)
+
+  milestone.task_id = milestone.task_id ?? null
+  milestone.issues = buildMilestoneIssues(
+    sourceIssues,
+    snapshot.totalTickets,
+    snapshot.completedTickets,
+    orderedSprintStatistics,
+  )
+  milestone.total_ticket = milestone.issues.length
+  milestone.closed_ticket = milestone.issues.filter((issue) =>
+    isDoneStatus(issue.status),
+  ).length
+
+  for (const statistic of orderedSprintStatistics) {
+    const sprintIssues = milestone.issues.filter((issue) =>
+      isIssueScheduledInSprint(issue, statistic.sprint),
+    )
+
+    statistic.scope_point = sprintIssues.length
+    statistic.completed_point = sprintIssues.filter((issue) =>
+      isDoneStatus(issue.status),
+    ).length
+  }
+}
+
 function isDoneStatus(status) {
   const normalized = String(status || '')
     .trim()
@@ -1387,22 +1437,7 @@ const dashboardMilestoneSprintStatistics = {
 
 for (const milestone of dashboardMilestones) {
   const sourceIssues = packages[milestone.id - 1]?.issues ?? []
-  const snapshot = getMilestoneSnapshot(
-    dashboardMilestoneSprintStatistics[milestone.id] ?? [],
-    sourceIssues,
-  )
-
-  milestone.task_id = null
-  milestone.issues = buildMilestoneIssues(
-    sourceIssues,
-    snapshot.totalTickets,
-    snapshot.completedTickets,
-    dashboardMilestoneSprintStatistics[milestone.id] ?? [],
-  )
-  milestone.total_ticket = milestone.issues.length
-  milestone.closed_ticket = milestone.issues.filter((issue) =>
-    isDoneStatus(issue.status),
-  ).length
+  syncDashboardMilestoneData(milestone, sourceIssues)
 }
 
 function sendJson(response, statusCode, payload) {

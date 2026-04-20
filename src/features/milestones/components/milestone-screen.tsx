@@ -1989,7 +1989,7 @@ function buildDateSeries(startDate: string, endDate: string) {
     current <= end;
     current = addDays(current, 1)
   ) {
-    dates.push(current.toISOString().slice(0, 10))
+    dates.push(toInputDate(current))
   }
 
   return dates
