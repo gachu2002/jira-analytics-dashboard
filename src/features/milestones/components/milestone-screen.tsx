@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQueryClient } from '@tanstack/react-query'
 import jsPDF from 'jspdf'
 import {
   Bar,
@@ -49,7 +50,10 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useUsersQuery } from '@/features/auth/hooks/use-current-user-query'
 import type { AccountUser } from '@/features/auth/types/account.types'
-import { useMilestoneSprintStatisticsQuery } from '@/features/milestones/api/milestone.queries'
+import {
+  milestoneTimelineQueryKeys,
+  useMilestoneSprintStatisticsQuery,
+} from '@/features/milestones/api/milestone.queries'
 import { useMilestoneTimelineQuery } from '@/features/milestones/hooks/use-milestone-query'
 import { useMilestoneTimelineMutations } from '@/features/milestones/hooks/use-milestone-mutations'
 import {
@@ -109,6 +113,7 @@ const monthHeaderHeight = '2.5rem'
 const weekHeaderHeight = '3rem'
 const ganttHeaderHeight = `calc(${monthHeaderHeight} + ${weekHeaderHeight})`
 export function MilestoneScreen() {
+  const queryClient = useQueryClient()
   const { projects, packages, viewModel, isPending, isError } =
     useMilestoneTimelineQuery()
   const usersQuery = useUsersQuery()
@@ -254,6 +259,11 @@ export function MilestoneScreen() {
         await removePackage.mutateAsync({
           projectId: deleteTarget.projectId,
           packageId: deleteTarget.packageId,
+        })
+        queryClient.removeQueries({
+          queryKey: milestoneTimelineQueryKeys.milestoneSprintStatistics(
+            deleteTarget.packageId,
+          ),
         })
         if (
           selectedEntity?.type === 'package' &&
@@ -625,6 +635,13 @@ export function MilestoneScreen() {
                     payload,
                   })
 
+                  await queryClient.invalidateQueries({
+                    queryKey:
+                      milestoneTimelineQueryKeys.milestoneSprintStatistics(
+                        selectedEntity.packageId,
+                      ),
+                  })
+
                   if (updated.task_id) {
                     handleCloseDrawer()
                     toast.success('Milestone syncing with Jira')
@@ -841,6 +858,10 @@ function CrudDrawer({
   )
     ? selectedSprintId
     : 'all'
+
+  useEffect(() => {
+    setSelectedSprintId('all')
+  }, [isMilestoneView, isOpen, selectedMilestone?.id])
 
   if (!isOpen) return null
 
@@ -1198,7 +1219,9 @@ function MilestoneDetailPanel({
           <MilestoneIssuesTable
             issues={visibleIssues}
             members={memberNames}
+            showDueDateColumn
             showPartnerColumn={false}
+            showResolvedDateColumn
           />
         </section>
       </div>
@@ -1741,6 +1764,8 @@ function MilestoneSprintBurndownTooltip({
 
 type BurndownSeriesKey = 'actual' | 'forecast' | 'idealBurn' | 'planned'
 
+type IssueDateField = 'duedate' | 'resolved_date'
+
 type BurndownChartPoint = {
   date: string
   label: string
@@ -1906,21 +1931,36 @@ function buildMilestoneSprintBurndownChartData(
 ): BurndownChartPoint[] {
   const dates = buildDateSeries(sprint.start_date, sprint.end_date)
   const totalTickets = issues.length
-  const plannedDueCounts = buildDueDateCountMap(issues)
-  const actualDueCounts = buildDueDateCountMap(
-    issues.filter((issue) => isIssueDoneStatus(issue.status)),
+  const doneIssues = issues.filter((issue) => isIssueDoneStatus(issue.status))
+  const plannedDueCounts = buildIssueDateCountMap(issues, 'duedate', dates)
+  const actualResolvedCounts = buildIssueDateCountMap(
+    doneIssues,
+    'resolved_date',
+    dates,
   )
-  const lastDoneDueDate = issues
-    .filter((issue) => isIssueDoneStatus(issue.status) && issue.duedate)
-    .map((issue) => issue.duedate as string)
+  const resolvedBeforeSprintCount = doneIssues.filter((issue) => {
+    const resolvedDate = issue.resolved_date?.trim()
+    return Boolean(resolvedDate && resolvedDate < sprint.start_date)
+  }).length
+  const lastResolvedDate = doneIssues
+    .map((issue) => issue.resolved_date?.trim())
+    .filter((date): date is string =>
+      Boolean(date && date >= sprint.start_date && date <= sprint.end_date),
+    )
     .sort()
     .at(-1)
-  const lastActualIndex = lastDoneDueDate
-    ? dates.findIndex((date) => date === lastDoneDueDate)
+  const lastActualIndex = lastResolvedDate
+    ? dates.findIndex((date) => date === lastResolvedDate)
     : -1
+  const visibleActualIndex =
+    lastActualIndex >= 0
+      ? lastActualIndex
+      : resolvedBeforeSprintCount > 0
+        ? 0
+        : -1
 
   let plannedRemaining = totalTickets
-  let actualRemaining = totalTickets
+  let actualRemaining = Math.max(totalTickets - resolvedBeforeSprintCount, 0)
 
   const plannedSeries = dates.map((date) => {
     plannedRemaining = Math.max(
@@ -1931,30 +1971,31 @@ function buildMilestoneSprintBurndownChartData(
   })
   const actualSeries = dates.map((date) => {
     actualRemaining = Math.max(
-      actualRemaining - (actualDueCounts.get(date) ?? 0),
+      actualRemaining - (actualResolvedCounts.get(date) ?? 0),
       0,
     )
     return actualRemaining
   })
   const forecastStartValue =
-    lastActualIndex >= 0
-      ? (actualSeries[lastActualIndex] ?? totalTickets)
+    visibleActualIndex >= 0
+      ? (actualSeries[visibleActualIndex] ?? totalTickets)
       : null
-  const forecastSpan = Math.max(dates.length - 1 - lastActualIndex, 0)
+  const forecastSpan = Math.max(dates.length - 1 - visibleActualIndex, 0)
   const idealDivisor = Math.max(dates.length - 1, 1)
 
   return dates.map((date, index) => ({
     date,
     label: formatDateLabel(date),
     planned: plannedSeries[index],
-    actual: index <= lastActualIndex ? actualSeries[index] : null,
+    actual: index <= visibleActualIndex ? actualSeries[index] : null,
     forecast:
       forecastStartValue !== null &&
       forecastStartValue > 0 &&
-      index > lastActualIndex &&
+      index > visibleActualIndex &&
       forecastSpan > 0
         ? roundBurndownValue(
-            forecastStartValue * (1 - (index - lastActualIndex) / forecastSpan),
+            forecastStartValue *
+              (1 - (index - visibleActualIndex) / forecastSpan),
           )
         : null,
     idealBurn: roundBurndownValue(
@@ -1995,15 +2036,21 @@ function buildDateSeries(startDate: string, endDate: string) {
   return dates
 }
 
-function buildDueDateCountMap(issues: DashboardMilestone['issues']) {
+function buildIssueDateCountMap(
+  issues: DashboardMilestone['issues'],
+  field: IssueDateField,
+  allowedDates?: string[],
+) {
   const counts = new Map<string, number>()
+  const allowedDateSet = allowedDates ? new Set(allowedDates) : null
 
   for (const issue of issues) {
-    const dueDate = issue.duedate?.trim()
+    const issueDate = issue[field]?.trim()
 
-    if (!dueDate) continue
+    if (!issueDate || (allowedDateSet && !allowedDateSet.has(issueDate)))
+      continue
 
-    counts.set(dueDate, (counts.get(dueDate) ?? 0) + 1)
+    counts.set(issueDate, (counts.get(issueDate) ?? 0) + 1)
   }
 
   return counts

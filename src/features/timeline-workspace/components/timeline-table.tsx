@@ -10,12 +10,17 @@ export function TimelineIssuesTable({
   issues,
   members = [],
   showPartnerColumn = true,
+  showDueDateColumn = false,
+  showResolvedDateColumn = false,
 }: {
   issues: TimelineIssue[]
   members?: string[]
   showPartnerColumn?: boolean
+  showDueDateColumn?: boolean
+  showResolvedDateColumn?: boolean
 }) {
   const [query, setQuery] = useState('')
+  const hasDateColumns = showDueDateColumn || showResolvedDateColumn
   const tableRows = useMemo(
     () =>
       issues.map((issue) => ({
@@ -33,11 +38,17 @@ export function TimelineIssuesTable({
     if (!searchValue) return tableRows
 
     return tableRows.filter(({ issue, partner }) =>
-      `${issue.key} ${issue.summary} ${issue.assignee} ${showPartnerColumn ? `${partner} ` : ''}${issue.status}`
+      `${issue.key} ${issue.summary} ${issue.assignee} ${showPartnerColumn ? `${partner} ` : ''}${issue.status} ${showDueDateColumn ? (issue.duedate ?? '') : ''} ${showResolvedDateColumn ? (issue.resolved_date ?? '') : ''}`
         .toLowerCase()
         .includes(searchValue),
     )
-  }, [query, showPartnerColumn, tableRows])
+  }, [
+    query,
+    showDueDateColumn,
+    showPartnerColumn,
+    showResolvedDateColumn,
+    tableRows,
+  ])
 
   if (!issues.length) {
     return (
@@ -56,8 +67,8 @@ export function TimelineIssuesTable({
             className="ops-workspace-input h-9 rounded-md pl-9"
             placeholder={
               showPartnerColumn
-                ? 'Key, summary, assignee, partner, status'
-                : 'Key, summary, assignee, status'
+                ? `Key, summary, assignee, partner, status${showDueDateColumn ? ', due date' : ''}${showResolvedDateColumn ? ', resolved date' : ''}`
+                : `Key, summary, assignee, status${showDueDateColumn ? ', due date' : ''}${showResolvedDateColumn ? ', resolved date' : ''}`
             }
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -70,11 +81,13 @@ export function TimelineIssuesTable({
             <thead className="ops-bug-table-head sticky top-0 z-[1]">
               <tr>
                 <th className="w-[14%] px-3 py-2 text-left font-medium">Key</th>
-                <th className="w-[38%] px-3 py-2 text-left font-medium">
+                <th
+                  className={`${showPartnerColumn ? 'w-[36%]' : hasDateColumns ? 'w-[28%]' : 'w-[36%]'} px-3 py-2 text-left font-medium`}
+                >
                   Summary
                 </th>
                 <th
-                  className={`${showPartnerColumn ? 'w-[18%]' : 'w-[24%]'} px-3 py-2 text-left font-medium`}
+                  className={`${showPartnerColumn ? 'w-[18%]' : hasDateColumns ? 'w-[18%]' : 'w-[24%]'} px-3 py-2 text-left font-medium`}
                 >
                   Assignee
                 </th>
@@ -84,10 +97,20 @@ export function TimelineIssuesTable({
                   </th>
                 ) : null}
                 <th
-                  className={`${showPartnerColumn ? 'w-[12%]' : 'w-[24%]'} px-3 py-2 text-left font-medium`}
+                  className={`${showPartnerColumn ? 'w-[12%]' : hasDateColumns ? 'w-[12%]' : 'w-[24%]'} px-3 py-2 text-left font-medium`}
                 >
                   Status
                 </th>
+                {showDueDateColumn ? (
+                  <th className="w-[14%] px-3 py-2 text-left font-medium">
+                    Due date
+                  </th>
+                ) : null}
+                {showResolvedDateColumn ? (
+                  <th className="w-[14%] px-3 py-2 text-left font-medium">
+                    Resolved date
+                  </th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
@@ -123,12 +146,26 @@ export function TimelineIssuesTable({
                   <td className="px-3 py-2.5">
                     <TimelineIssueStatusBadge status={issue.status} />
                   </td>
+                  {showDueDateColumn ? (
+                    <td className="px-3 py-2.5 text-[var(--muted-foreground)]">
+                      {issue.duedate?.trim() || ''}
+                    </td>
+                  ) : null}
+                  {showResolvedDateColumn ? (
+                    <td className="px-3 py-2.5 text-[var(--muted-foreground)]">
+                      {issue.resolved_date?.trim() || ''}
+                    </td>
+                  ) : null}
                 </tr>
               ))}
               {!filteredIssues.length ? (
                 <tr className="ops-bug-table-row">
                   <td
-                    colSpan={showPartnerColumn ? 5 : 4}
+                    colSpan={
+                      (showPartnerColumn ? 5 : 4) +
+                      (showDueDateColumn ? 1 : 0) +
+                      (showResolvedDateColumn ? 1 : 0)
+                    }
                     className="px-3 py-8 text-center text-sm text-[var(--muted-foreground)]"
                   >
                     No results.

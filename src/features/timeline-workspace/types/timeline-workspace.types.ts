@@ -10,6 +10,7 @@ export type TimelineIssue = {
   partner?: string | null
   status: string
   duedate?: string | null
+  resolved_date?: string | null
   story_points?: number | null
 }
 

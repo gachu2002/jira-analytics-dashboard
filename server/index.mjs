@@ -45,6 +45,7 @@ function buildIssue(key, summary, assignee, status) {
     assignee,
     partner: inferMockPartner(assignee),
     status,
+    resolved_date: null,
   }
 }
 
@@ -308,6 +309,27 @@ function getSprintIssueDueDate(sprint, index, total) {
   return formatDateString(dueDate)
 }
 
+function shiftDateString(dateString, offsetDays) {
+  const date = new Date(`${dateString}T00:00:00`)
+  date.setDate(date.getDate() + offsetDays)
+  return formatDateString(date)
+}
+
+function clampDateString(dateString, minDateString, maxDateString) {
+  if (dateString < minDateString) return minDateString
+  if (dateString > maxDateString) return maxDateString
+  return dateString
+}
+
+function getSprintIssueResolvedDate(sprint, dueDate, index) {
+  const offsetDays = (index % 3) - 1
+  return clampDateString(
+    shiftDateString(dueDate, offsetDays),
+    sprint.start_date,
+    sprint.end_date,
+  )
+}
+
 const milestoneStoryPointSequence = [1, 2, 3, 5, 8]
 
 function buildMilestoneIssues(
@@ -343,6 +365,7 @@ function buildMilestoneIssues(
               : template.summary,
           status,
           duedate: null,
+          resolved_date: null,
           story_points:
             milestoneStoryPointSequence[
               index % milestoneStoryPointSequence.length
@@ -376,6 +399,8 @@ function buildMilestoneIssues(
       const template = issues[issueIndex % issues.length]
       const cycle = Math.floor(issueIndex / issues.length)
       const key = buildMilestoneIssueKey(template.key, cycle)
+      const status = statusSequence[index]
+      const dueDate = getSprintIssueDueDate(item.sprint, index, issueCount)
 
       timelineIssues.push({
         ...template,
@@ -385,8 +410,11 @@ function buildMilestoneIssues(
           cycle > 0
             ? `${template.summary} Batch ${cycle + 1}`
             : template.summary,
-        status: statusSequence[index],
-        duedate: getSprintIssueDueDate(item.sprint, index, issueCount),
+        status,
+        duedate: dueDate,
+        resolved_date: isDoneStatus(status)
+          ? getSprintIssueResolvedDate(item.sprint, dueDate, index)
+          : null,
         story_points:
           milestoneStoryPointSequence[
             issueIndex % milestoneStoryPointSequence.length
