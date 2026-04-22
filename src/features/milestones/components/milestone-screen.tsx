@@ -1991,7 +1991,7 @@ function buildMilestoneSprintBurndownChartData(
     forecast:
       forecastStartValue !== null &&
       forecastStartValue > 0 &&
-      index > visibleActualIndex &&
+      index >= visibleActualIndex &&
       forecastSpan > 0
         ? roundBurndownValue(
             forecastStartValue *

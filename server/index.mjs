@@ -257,54 +257,119 @@ function buildSprintCompletedIssueCounts(
     counts[index] = capacity
   }
 
-  if (overflow <= 0) {
+  if (overflow > 0) {
+    const candidates = sprintIssueCounts
+      .map((capacity, index) => ({
+        index,
+        capacity,
+        weight: sprintStatistics[index]?.completed_point ?? 0,
+      }))
+      .sort((left, right) => {
+        const leftRemaining = left.capacity - counts[left.index]
+        const rightRemaining = right.capacity - counts[right.index]
+
+        if (rightRemaining !== leftRemaining) {
+          return rightRemaining - leftRemaining
+        }
+
+        return right.weight - left.weight
+      })
+
+    for (let index = 0; overflow > 0 && candidates.length > 0; index += 1) {
+      const candidate = candidates[index % candidates.length]
+      if (counts[candidate.index] >= candidate.capacity) continue
+
+      counts[candidate.index] += 1
+      overflow -= 1
+    }
+  }
+
+  const totalIssues = sprintIssueCounts.reduce((sum, count) => sum + count, 0)
+  const activeSprintIndex = sprintStatistics.findIndex((item) => item.active)
+
+  if (safeTotal >= totalIssues || activeSprintIndex < 0) {
     return counts
   }
 
-  const candidates = sprintIssueCounts
+  const activeCapacity = sprintIssueCounts[activeSprintIndex] ?? 0
+
+  if (activeCapacity <= 1) {
+    return counts
+  }
+
+  const unresolvedReserve = Math.min(
+    Math.max(Math.round(activeCapacity * 0.18), 1),
+    2,
+  )
+  const maxActiveCompleted = Math.max(activeCapacity - unresolvedReserve, 0)
+  const moveableCompleted = counts[activeSprintIndex] - maxActiveCompleted
+
+  if (moveableCompleted <= 0) {
+    return counts
+  }
+
+  const redistributionTargets = sprintIssueCounts
     .map((capacity, index) => ({
       index,
-      capacity,
-      weight: sprintStatistics[index]?.completed_point ?? 0,
+      remaining: capacity - counts[index],
     }))
-    .sort((left, right) => {
-      const leftRemaining = left.capacity - counts[left.index]
-      const rightRemaining = right.capacity - counts[right.index]
+    .filter((item) => item.index !== activeSprintIndex && item.remaining > 0)
 
-      if (rightRemaining !== leftRemaining) {
-        return rightRemaining - leftRemaining
-      }
+  const availableCapacity = redistributionTargets.reduce(
+    (sum, item) => sum + item.remaining,
+    0,
+  )
+  const redistributedCompleted = Math.min(moveableCompleted, availableCapacity)
 
-      return right.weight - left.weight
-    })
+  if (redistributedCompleted <= 0) {
+    return counts
+  }
 
-  for (let index = 0; overflow > 0 && candidates.length > 0; index += 1) {
-    const candidate = candidates[index % candidates.length]
-    if (counts[candidate.index] >= candidate.capacity) continue
+  counts[activeSprintIndex] -= redistributedCompleted
 
-    counts[candidate.index] += 1
-    overflow -= 1
+  for (
+    let index = 0, remaining = redistributedCompleted;
+    remaining > 0 && redistributionTargets.length > 0;
+    index += 1
+  ) {
+    const target = redistributionTargets[index % redistributionTargets.length]
+
+    if (target.remaining <= 0) continue
+
+    counts[target.index] += 1
+    target.remaining -= 1
+    remaining -= 1
   }
 
   return counts
 }
 
-function getSprintIssueDueDate(sprint, index, total) {
+function getSprintSpanInDays(sprint) {
   const start = new Date(`${sprint.start_date}T00:00:00`)
   const end = new Date(`${sprint.end_date}T00:00:00`)
-  const spanInDays = Math.max(
-    Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)),
-    0,
-  )
+
+  return {
+    start,
+    end,
+    spanInDays: Math.max(
+      Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)),
+      0,
+    ),
+  }
+}
+
+function getSprintIssueDueDate(sprint, index, total) {
+  const { start, end, spanInDays } = getSprintSpanInDays(sprint)
 
   if (spanInDays === 0 || total <= 1) {
     return formatDateString(end)
   }
 
+  // Bias more due dates into the back half of the sprint.
+  const normalizedIndex = index / (total - 1)
+  const dueProgress = Math.pow(normalizedIndex, 1.35)
   const dueDate = new Date(start)
-  dueDate.setDate(
-    start.getDate() + Math.round((spanInDays * index) / (total - 1)),
-  )
+  dueDate.setDate(start.getDate() + Math.round(spanInDays * dueProgress))
 
   return formatDateString(dueDate)
 }
@@ -321,12 +386,64 @@ function clampDateString(dateString, minDateString, maxDateString) {
   return dateString
 }
 
-function getSprintIssueResolvedDate(sprint, dueDate, index) {
-  const offsetDays = (index % 3) - 1
+function getSprintCompletionWindowEnd(sprint, isActive) {
+  const { start, end, spanInDays } = getSprintSpanInDays(sprint)
+  const reserveDays = Math.max(
+    isActive ? 3 : 1,
+    Math.round(spanInDays * (isActive ? 0.22 : 0.08)),
+  )
+  const completionWindowEnd = new Date(end)
+
+  completionWindowEnd.setDate(end.getDate() - reserveDays)
+
+  if (completionWindowEnd < start) {
+    return formatDateString(start)
+  }
+
+  return formatDateString(completionWindowEnd)
+}
+
+function getSprintIssueResolvedDate(
+  sprint,
+  dueDate,
+  completedIndex,
+  completedCount,
+  isActive,
+) {
+  const completionWindowEnd = getSprintCompletionWindowEnd(sprint, isActive)
+  const completionWindowStart = shiftDateString(sprint.start_date, 1)
+  const windowStart =
+    completionWindowStart > completionWindowEnd
+      ? sprint.start_date
+      : completionWindowStart
+  const windowStartDate = new Date(`${windowStart}T00:00:00`)
+  const windowEndDate = new Date(`${completionWindowEnd}T00:00:00`)
+  const windowSpanInDays = Math.max(
+    Math.round(
+      (windowEndDate.getTime() - windowStartDate.getTime()) /
+        (1000 * 60 * 60 * 24),
+    ),
+    0,
+  )
+
+  if (completedCount <= 1 || windowSpanInDays === 0) {
+    return clampDateString(dueDate, windowStart, completionWindowEnd)
+  }
+
+  const normalizedIndex = completedIndex / (completedCount - 1)
+  const resolutionProgress = Math.pow(normalizedIndex, isActive ? 0.82 : 0.96)
+  const distributedResolutionDate = new Date(windowStartDate)
+  distributedResolutionDate.setDate(
+    windowStartDate.getDate() +
+      Math.round(windowSpanInDays * resolutionProgress),
+  )
+  const dueBound = shiftDateString(dueDate, isActive ? -1 : 1)
+  const targetResolutionDate = formatDateString(distributedResolutionDate)
+
   return clampDateString(
-    shiftDateString(dueDate, offsetDays),
-    sprint.start_date,
-    sprint.end_date,
+    targetResolutionDate < dueBound ? targetResolutionDate : dueBound,
+    windowStart,
+    completionWindowEnd,
   )
 }
 
@@ -394,6 +511,7 @@ function buildMilestoneIssues(
       issueCount,
       completedCount,
     )
+    let completedIndex = 0
 
     for (let index = 0; index < issueCount; index += 1) {
       const template = issues[issueIndex % issues.length]
@@ -401,6 +519,16 @@ function buildMilestoneIssues(
       const key = buildMilestoneIssueKey(template.key, cycle)
       const status = statusSequence[index]
       const dueDate = getSprintIssueDueDate(item.sprint, index, issueCount)
+      const isDone = isDoneStatus(status)
+      const resolvedDate = isDone
+        ? getSprintIssueResolvedDate(
+            item.sprint,
+            dueDate,
+            completedIndex,
+            completedCount,
+            Boolean(item.active),
+          )
+        : null
 
       timelineIssues.push({
         ...template,
@@ -412,14 +540,15 @@ function buildMilestoneIssues(
             : template.summary,
         status,
         duedate: dueDate,
-        resolved_date: isDoneStatus(status)
-          ? getSprintIssueResolvedDate(item.sprint, dueDate, index)
-          : null,
+        resolved_date: resolvedDate,
         story_points:
           milestoneStoryPointSequence[
             issueIndex % milestoneStoryPointSequence.length
           ],
       })
+      if (isDone) {
+        completedIndex += 1
+      }
       issueIndex += 1
     }
   })
